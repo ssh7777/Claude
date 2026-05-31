@@ -40,6 +40,11 @@ export async function PATCH(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Validate input lengths to prevent abuse
+    if (body.user_edited_answer !== undefined && body.user_edited_answer.length > 10000) {
+        return NextResponse.json({ error: 'Answer exceeds maximum length of 10,000 characters.' }, { status: 400 })
+    }
+
     const updates: Record<string, unknown> = {}
     if (body.user_edited_answer !== undefined) updates.user_edited_answer = body.user_edited_answer
     if (body.is_approved !== undefined) {

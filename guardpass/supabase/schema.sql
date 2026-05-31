@@ -157,3 +157,37 @@ WITH CHECK (bucket_id = 'questionnaires' AND auth.uid()::text = (storage.foldern
 CREATE POLICY "Owner can read questionnaires"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'questionnaires' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Owner can delete questionnaires"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'questionnaires' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+
+-- ============================================================
+-- 6. AUDIT LOG
+-- Immutable log of significant user actions for compliance.
+-- ============================================================
+CREATE TABLE public.audit_logs (
+    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    profile_id  UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    action      TEXT NOT NULL,   -- e.g. 'document.upload', 'questionnaire.process', 'item.approve', 'export'
+    resource_id UUID,
+    metadata    JSONB DEFAULT '{}',
+    ip_address  TEXT,
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own audit logs"
+    ON public.audit_logs FOR SELECT
+    USING (auth.uid() = profile_id);
+
+CREATE INDEX idx_audit_logs_profile_id ON public.audit_logs(profile_id);
+CREATE INDEX idx_audit_logs_created_at ON public.audit_logs(created_at DESC);
+
+
+-- ============================================================
+-- COMPOSITE INDEXES for common query patterns
+-- ============================================================
+CREATE INDEX idx_questionnaires_profile_status ON public.questionnaires(profile_id, status);
+CREATE INDEX idx_questionnaire_items_status ON public.questionnaire_items(questionnaire_id, status);

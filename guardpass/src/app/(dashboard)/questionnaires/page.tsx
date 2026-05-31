@@ -26,6 +26,7 @@ export default function QuestionnairesPage() {
     const [uploading, setUploading] = useState(false)
     const [processing, setProcessing] = useState<string | null>(null)
     const [error, setError] = useState('')
+    const [processError, setProcessError] = useState<string | null>(null)
 
     const fetchQuestionnaires = useCallback(async () => {
         const supabase = createClient()
@@ -67,6 +68,7 @@ export default function QuestionnairesPage() {
 
     const handleProcess = async (q: Questionnaire) => {
         setProcessing(q.id)
+        setProcessError(null)
         try {
             const res = await fetch('/api/questionnaires/process', {
                 method: 'POST',
@@ -74,12 +76,12 @@ export default function QuestionnairesPage() {
                 body: JSON.stringify({ questionnaire_id: q.id }),
             })
             if (res.status === 402) {
-                alert('Active subscription required. Please upgrade your plan.')
+                setProcessError('Active subscription required. Please upgrade your plan.')
                 return
             }
             await fetchQuestionnaires()
         } catch {
-            console.error('Processing failed')
+            setProcessError('Processing failed. Please try again.')
         } finally {
             setProcessing(null)
         }
@@ -95,6 +97,10 @@ export default function QuestionnairesPage() {
                         Upload Questionnaire
                     </Button>
                 </div>
+
+                {processError && (
+                    <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">{processError}</div>
+                )}
 
                 <Card>
                     <CardHeader>

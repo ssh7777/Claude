@@ -17,7 +17,8 @@ const PLANS = [
         price: 0,
         period: null,
         features: ['3 questionnaires', '5 knowledge documents', '50 AI answers/month', 'XLSX export'],
-        priceId: null,
+        priceEnvKey: null as string | null,
+        highlight: false,
     },
     {
         id: 'professional',
@@ -25,7 +26,7 @@ const PLANS = [
         price: 79,
         period: '/month',
         features: ['Unlimited questionnaires', '50 knowledge documents', '500 AI answers/month', 'XLSX export', 'Priority processing'],
-        priceId: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'professional' : null,
+        priceEnvKey: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROFESSIONAL ?? null,
         highlight: true,
     },
     {
@@ -34,15 +35,10 @@ const PLANS = [
         price: 299,
         period: '/month',
         features: ['Unlimited everything', 'Unlimited knowledge documents', 'Unlimited AI answers', 'White-label support', 'Priority support', 'Custom integrations'],
-        priceId: 'enterprise',
+        priceEnvKey: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE ?? null,
+        highlight: false,
     },
 ]
-
-function getPlanFromPriceId(priceId: string | null): string {
-    if (!priceId) return 'free'
-    if (priceId === process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) return 'professional'
-    return 'enterprise'
-}
 
 export default function BillingPage() {
     const [profile, setProfile] = useState<Profile | null>(null)
@@ -195,14 +191,13 @@ export default function BillingPage() {
                                         <Button
                                             className="w-full"
                                             variant={plan.highlight ? 'default' : 'outline'}
-                                            onClick={() => handleUpgrade(
-                                                plan.id === 'professional'
-                                                    ? (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'professional')
-                                                    : 'enterprise'
-                                            )}
-                                            disabled={!!checkoutLoading}
+                                            onClick={() => {
+                                                if (!plan.priceEnvKey) return
+                                                handleUpgrade(plan.priceEnvKey)
+                                            }}
+                                            disabled={!!checkoutLoading || !plan.priceEnvKey}
                                         >
-                                            {checkoutLoading === plan.id
+                                            {checkoutLoading === plan.priceEnvKey
                                                 ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Loading...</>
                                                 : `Upgrade to ${plan.name}`
                                             }

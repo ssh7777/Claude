@@ -12,6 +12,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Enforce questionnaire limit
+    const { checkQuestionnaireLimit } = await import('@/lib/limits')
+    const limitCheck = await checkQuestionnaireLimit(supabase, user.id)
+    if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.message }, { status: 402 })
+    }
+
     let formData: FormData
     try {
         formData = await request.formData()

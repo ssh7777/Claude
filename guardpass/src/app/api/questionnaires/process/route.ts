@@ -49,6 +49,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Active subscription required to process questionnaires.' }, { status: 402 })
     }
 
+    // Count pending items to check AI answer limit
+    const { count: pendingCount } = await supabase
+        .from('questionnaire_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('questionnaire_id', questionnaire_id)
+        .eq('status', 'pending')
+
+    const { checkAIAnswerLimit } = await import('@/lib/limits')
+    const aiLimitCheck = await checkAIAnswerLimit(supabase, user.id, pendingCount ?? 0)
+    if (!aiLimitCheck.allowed) {
+        return NextResponse.json({ error: aiLimitCheck.message }, { status: 402 })
+    }
+
     await supabase
         .from('questionnaires')
         .update({ status: 'processing' })
@@ -85,21 +98,29 @@ export async function POST(request: NextRequest) {
                 .update({ status: 'processing' })
                 .eq('id', item.id)
 
-            try {
-                const result = await generateAnswer(knowledgeContext, item.question_text)
-                await supabase
-                    .from('questionnaire_items')
-                    .update({
-                        suggested_answer: result.suggested_answer,
-                        confidence_score: result.confidence_score,
-                        status: 'answered',
-                    })
-                    .eq('id', item.id)
-            } catch {
-                await supabase
-                    .from('questionnaire_items')
-                    .update({ status: 'answered', suggested_answer: 'Processing failed. Please retry.', confidence_score: 0 })
-                    .eq('id', item.id)
+            let answered = false
+            for (let attempt = 0; attempt < 2 && !answered; attempt++) {
+                try {
+                    const result = await generateAnswer(knowledgeContext, item.question_text)
+                    await supabase
+                        .from('questionnaire_items')
+                        .update({
+                            suggested_answer: result.suggested_answer,
+                            confidence_score: result.confidence_score,
+                            status: 'answered',
+                        })
+                        .eq('id', item.id)
+                    answered = true
+                } catch {
+                    if (attempt === 1) {
+                        await supabase
+                            .from('questionnaire_items')
+                            .update({ status: 'answered', suggested_answer: 'Processing failed. Please retry this question.', confidence_score: 0 })
+                            .eq('id', item.id)
+                    } else {
+                        await sleep(2000)
+                    }
+                }
             }
 
             completedCount++

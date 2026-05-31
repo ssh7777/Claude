@@ -52,7 +52,11 @@ ${knowledgeContext}
 ${questionText}
 </TARGET_QUESTION>`
 
-    const result = await model.generateContent(prompt)
+    // Race against a 45-second timeout to prevent hanging the batch
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini request timed out')), 45000)
+    )
+    const result = await Promise.race([model.generateContent(prompt), timeoutPromise])
     const text = result.response.text()
 
     try {
