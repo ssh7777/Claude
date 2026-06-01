@@ -2,11 +2,27 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
+        request.nextUrl.pathname.startsWith('/knowledge-base') ||
+        request.nextUrl.pathname.startsWith('/questionnaires') ||
+        request.nextUrl.pathname.startsWith('/billing')
+
+    // If env vars are not configured, block dashboard routes and let everything else through
+    if (!supabaseUrl || !supabaseKey) {
+        if (isDashboardRoute) {
+            return NextResponse.redirect(new URL('/login', request.url))
+        }
+        return NextResponse.next({ request })
+    }
+
     let supabaseResponse = NextResponse.next({ request })
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() { return request.cookies.getAll() },
@@ -22,11 +38,6 @@ export async function proxy(request: NextRequest) {
     )
 
     const { data: { user } } = await supabase.auth.getUser()
-
-    const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
-        request.nextUrl.pathname.startsWith('/knowledge-base') ||
-        request.nextUrl.pathname.startsWith('/questionnaires') ||
-        request.nextUrl.pathname.startsWith('/billing')
 
     if (!user && isDashboardRoute) {
         const loginUrl = new URL('/login', request.url)
