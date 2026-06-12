@@ -5,56 +5,71 @@ CDN + vanilla JS) with an anonymized serverless ingestion gateway.
 
 ## Files
 
-| File            | Purpose                                                              |
-| --------------- | ------------------------------------------------------------------- |
-| `index.html`    | The full single-page site (hero, framework, ecosystem, compliance, contact, modal). |
-| `app.js`        | Vanilla JS: funnel telemetry, math captcha, async form POST, high-intent modal. |
-| `worker.js`     | Cloudflare Worker that forwards leads to a destination inbox held only in env vars. |
-| `wrangler.toml` | Worker config. Secrets are set out of source, never committed.       |
+| File               | Purpose                                                              |
+| ------------------ | -------------------------------------------------------------------- |
+| `index.html`       | The full single-page site (hero, framework, ecosystem, compliance, contact, modal). |
+| `app.js`           | Vanilla JS: funnel telemetry, math captcha, async form POST, high-intent modal. |
+| `styles.css`       | Compiled Tailwind output (built from `styles.src.css` + `tailwind.config.js`). |
+| `api/lead.js`      | Vercel serverless function that forwards leads to a destination inbox held only in env vars. |
+| `api/telemetry.js` | Vercel serverless telemetry sink.                                     |
+| `vercel.json`      | Vercel project config (clean URLs, security headers).                 |
+| `worker.js`        | OPTIONAL Cloudflare Worker alternative to the Vercel functions.       |
+| `wrangler.toml`    | Worker config for the Cloudflare alternative.                         |
 
-## Front end
+## Deploying to Vercel (primary path)
 
-Static — host on any CDN/static host (Cloudflare Pages, Netlify, S3+CloudFront,
-GitHub Pages). No build step. Open `index.html` to preview locally.
+This directory is a self-contained Vercel project (static front end + `/api`
+functions). From inside `counterintelagency/`:
 
-Before going live, set the two endpoint constants at the top of `app.js`:
-
-```js
-var LEAD_ENDPOINT     = "https://gateway.counterintelagency.com/api/lead";
-var TELEMETRY_ENDPOINT = "https://gateway.counterintelagency.com/api/telemetry";
+```bash
+npx vercel deploy --prod
 ```
+
+Then set the server-side env vars (never exposed to the browser):
+
+```bash
+npx vercel env add LEAD_DESTINATION production    # protected operations inbox
+npx vercel env add MAIL_PROVIDER_KEY production   # Resend API key
+npx vercel env add MAIL_FROM production           # verified sender address
+```
+
+Redeploy after adding env vars. To rebuild the stylesheet after editing
+markup/classes: `npx tailwindcss -c tailwind.config.js -i styles.src.css -o styles.css --minify`.
+
+The front end posts to same-origin `/api/lead` and `/api/telemetry`
+(see the constants at the top of `app.js`).
 
 ## Email-hiding architecture
 
 The destination inbox is **never** present in any client asset — not in HTML,
-form `action`s, or JS. The browser only knows the gateway URL. The Worker
-resolves the destination from a secret binding (`LEAD_DESTINATION`) and forwards
-the lead server-side via a transactional mail API.
+form `action`s, or JS. The browser only knows the same-origin endpoint. The
+serverless function resolves the destination from `LEAD_DESTINATION` (an env
+var) and forwards the lead server-side via a transactional mail API.
 
 ```
-Browser (fetch POST) ──▶ /api/lead (Cloudflare Worker)
-                              │  reads env.LEAD_DESTINATION (secret)
+Browser (fetch POST) ──▶ /api/lead (Vercel serverless function)
+                              │  reads process.env.LEAD_DESTINATION
                               ▼
                          Transactional mail API ──▶ protected inbox
 ```
 
-## Deploying the gateway
+Both `api/lead.js` and `worker.js` ship with a [Resend](https://resend.com)
+integration; swap the `fetch(...)` block for any provider (Postmark, SendGrid,
+SES, Mailgun). Keep `MAIL_FROM` on a verified sending domain.
+
+## Optional: Cloudflare Worker alternative
+
+To run the gateway on Cloudflare instead of Vercel functions:
 
 ```bash
 npm i -g wrangler
 wrangler login
-
-# Secrets (kept out of source control):
-wrangler secret put LEAD_DESTINATION     # the protected operations inbox
-wrangler secret put MAIL_PROVIDER_KEY    # transactional mail provider API key
-
-# Public vars are in wrangler.toml (MAIL_FROM, ALLOWED_ORIGIN).
+wrangler secret put LEAD_DESTINATION
+wrangler secret put MAIL_PROVIDER_KEY
 wrangler deploy
 ```
 
-`worker.js` ships with a [Resend](https://resend.com) integration; swap the
-`fetch(...)` block in `handleLead` for any provider (Postmark, SendGrid, SES,
-Mailgun). Keep `MAIL_FROM` on a verified sending domain.
+Then point `LEAD_ENDPOINT`/`TELEMETRY_ENDPOINT` in `app.js` at the worker URL.
 
 ## Features
 

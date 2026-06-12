@@ -12,11 +12,12 @@
      CONFIGURATION
      LEAD_ENDPOINT: anonymized middle-tier serverless gateway.
      The destination inbox is resolved server-side from an environment
-     variable and is NEVER present in client source. See worker.js.
+     variable and is NEVER present in client source. See api/lead.js
+     (Vercel) or worker.js (Cloudflare alternative).
      TELEMETRY_ENDPOINT: privacy-compliant analytics sink (optional).
   ---------------------------------------------------------------- */
-  var LEAD_ENDPOINT = "https://gateway.counterintelagency.com/api/lead";
-  var TELEMETRY_ENDPOINT = "https://gateway.counterintelagency.com/api/telemetry";
+  var LEAD_ENDPOINT = "/api/lead";
+  var TELEMETRY_ENDPOINT = "/api/telemetry";
 
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
