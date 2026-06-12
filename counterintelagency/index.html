@@ -37,26 +37,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind CSS (CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            base: "#060A13",
-            panel: "#0A0F1D",
-            steel: "#64748B",
-            ember: "#B45309",
-          },
-          fontFamily: {
-            sans: ["Inter", "system-ui", "sans-serif"],
-            mono: ["IBM Plex Mono", "ui-monospace", "monospace"],
-          },
-        },
-      },
-    };
-  </script>
+  <!-- Tailwind CSS (compiled locally — see tailwind.config.js / styles.src.css) -->
+  <link rel="stylesheet" href="./styles.css" />
 
   <style>
     html { background-color: #060A13; }
