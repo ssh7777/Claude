@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Counterintel Agency — Threat Surface Hardening &amp; Signal Defense</title>
+
+  <!-- SEO / Social -->
+  <meta name="description" content="Enterprise threat surface hardening for sovereign governments, defense, and critical infrastructure. We map, audit, and insulate high-value assets against commercial telemetry exposure and pattern-of-life aggregation." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#0A0F1D" />
+  <link rel="canonical" href="https://counterintelagency.com/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Counterintel Agency" />
+  <meta property="og:title" content="Defending the Sovereign Signal Surface" />
+  <meta property="og:description" content="We map, audit, and insulate high-value assets against predictive pattern-of-life aggregation before vulnerabilities manifest." />
+  <meta property="og:url" content="https://counterintelagency.com/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Defending the Sovereign Signal Surface" />
+  <meta name="twitter:description" content="Enterprise threat surface hardening and commercial telemetry exposure auditing." />
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Counterintel Agency",
+    "url": "https://counterintelagency.com",
+    "description": "Enterprise threat surface hardening, signal exposure auditing, and operational security insulation for institutional clients.",
+    "areaServed": "Global",
+    "knowsAbout": ["Operational Security", "Signal Exposure Auditing", "Attack Surface Reduction", "Counter-Surveillance"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS (compiled locally — see tailwind.config.js / styles.src.css) -->
+  <link rel="stylesheet" href="./styles.css" />
+
+  <style>
+    html { background-color: #060A13; }
+    body { -webkit-font-smoothing: antialiased; }
+    .grid-lines {
+      background-image:
+        linear-gradient(to right, rgba(100,116,139,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(100,116,139,0.06) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+    .hairline { border-color: rgba(100,116,139,0.22); }
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    ::selection { background: rgba(180,83,9,0.35); color: #fff; }
+    .modal-enter { opacity: 0; transform: scale(.97); }
+    .modal-shown { opacity: 1; transform: scale(1); transition: opacity .25s ease, transform .25s ease; }
+  </style>
+</head>
+
+<body class="bg-base text-slate-300 font-sans antialiased selection:text-white">
+
+  <!-- ============ NAV ============ -->
+  <header class="sticky top-0 z-40 border-b hairline bg-base/85 backdrop-blur-md">
+    <div class="mx-auto max-w-7xl px-6 lg:px-10">
+      <div class="flex h-16 items-center justify-between">
+        <a href="#top" class="flex items-center gap-3 group" aria-label="Counterintel Agency home">
+          <span class="inline-flex h-7 w-7 items-center justify-center border hairline">
+            <span class="h-2.5 w-2.5 bg-ember"></span>
+          </span>
+          <span class="font-mono text-sm tracking-[0.2em] text-white uppercase">Counterintel<span class="text-steel">/</span>Agency</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-8 text-xs uppercase tracking-[0.15em] text-steel">
+          <a href="#framework" class="hover:text-white transition-colors" data-track="nav-framework">Framework</a>
+          <a href="#ecosystem" class="hover:text-white transition-colors" data-track="nav-ecosystem">Applications</a>
+          <a href="#compliance" class="hover:text-white transition-colors" data-track="nav-compliance">Compliance</a>
+          <a href="#contact" class="border hairline px-4 py-2 text-white hover:border-ember transition-colors" data-track="nav-contact">Secure Inquiry</a>
+        </nav>
+        <a href="#contact" class="md:hidden border hairline px-3 py-1.5 text-[11px] uppercase tracking-widest text-white" data-track="nav-contact-mobile">Inquiry</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- ============ COMPONENT A: COMMAND HERO ============ -->
+    <section class="relative overflow-hidden border-b hairline grid-lines">
+      <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-base pointer-events-none"></div>
+      <div class="relative mx-auto max-w-7xl px-6 lg:px-10 py-24 lg:py-36">
+        <div class="grid lg:grid-cols-12 gap-12 items-end">
+          <div class="lg:col-span-8">
+            <p class="font-mono text-xs uppercase tracking-[0.35em] text-ember mb-8">Signal Defense Directorate</p>
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.05] tracking-tight">
+              Defending the<br class="hidden sm:block" /> Sovereign Signal Surface
+            </h1>
+            <p class="mt-8 max-w-2xl text-base sm:text-lg leading-relaxed text-steel">
+              Modern personnel and logistics infrastructures are continuously exposed via background
+              application telemetry leaks. We map, audit, and insulate high-value assets against
+              predictive pattern-of-life aggregation before vulnerabilities manifest.
+            </p>
+            <div class="mt-10 flex flex-col sm:flex-row gap-4">
+              <a href="#contact" data-track="hero-cta"
+                 class="inline-flex items-center justify-center gap-3 border border-ember bg-ember/10 px-7 py-4 text-sm uppercase tracking-[0.18em] text-white hover:bg-ember/20 transition-colors">
+                Initialize Secure Audit Inquiry
+                <span aria-hidden="true">&rarr;</span>
+              </a>
+              <a href="#framework" data-track="hero-secondary"
+                 class="inline-flex items-center justify-center gap-3 border hairline px-7 py-4 text-sm uppercase tracking-[0.18em] text-steel hover:text-white transition-colors">
+                Review Framework
+              </a>
+            </div>
+          </div>
+          <div class="lg:col-span-4 lg:border-l hairline lg:pl-10">
+            <dl class="space-y-8">
+              <div>
+                <dt class="font-mono text-[11px] uppercase tracking-[0.25em] text-steel">Posture</dt>
+                <dd class="mt-1 text-2xl font-semibold text-white">Unclassified / Commercial</dd>
+              </div>
+              <div>
+                <dt class="font-mono text-[11px] uppercase tracking-[0.25em] text-steel">Engagement Model</dt>
+                <dd class="mt-1 text-2xl font-semibold text-white">Audit &middot; Reduce &middot; Insulate</dd>
+              </div>
+              <div>
+                <dt class="font-mono text-[11px] uppercase tracking-[0.25em] text-steel">Clearance Tier</dt>
+                <dd class="mt-1 text-2xl font-semibold text-white">Institutional Only</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPONENT B: STRATEGIC FRAMEWORK ============ -->
+    <section id="framework" class="border-b hairline">
+      <div class="mx-auto max-w-7xl px-6 lg:px-10 py-20 lg:py-28">
+        <div class="max-w-3xl mb-16 reveal">
+          <p class="font-mono text-xs uppercase tracking-[0.35em] text-ember mb-5">01 / Strategic Security Framework</p>
+          <h2 class="text-3xl lg:text-4xl font-semibold text-white tracking-tight">A disciplined lifecycle for closing exposure</h2>
+          <p class="mt-5 text-steel leading-relaxed">
+            Each engagement progresses through objective measurement, structural reduction, and active
+            counter-correlation — an auditable chain from diagnosis to insulation.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 hairline border-t border-l">
+          <!-- 1 -->
+          <article class="reveal border-b md:border-b-0 border-r hairline p-8 lg:p-10 hover:bg-panel/60 transition-colors">
+            <span class="font-mono text-xs text-steel">SE-01</span>
+            <h3 class="mt-6 text-xl font-semibold text-white">Signal Exposure Audits</h3>
+            <p class="mt-4 text-sm leading-relaxed text-steel">
+              Processing unclassified commercial alternative data streams to isolate existing digital
+              signatures and generate objective organizational Proof of Exposure (PoE) diagnostics.
+            </p>
+            <div class="mt-8 h-px w-12 bg-ember"></div>
+          </article>
+          <!-- 2 -->
+          <article class="reveal border-b md:border-b-0 border-r hairline p-8 lg:p-10 hover:bg-panel/60 transition-colors">
+            <span class="font-mono text-xs text-steel">SR-02</span>
+            <h3 class="mt-6 text-xl font-semibold text-white">Surface Area Reduction</h3>
+            <p class="mt-4 text-sm leading-relaxed text-steel">
+              Implementing enterprise-level profile restriction guidelines and application
+              containerization architectures to neutralize outbound signal vectors.
+            </p>
+            <div class="mt-8 h-px w-12 bg-ember"></div>
+          </article>
+          <!-- 3 -->
+          <article class="reveal border-r hairline p-8 lg:p-10 hover:bg-panel/60 transition-colors">
+            <span class="font-mono text-xs text-steel">GD-03</span>
+            <h3 class="mt-6 text-xl font-semibold text-white">Geofence Deception Controls</h3>
+            <p class="mt-4 text-sm leading-relaxed text-steel">
+              Providing technical tactical counter-measures and operational methodology to disrupt
+              adversarial spatial-temporal correlation tracking models.
+            </p>
+            <div class="mt-8 h-px w-12 bg-ember"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPONENT C: TRUSTED DOMAIN ECOSYSTEM ============ -->
+    <section id="ecosystem" class="border-b hairline bg-panel/40">
+      <div class="mx-auto max-w-7xl px-6 lg:px-10 py-20 lg:py-28">
+        <div class="grid lg:grid-cols-12 gap-12">
+          <div class="lg:col-span-4 reveal">
+            <p class="font-mono text-xs uppercase tracking-[0.35em] text-ember mb-5">02 / Operational Domains</p>
+            <h2 class="text-3xl lg:text-4xl font-semibold text-white tracking-tight">Operational Applications &amp; Institutional Alignment</h2>
+            <p class="mt-5 text-steel leading-relaxed">
+              Engagement frameworks calibrated to the operational requirements of the institutions
+              that depend on signal discipline.
+            </p>
+          </div>
+
+          <div class="lg:col-span-8 reveal">
+            <div class="border-t hairline">
+              <!-- Row -->
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-8 py-7 border-b hairline">
+                <div class="sm:w-1/3 font-mono text-xs uppercase tracking-[0.18em] text-white">National Security Operations</div>
+                <p class="sm:w-2/3 text-sm text-steel leading-relaxed">Hardening supply-chain intelligence and high-value transit channels.</p>
+              </div>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-8 py-7 border-b hairline">
+                <div class="sm:w-1/3 font-mono text-xs uppercase tracking-[0.18em] text-white">Defense &amp; Strategic Command</div>
+                <p class="sm:w-2/3 text-sm text-steel leading-relaxed">Securing specialized base personnel and critical tactical logistics signatures.</p>
+              </div>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-8 py-7 border-b hairline">
+                <div class="sm:w-1/3 font-mono text-xs uppercase tracking-[0.18em] text-white">Law Enforcement &amp; Threat Interdiction</div>
+                <p class="sm:w-2/3 text-sm text-steel leading-relaxed">Providing OSINT structural telemetry support for sovereign investigation units.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPONENT D: COMPLIANCE GATE ============ -->
+    <section id="compliance" class="border-b hairline">
+      <div class="mx-auto max-w-7xl px-6 lg:px-10 py-20 lg:py-28">
+        <div class="grid lg:grid-cols-12 gap-12 items-center">
+          <div class="lg:col-span-7 reveal">
+            <p class="font-mono text-xs uppercase tracking-[0.35em] text-ember mb-5">03 / Regulatory Alignment</p>
+            <h2 class="text-3xl lg:text-4xl font-semibold text-white tracking-tight">Absolute Regulatory Alignment</h2>
+            <p class="mt-6 text-steel leading-relaxed max-w-2xl">
+              The platform's processing algorithms function in strict compliance with the General Data
+              Protection Regulation (GDPR) and the UK Data Protection Act (DPA). We isolate only
+              commercially accessible, public-domain spatial arrays to ensure client institutional continuity.
+            </p>
+          </div>
+          <div class="lg:col-span-5 reveal">
+            <div class="border hairline p-8 bg-panel/60">
+              <ul class="space-y-5 text-sm">
+                <li class="flex items-start gap-4">
+                  <span class="mt-1 h-2 w-2 shrink-0 bg-ember"></span>
+                  <span><span class="text-white font-medium">GDPR.</span> <span class="text-steel">Lawful-basis processing and data-minimization by design.</span></span>
+                </li>
+                <li class="flex items-start gap-4">
+                  <span class="mt-1 h-2 w-2 shrink-0 bg-ember"></span>
+                  <span><span class="text-white font-medium">UK DPA.</span> <span class="text-steel">Aligned with statutory institutional handling obligations.</span></span>
+                </li>
+                <li class="flex items-start gap-4">
+                  <span class="mt-1 h-2 w-2 shrink-0 bg-ember"></span>
+                  <span><span class="text-white font-medium">Public-domain only.</span> <span class="text-steel">Commercially accessible spatial arrays exclusively.</span></span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT / SECURE INQUIRY ============ -->
+    <section id="contact" class="border-b hairline grid-lines">
+      <div class="mx-auto max-w-7xl px-6 lg:px-10 py-20 lg:py-28">
+        <div class="grid lg:grid-cols-12 gap-12">
+          <div class="lg:col-span-5 reveal">
+            <p class="font-mono text-xs uppercase tracking-[0.35em] text-ember mb-5">04 / Secure Inquiry</p>
+            <h2 class="text-3xl lg:text-4xl font-semibold text-white tracking-tight">Initialize a Secure Audit Inquiry</h2>
+            <p class="mt-6 text-steel leading-relaxed">
+              Submissions are routed through an authenticated processing gateway. A verification officer
+              will respond through institutional channels. We do not publish a direct inbox.
+            </p>
+            <div class="mt-10 border-t hairline pt-6 font-mono text-xs text-steel space-y-2">
+              <p><span class="text-white">CHANNEL</span> &nbsp; Encrypted webform gateway</p>
+              <p><span class="text-white">RESPONSE</span> &nbsp; Authenticated callback only</p>
+              <p><span class="text-white">SCOPE</span> &nbsp; Institutional &amp; government</p>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 reveal">
+            <div class="border hairline bg-panel/60 p-8 lg:p-10">
+              <form id="lead-form" novalidate>
+                <div class="grid sm:grid-cols-2 gap-6">
+                  <div class="sm:col-span-2">
+                    <label for="f-name" class="block font-mono text-[11px] uppercase tracking-[0.2em] text-steel mb-2">Authorized Full Name</label>
+                    <input id="f-name" name="name" type="text" required autocomplete="name"
+                      class="w-full bg-base border hairline px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-ember transition-colors"
+                      placeholder="Full name" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label for="f-email" class="block font-mono text-[11px] uppercase tracking-[0.2em] text-steel mb-2">Institutional / Government Email</label>
+                    <input id="f-email" name="email" type="email" required autocomplete="email"
+                      class="w-full bg-base border hairline px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-ember transition-colors"
+                      placeholder="name@agency.gov" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label for="f-focus" class="block font-mono text-[11px] uppercase tracking-[0.2em] text-steel mb-2">Target Focus Area</label>
+                    <select id="f-focus" name="focus" required
+                      class="w-full bg-base border hairline px-4 py-3 text-white focus:outline-none focus:border-ember transition-colors">
+                      <option value="" disabled selected>Select operational focus</option>
+                      <option>Signal Exposure Audit</option>
+                      <option>Surface Area Reduction</option>
+                      <option>Geofence Deception Controls</option>
+                      <option>National Security Operations</option>
+                      <option>Defense &amp; Strategic Command</option>
+                      <option>Law Enforcement &amp; Threat Interdiction</option>
+                    </select>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label for="f-message" class="block font-mono text-[11px] uppercase tracking-[0.2em] text-steel mb-2">Secure Message</label>
+                    <textarea id="f-message" name="message" rows="4" required
+                      class="w-full bg-base border hairline px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-ember transition-colors"
+                      placeholder="Outline scope, jurisdiction, and engagement objective."></textarea>
+                  </div>
+
+                  <!-- Human verification (math captcha) -->
+                  <div class="sm:col-span-2">
+                    <label for="f-captcha" class="block font-mono text-[11px] uppercase tracking-[0.2em] text-steel mb-2">Human Verification</label>
+                    <div class="flex items-center gap-4">
+                      <span id="captcha-q" class="font-mono text-white bg-base border hairline px-4 py-3 select-none" aria-live="polite">— + — =</span>
+                      <input id="f-captcha" name="captcha" type="text" inputmode="numeric" required
+                        class="w-32 bg-base border hairline px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-ember transition-colors"
+                        placeholder="Answer" aria-describedby="captcha-q" />
+                      <button type="button" id="captcha-refresh" class="font-mono text-xs text-steel hover:text-white transition-colors" aria-label="New verification challenge">&#x21bb; New</button>
+                    </div>
+                  </div>
+
+                  <!-- Honeypot (anti-bot, visually hidden) -->
+                  <div class="hidden" aria-hidden="true">
+                    <label>Leave blank<input type="text" name="company_website" tabindex="-1" autocomplete="off" /></label>
+                  </div>
+
+                  <div class="sm:col-span-2">
+                    <p id="form-error" class="hidden mb-4 text-sm text-ember font-mono"></p>
+                    <button type="submit" id="lead-submit"
+                      class="w-full sm:w-auto inline-flex items-center justify-center gap-3 border border-ember bg-ember/10 px-8 py-4 text-sm uppercase tracking-[0.18em] text-white hover:bg-ember/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      <span id="submit-label">Transmit Secure Inquiry</span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <!-- Success state (hidden until submit) -->
+              <div id="lead-success" class="hidden">
+                <div class="flex items-center gap-3 mb-5">
+                  <span class="inline-flex h-9 w-9 items-center justify-center border border-ember">
+                    <span class="text-ember text-lg">&#10003;</span>
+                  </span>
+                  <span class="font-mono text-xs uppercase tracking-[0.25em] text-ember">Transmission Verified</span>
+                </div>
+                <h3 class="text-2xl font-semibold text-white">Secure Transmission Established.</h3>
+                <p class="mt-3 text-steel leading-relaxed">A verification officer will connect with your institution via authenticated channels.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="bg-base">
+    <div class="mx-auto max-w-7xl px-6 lg:px-10 py-12">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-6 w-6 items-center justify-center border hairline">
+            <span class="h-2 w-2 bg-ember"></span>
+          </span>
+          <span class="font-mono text-xs tracking-[0.2em] text-steel uppercase">Counterintel Agency</span>
+        </div>
+        <p class="font-mono text-[11px] text-steel">Unclassified commercial telemetry auditing &amp; risk mitigation framework.</p>
+        <p class="font-mono text-[11px] text-steel">&copy; <span id="year"></span> Counterintel Agency. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ COMPONENT D (FEATURE 2): HIGH-INTENT LEAD MODAL ============ -->
+  <div id="lead-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="modal-backdrop" class="absolute inset-0 bg-base/80 backdrop-blur-sm"></div>
+    <div id="modal-card" class="modal-enter relative w-full max-w-md border hairline bg-panel p-8 lg:p-10 shadow-2xl">
+      <button id="modal-close" aria-label="Close" class="absolute right-4 top-4 h-9 w-9 inline-flex items-center justify-center text-steel hover:text-white text-2xl leading-none transition-colors">&times;</button>
+      <p class="font-mono text-[11px] uppercase tracking-[0.3em] text-ember">Priority Briefing</p>
+      <h3 class="mt-4 text-2xl font-semibold text-white">Free Corporate Consultation</h3>
+      <p class="mt-3 text-sm text-steel leading-relaxed">
+        Request a no-obligation exposure briefing. A verification officer will scope your institution's
+        signal surface and outline a hardening pathway.
+      </p>
+      <form id="modal-form" class="mt-6 space-y-4" novalidate>
+        <div>
+          <label for="m-email" class="sr-only">Institutional email</label>
+          <input id="m-email" name="email" type="email" required autocomplete="email"
+            class="w-full bg-base border hairline px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-ember transition-colors"
+            placeholder="Institutional email" />
+        </div>
+        <button type="submit"
+          class="w-full inline-flex items-center justify-center gap-2 border border-ember bg-ember/10 px-6 py-3.5 text-sm uppercase tracking-[0.18em] text-white hover:bg-ember/20 transition-colors">
+          Request Consultation <span aria-hidden="true">&rarr;</span>
+        </button>
+        <p class="font-mono text-[10px] text-steel text-center">Routed via authenticated gateway. No direct inbox exposed.</p>
+      </form>
+      <div id="modal-success" class="hidden mt-6 text-center">
+        <p class="text-ember text-3xl">&#10003;</p>
+        <p class="mt-3 text-white font-medium">Secure Transmission Established.</p>
+        <p class="mt-1 text-sm text-steel">A verification officer will connect via authenticated channels.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

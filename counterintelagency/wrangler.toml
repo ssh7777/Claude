@@ -1,0 +1,17 @@
+name = "counterintel-gateway"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Public, non-secret configuration.
+[vars]
+MAIL_FROM = "no-reply@counterintelagency.com"
+ALLOWED_ORIGIN = "https://counterintelagency.com"
+
+# Routes (adjust zone to your account):
+# [[routes]]
+# pattern = "gateway.counterintelagency.com/api/*"
+# zone_name = "counterintelagency.com"
+
+# Secrets are NOT stored here. Set them out of source control:
+#   wrangler secret put LEAD_DESTINATION
+#   wrangler secret put MAIL_PROVIDER_KEY
