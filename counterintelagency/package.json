@@ -1,0 +1,9 @@
+{
+  "name": "counterintelagency",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static site + Vercel serverless functions. No dependencies, no build step (styles.css is pre-compiled).",
+  "scripts": {
+    "build": "echo 'Static site: nothing to build.'"
+  }
+}
