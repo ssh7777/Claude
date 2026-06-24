@@ -59,10 +59,11 @@ export async function POST(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Store invoice in DB
+    // Store invoice (in-memory — no external DB needed)
     await createInvoiceRecord({
       invoice_id: paymentInfo.invoiceId,
       wallet_id_hash: jwt.walletHash,
+      package_code: packageCode,
       amount_usd: priceUsd,
       amount_crypto: cryptoType === "monero"
         ? (paymentInfo as typeof paymentInfo & { amountXmr: number }).amountXmr

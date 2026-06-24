@@ -49,24 +49,28 @@ export default function WalletConnect() {
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
 
-      // Get challenge
       const challengeRes = await fetch("/api/auth/challenge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: address, walletType: "ethereum" }),
       });
-      const { challenge } = await challengeRes.json();
+      const { challenge, challengeToken } = await challengeRes.json();
 
-      // Sign challenge
       const signature = await signer.signMessage(challenge);
 
-      // Verify and get JWT
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address, walletType: "ethereum", signature, challenge }),
+        body: JSON.stringify({
+          walletAddress: address,
+          walletType: "ethereum",
+          signature,
+          challenge,
+          challengeToken,
+        }),
       });
-      const { jwt } = await verifyRes.json();
+      const { jwt, error: apiError } = await verifyRes.json();
+      if (apiError) throw new Error(apiError);
 
       const walletData = { address, type: "ethereum" as const };
       localStorage.setItem("privasim_wallet", JSON.stringify(walletData));
@@ -90,10 +94,8 @@ export default function WalletConnect() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: address, walletType: "monero" }),
       });
-      const { challenge } = await challengeRes.json();
+      const { challenge, challengeToken } = await challengeRes.json();
 
-      // For Monero, the user must sign the challenge with their wallet manually
-      // We show the challenge to copy, then they paste the signature
       const sig = prompt(
         `Sign this message with your Monero wallet:\n\n${challenge}\n\nPaste the signature here:`
       );
@@ -102,7 +104,13 @@ export default function WalletConnect() {
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address, walletType: "monero", signature: sig, challenge }),
+        body: JSON.stringify({
+          walletAddress: address,
+          walletType: "monero",
+          signature: sig,
+          challenge,
+          challengeToken,
+        }),
       });
       const { jwt, error: apiError } = await verifyRes.json();
       if (apiError) throw new Error(apiError);
@@ -129,14 +137,16 @@ export default function WalletConnect() {
   if (wallet) {
     return (
       <div className="flex items-center gap-2">
-        <Badge
-          variant={wallet.type === "monero" ? "monero" : "ethereum"}
-          className="px-3 py-1.5"
-        >
+        <Badge variant={wallet.type === "monero" ? "monero" : "ethereum"} className="px-3 py-1.5">
           <Shield className="h-3 w-3 mr-1" />
           {shortenAddress(wallet.address)}
         </Badge>
-        <Button size="sm" variant="ghost" onClick={disconnect} className="text-gray-400 hover:text-white">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={disconnect}
+          className="text-gray-400 hover:text-white"
+        >
           <LogOut className="h-4 w-4" />
         </Button>
       </div>
@@ -201,7 +211,10 @@ export default function WalletConnect() {
         )}
 
         {error && <p className="text-xs text-red-400">{error}</p>}
-        <button onClick={() => setStep("idle")} className="text-xs text-gray-500 hover:text-gray-300">
+        <button
+          onClick={() => setStep("idle")}
+          className="text-xs text-gray-500 hover:text-gray-300"
+        >
           Cancel
         </button>
       </div>

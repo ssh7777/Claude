@@ -23,13 +23,13 @@ async function callMCP(
     params: { name: toolName, arguments: args },
   };
 
+  // Always send API key — PikaSim requires auth on all endpoints
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Authorization": `Bearer ${getApiKey()}`,
   };
 
-  if (requiresAuth) {
-    headers["Authorization"] = `Bearer ${getApiKey()}`;
-  }
+  void requiresAuth; // kept for call-site clarity
 
   const response = await fetch(PIKASIM_ENDPOINT, {
     method: "POST",

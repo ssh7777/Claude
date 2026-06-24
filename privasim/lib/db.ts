@@ -1,74 +1,42 @@
-import { createClient } from "@supabase/supabase-js";
+// No external database — all state is in-memory (ephemeral per deployment)
+// Package cache always misses → falls through to live PikaSim API
+// Invoice store tracks pending payments for webhook confirmation
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const invoiceStore = new Map<string, Record<string, unknown>>();
 
-// Client for public read operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Admin client for server-side mutations (never expose to client)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
-
-export async function queryPackageCache(countryCode: string, productType?: string) {
-  let query = supabaseAdmin
-    .from("package_cache")
-    .select("*")
-    .eq("country_code", countryCode.toUpperCase())
-    .gt("expires_at", new Date().toISOString());
-
-  if (productType) {
-    query = query.eq("product_type", productType);
-  }
-
-  const { data, error } = await query;
-  if (error) return null;
-  return data;
+export async function queryPackageCache(
+  _countryCode?: string,
+  _productType?: string
+) {
+  return null;
 }
 
-export async function upsertPackageCache(packages: {
-  country_code: string;
-  product_type: string;
-  package_code: string;
-  package_name: string;
-  data_amount: string;
-  price_usd: number;
-  networks: string[];
-}[]) {
-  const { error } = await supabaseAdmin
-    .from("package_cache")
-    .upsert(packages, { onConflict: "package_code" });
-  return !error;
+export async function upsertPackageCache(
+  _packages?: unknown[]
+) {
+  return true;
 }
 
 export async function createInvoiceRecord(data: {
   invoice_id: string;
   wallet_id_hash: string;
+  package_code?: string;
   amount_usd: number;
   amount_crypto: number;
   crypto_type: string;
   payment_address_encrypted: string;
   expires_at: string;
 }) {
-  const { data: row, error } = await supabaseAdmin
-    .from("crypto_invoices")
-    .insert(data)
-    .select()
-    .single();
-  if (error) throw new Error(`DB insert invoice failed: ${error.message}`);
-  return row;
+  invoiceStore.set(data.invoice_id, {
+    ...data,
+    status: "pending",
+    created_at: new Date().toISOString(),
+  });
+  return data;
 }
 
 export async function getInvoiceByExternalId(invoiceId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("crypto_invoices")
-    .select("*")
-    .eq("invoice_id", invoiceId)
-    .single();
-  if (error) return null;
-  return data;
+  return (invoiceStore.get(invoiceId) ?? null) as Record<string, unknown> | null;
 }
 
 export async function updateInvoiceStatus(
@@ -77,86 +45,67 @@ export async function updateInvoiceStatus(
   txHash?: string,
   confirmations?: number
 ) {
-  const updates: Record<string, unknown> = { status };
-  if (txHash) updates.blockchain_tx_hash = txHash;
-  if (confirmations !== undefined) updates.received_confirmations = confirmations;
-
-  const { error } = await supabaseAdmin
-    .from("crypto_invoices")
-    .update(updates)
-    .eq("invoice_id", invoiceId);
-  return !error;
+  const invoice = invoiceStore.get(invoiceId);
+  if (!invoice) return false;
+  invoice.status = status;
+  if (txHash) invoice.blockchain_tx_hash = txHash;
+  if (confirmations !== undefined) invoice.received_confirmations = confirmations;
+  invoiceStore.set(invoiceId, invoice);
+  return true;
 }
 
-export async function createOrderRecord(data: {
-  wallet_id_hash: string;
-  order_id_external: string;
-  package_code: string;
-  package_name: string;
-  product_type: string;
-  country: string;
-  data_amount: string;
-  duration_days: number;
-  iccid_encrypted: string;
-  activation_code_encrypted: string;
-  sm_dp_address_encrypted: string;
-  cost_usd: number;
-  cost_crypto: number;
-  crypto_type: string;
-  payment_tx_hash?: string;
-  data_remaining_gb: number;
-  expires_at: string;
-}) {
-  const { data: row, error } = await supabaseAdmin
-    .from("orders")
-    .insert({ ...data, status: "completed" })
-    .select()
-    .single();
-  if (error) throw new Error(`DB insert order failed: ${error.message}`);
-  return row;
-}
-
-export async function getOrdersByWalletHash(walletHash: string) {
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id, package_code, package_name, country, data_amount, duration_days, status, cost_usd, cost_crypto, crypto_type, data_used_gb, data_remaining_gb, expires_at, activated_at, created_at"
-    )
-    .eq("wallet_id_hash", walletHash)
-    .order("created_at", { ascending: false });
-  if (error) return [];
+export async function createOrderRecord(data: Record<string, unknown>) {
   return data;
 }
 
-export async function getOrderById(orderId: string, walletHash: string) {
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .eq("wallet_id_hash", walletHash)
-    .single();
-  if (error) return null;
-  return data;
+export async function getOrdersByWalletHash() {
+  return [];
 }
+
+export async function getOrderById() {
+  return null;
+}
+
+const BLOG_POSTS = [
+  {
+    id: "1",
+    slug: "why-privacy-matters-esim",
+    title: "Why Privacy Matters When Buying an eSIM",
+    published_at: "2024-11-01T00:00:00Z",
+    featured: true,
+    content:
+      "Traditional eSIM providers require your passport, email address, and payment card — all permanently tied to your identity. PRIVASIM changes this by accepting only Monero and Ethereum, with zero KYC requirements and no personal data stored.",
+    excerpt:
+      "Traditional eSIM providers require your passport, email, and payment card. PRIVASIM changes this completely.",
+  },
+  {
+    id: "2",
+    slug: "monero-vs-ethereum-payments",
+    title: "Monero vs Ethereum: Which Payment Is More Private?",
+    published_at: "2024-11-15T00:00:00Z",
+    featured: false,
+    content:
+      "Monero (XMR) provides the strongest privacy guarantees with stealth addresses, ring signatures, and RingCT — transactions are unlinkable and untraceable by design. Ethereum transactions are visible on-chain but still avoid the direct identity linkage that comes with credit cards.",
+    excerpt:
+      "Monero provides the strongest privacy guarantees. Ethereum transactions are public but avoid identity linkage.",
+  },
+  {
+    id: "3",
+    slug: "how-esim-works-privacy",
+    title: "How eSIM Technology Works and What Data It Exposes",
+    published_at: "2024-12-01T00:00:00Z",
+    featured: false,
+    content:
+      "An eSIM (embedded SIM) stores carrier profile data digitally instead of on a physical chip. Your ICCID and IMSI are known to the carrier network, but with PRIVASIM your purchase itself remains fully anonymous — we store only an encrypted ICCID, never linked to your identity.",
+    excerpt:
+      "An eSIM stores carrier data digitally. Your ICCID is known to the carrier, but your purchase stays anonymous.",
+  },
+];
 
 export async function getBlogPosts(limit = 20, offset = 0) {
-  const { data, error } = await supabase
-    .from("blog_posts")
-    .select("id, slug, title, published_at, featured")
-    .not("published_at", "is", null)
-    .order("published_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-  if (error) return [];
-  return data;
+  return BLOG_POSTS.slice(offset, offset + limit);
 }
 
 export async function getBlogPostBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from("blog_posts")
-    .select("*")
-    .eq("slug", slug)
-    .not("published_at", "is", null)
-    .single();
-  if (error) return null;
-  return data;
+  return BLOG_POSTS.find((p) => p.slug === slug) ?? null;
 }

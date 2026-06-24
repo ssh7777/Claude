@@ -1,10 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { hashWalletAddress, generateChallenge } from "@/lib/crypto-utils";
-import { supabaseAdmin } from "@/lib/db";
 import type { JWTPayload, WalletType } from "@/types";
 
 const JWT_EXPIRY = "1h";
-const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CHALLENGE_TTL_SECS = 5 * 60; // 5 minutes
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -12,81 +11,62 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
+// Stateless challenge — signed JWT embeds the expected wallet + nonce.
+// No database required; the token itself proves the server issued this challenge.
 export async function createChallenge(walletAddress: string): Promise<{
   challenge: string;
+  challengeToken: string;
   expiresAt: string;
 }> {
   const challenge = generateChallenge();
-  const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS).toISOString();
+  const expiresAt = new Date(Date.now() + CHALLENGE_TTL_SECS * 1000).toISOString();
 
-  await supabaseAdmin.from("auth_challenges").upsert({
-    wallet_address_hash: await hashWalletAddress(walletAddress),
+  const challengeToken = await new SignJWT({
+    walletAddress: walletAddress.toLowerCase(),
     challenge,
-    expires_at: expiresAt,
-  });
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(`${CHALLENGE_TTL_SECS}s`)
+    .sign(getJwtSecret());
 
-  return { challenge, expiresAt };
+  return { challenge, challengeToken, expiresAt };
 }
 
 export async function verifyWalletAndIssueJWT(
   walletAddress: string,
   walletType: WalletType,
   signature: string,
-  challenge: string
+  challenge: string,
+  challengeToken: string
 ): Promise<string> {
+  // Verify the challenge token the server previously issued
+  let tokenPayload: { walletAddress?: string; challenge?: string };
+  try {
+    const { payload } = await jwtVerify(challengeToken, getJwtSecret());
+    tokenPayload = payload as typeof tokenPayload;
+  } catch {
+    throw new Error("Invalid or expired challenge token");
+  }
+
+  if (
+    tokenPayload.walletAddress !== walletAddress.toLowerCase() ||
+    tokenPayload.challenge !== challenge
+  ) {
+    throw new Error("Challenge mismatch");
+  }
+
   const walletHash = await hashWalletAddress(walletAddress);
 
-  // Look up stored challenge
-  const { data: stored } = await supabaseAdmin
-    .from("auth_challenges")
-    .select("challenge, expires_at")
-    .eq("wallet_address_hash", walletHash)
-    .single();
-
-  if (!stored || stored.challenge !== challenge) {
-    throw new Error("Invalid or expired challenge");
-  }
-
-  if (new Date(stored.expires_at) < new Date()) {
-    throw new Error("Challenge has expired");
-  }
-
-  // Verify signature based on wallet type
   const isValid = await verifyCryptoSignature(walletAddress, walletType, signature, challenge);
-  if (!isValid) {
-    throw new Error("Signature verification failed");
-  }
+  if (!isValid) throw new Error("Signature verification failed");
 
-  // Clean up used challenge
-  await supabaseAdmin
-    .from("auth_challenges")
-    .delete()
-    .eq("wallet_address_hash", walletHash);
+  const sessionPayload: Omit<JWTPayload, "iat" | "exp"> = { walletHash, walletType };
 
-  // Upsert wallet record
-  await supabaseAdmin.from("wallets").upsert(
-    {
-      wallet_address_hash: walletHash,
-      wallet_address_encrypted: walletAddress, // encrypted in production via trigger
-      wallet_type: walletType,
-      last_activity: new Date().toISOString(),
-    },
-    { onConflict: "wallet_address_hash" }
-  );
-
-  // Issue JWT
-  const payload: Omit<JWTPayload, "iat" | "exp"> = {
-    walletHash,
-    walletType,
-  };
-
-  const jwt = await new SignJWT(payload as Record<string, unknown>)
+  return new SignJWT(sessionPayload as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRY)
     .sign(getJwtSecret());
-
-  return jwt;
 }
 
 async function verifyCryptoSignature(
@@ -95,11 +75,7 @@ async function verifyCryptoSignature(
   signature: string,
   message: string
 ): Promise<boolean> {
-  if (walletType === "ethereum") {
-    return verifyEthereumSignature(address, signature, message);
-  }
-  // Monero signature verification requires a Monero node/RPC
-  // For now, we accept the signature format and verify on-chain separately
+  if (walletType === "ethereum") return verifyEthereumSignature(address, signature, message);
   return verifyMoneroSignature(address, signature, message);
 }
 
@@ -122,12 +98,9 @@ async function verifyMoneroSignature(
   signature: string,
   message: string
 ): Promise<boolean> {
-  // Monero SpendProof / ViewKey message signing
-  // Full implementation requires monero-rpc or monero-javascript library
-  // For MVP: accept base58-encoded signature starting with "Sig" (Monero format)
+  // Full Monero sig verification requires a Monero node; accept valid-format sigs at MVP
   if (!signature || !address || !message) return false;
   if (signature.length < 64) return false;
-  // TODO: integrate monero-javascript for production signature verification
   return true;
 }
 
@@ -135,14 +108,7 @@ export async function verifyJWT(authHeader: string | null): Promise<JWTPayload> 
   if (!authHeader?.startsWith("Bearer ")) {
     throw new Error("Missing or malformed Authorization header");
   }
-
   const token = authHeader.slice(7);
   const { payload } = await jwtVerify(token, getJwtSecret());
   return payload as unknown as JWTPayload;
-}
-
-export function extractBearerToken(req: Request): string | null {
-  const header = req.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return null;
-  return header.slice(7);
 }

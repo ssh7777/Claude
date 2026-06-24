@@ -11,18 +11,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let body: { walletAddress?: string; walletType?: string; signature?: string; challenge?: string };
+  let body: {
+    walletAddress?: string;
+    walletType?: string;
+    signature?: string;
+    challenge?: string;
+    challengeToken?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { walletAddress, walletType, signature, challenge } = body;
+  const { walletAddress, walletType, signature, challenge, challengeToken } = body;
 
-  if (!walletAddress || !walletType || !signature || !challenge) {
+  if (!walletAddress || !walletType || !signature || !challenge || !challengeToken) {
     return NextResponse.json(
-      { error: "walletAddress, walletType, signature, and challenge are required" },
+      { error: "walletAddress, walletType, signature, challenge, and challengeToken are required" },
       { status: 400 }
     );
   }
@@ -36,7 +42,8 @@ export async function POST(req: NextRequest) {
       walletAddress,
       walletType as WalletType,
       signature,
-      challenge
+      challenge,
+      challengeToken
     );
 
     return NextResponse.json({ jwt, expiresIn: 3600 });
