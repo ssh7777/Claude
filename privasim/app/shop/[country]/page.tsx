@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Wifi, Phone } from "lucide-react";
+import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
 import EsimCard from "@/components/EsimCard";
 import { getCountryFlag } from "@/lib/utils";
@@ -28,7 +28,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
 
   const typeFilter = (searchParams.type ?? "all") as "data" | "phone" | "all";
 
-  let packages;
+  let packages: Awaited<ReturnType<typeof searchEsimPackages>> = [];
   try {
     packages = await searchEsimPackages(countryCode, typeFilter);
   } catch {
@@ -130,11 +130,3 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
   );
 }
 
-// Removed Globe import warning - it's imported above
-function Globe({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-    </svg>
-  );
-}
