@@ -72,7 +72,7 @@ export default function EsimCard({ pkg }: EsimCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-gray-400">Price</div>
-            <div className="text-lg font-bold text-white">{formatUsd(pkg.priceUsd * 1.2)}</div>
+            <div className="text-lg font-bold text-white">{formatUsd(pkg.priceUsd * 1.5)}</div>
           </div>
           <Button size="sm" className="bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
             <Link href={`/checkout/${pkg.code}`}>

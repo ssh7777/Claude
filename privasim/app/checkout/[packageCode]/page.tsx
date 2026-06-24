@@ -104,7 +104,7 @@ export default function CheckoutPage() {
 
   if (!pkg) return null;
 
-  const displayPrice = pkg.priceUsd * 1.2;
+  const displayPrice = pkg.priceUsd * 1.5;
 
   return (
     <div className="container py-12">

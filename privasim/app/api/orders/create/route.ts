@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    // Apply markup (15-25%)
-    const markup = 1.20; // 20% markup
+    // Apply 50% markup on all plans
+    const markup = 1.50;
     const priceUsd = Math.ceil(pkg.priceUsd * markup * 100) / 100;
 
     // Generate payment info
