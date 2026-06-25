@@ -16,17 +16,19 @@ export async function getCryptoPrices(): Promise<CryptoPrices> {
   const url =
     "https://api.coingecko.com/api/v3/simple/price?ids=monero,ethereum&vs_currencies=usd";
 
-  const res = await fetch(url, {
-    headers,
-    next: { revalidate: 300 },
-  });
-
-  if (!res.ok) {
-    // Fallback to last cached value or hardcoded fallback
+  let data: { monero?: { usd?: number }; ethereum?: { usd?: number } };
+  try {
+    const res = await fetch(url, {
+      headers,
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) {
+      return priceCache ?? { xmr: 175, eth: 3500, updatedAt: Date.now() };
+    }
+    data = (await res.json()) as typeof data;
+  } catch {
     return priceCache ?? { xmr: 175, eth: 3500, updatedAt: Date.now() };
   }
-
-  const data = (await res.json()) as { monero?: { usd?: number }; ethereum?: { usd?: number } };
 
   priceCache = {
     xmr: data.monero?.usd ?? 175,
