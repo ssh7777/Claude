@@ -53,22 +53,18 @@ export default function CheckoutPage() {
   }, [packageCode, router]);
 
   const handleCreateOrder = async () => {
-    const jwt = localStorage.getItem("privasim_jwt");
-    if (!jwt) {
-      setError("Please connect your wallet first to proceed with payment.");
-      return;
-    }
-
     setCreating(true);
     setError("");
+
+    // Include wallet JWT if user has connected one (optional — orders work anonymously too)
+    const jwt = localStorage.getItem("privasim_jwt");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
     try {
       const res = await fetch("/api/orders/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
+        headers,
         body: JSON.stringify({ packageCode, cryptoType }),
       });
 
@@ -212,7 +208,7 @@ export default function CheckoutPage() {
         <div className="flex items-center gap-2 mb-4 p-3 bg-[#ff6600]/5 border border-[#ff6600]/15 rounded-lg">
           <Shield className="h-4 w-4 text-[#ff6600] shrink-0" />
           <p className="text-xs text-gray-400">
-            Wallet authentication required. Connect your wallet to proceed.
+            No account or KYC required. Connect a wallet to track your orders, or pay anonymously.
           </p>
         </div>
 

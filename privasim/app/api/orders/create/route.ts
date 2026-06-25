@@ -9,16 +9,18 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import type { CryptoType } from "@/types";
 
 export async function POST(req: NextRequest) {
-  // Auth check
-  let jwt;
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+
+  // JWT is optional — associate with wallet if provided, otherwise anonymous
+  let walletHash: string = crypto.randomUUID().replace(/-/g, "");
   try {
-    jwt = await verifyJWT(req.headers.get("authorization"));
+    const jwt = await verifyJWT(req.headers.get("authorization"));
+    walletHash = jwt.walletHash;
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Anonymous purchase — rate limit by IP
   }
 
-  // Rate limit per wallet
-  const { allowed } = rateLimit(`orders:${jwt.walletHash}`, RATE_LIMITS.orders);
+  const { allowed } = rateLimit(`orders:${walletHash || ip}`, RATE_LIMITS.orders);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
     // Store invoice (in-memory — no external DB needed)
     await createInvoiceRecord({
       invoice_id: paymentInfo.invoiceId,
-      wallet_id_hash: jwt.walletHash,
+      wallet_id_hash: walletHash,
       package_code: packageCode,
       amount_usd: priceUsd,
       amount_crypto: cryptoType === "monero"
