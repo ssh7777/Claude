@@ -92,7 +92,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Order creation failed:", err);
-    const msg = err instanceof Error ? err.message : "Failed to create order";
+    const msg = err instanceof Error
+      ? `${err.name}: ${err.message}`
+      : (typeof err === "string" ? err : JSON.stringify(err));
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
