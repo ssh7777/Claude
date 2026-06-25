@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkCountryCoverage, searchEsimPackages } from "@/lib/pikasim";
+import { searchEsimPackages } from "@/lib/pikasim";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 export const revalidate = 3600;
@@ -21,10 +21,7 @@ export async function GET(
   }
 
   try {
-    const [coverage, packages] = await Promise.all([
-      checkCountryCoverage(countryCode),
-      searchEsimPackages(countryCode),
-    ]);
+    const packages = await searchEsimPackages(countryCode);
 
     const dataPackages = packages.filter((p) => p.type === "data");
     const phonePackages = packages.filter((p) => p.type === "phone");
@@ -35,8 +32,8 @@ export async function GET(
     return NextResponse.json(
       {
         countryCode,
-        hasData: coverage.hasData,
-        hasPhone: coverage.hasPhone,
+        hasData: dataPackages.length > 0,
+        hasPhone: phonePackages.length > 0,
         dataEsims: {
           count: dataPackages.length,
           priceRangeMin: dataPrices.length ? Math.min(...dataPrices) : 0,
