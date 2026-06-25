@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "installCommand": "cd privasim && npm install --legacy-peer-deps",
+  "buildCommand": "cd privasim && npm run build && ([ -d .vercel/output ] && mkdir -p ../.vercel && cp -r .vercel/output ../.vercel/ || true)",
+  "outputDirectory": "privasim/.next",
+  "regions": ["iad1"]
+}
