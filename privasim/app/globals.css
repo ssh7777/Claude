@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 40% 6%;
+    --foreground: 0 0% 98%;
+
+    --card: 230 35% 9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 230 35% 9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 30% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 230 30% 14%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 230 30% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 230 30% 18%;
+    --input: 230 30% 18%;
+    --ring: 24 100% 50%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-color: #0a0a1a;
+    color: #f5f5f5;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* No tracking, no analytics, no external fonts — everything local */
+/* Privacy-first: no Google Fonts, no third-party CDNs */
+
+.gradient-text {
+  background: linear-gradient(135deg, #ff6600 0%, #ff9500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-orange {
+  box-shadow: 0 0 40px rgba(255, 102, 0, 0.15);
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
