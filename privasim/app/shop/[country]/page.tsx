@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
 import EsimCard from "@/components/EsimCard";
-import { getCountryFlag } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 export const revalidate = 3600;
@@ -29,16 +28,16 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
   const typeFilter = (searchParams.type ?? "all") as "data" | "phone" | "all";
 
   let packages: Awaited<ReturnType<typeof searchEsimPackages>> = [];
+  let fetchError = false;
   try {
     packages = await searchEsimPackages(countryCode, typeFilter);
   } catch {
+    fetchError = true;
     packages = [];
   }
 
   const dataPackages = packages.filter((p) => p.type === "data");
   const phonePackages = packages.filter((p) => p.type === "phone");
-  const flag = getCountryFlag(countryCode);
-
   const countryName = packages[0]?.country ?? countryCode;
 
   return (
@@ -52,7 +51,14 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
         </Button>
 
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-5xl">{flag}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`}
+            alt={countryName}
+            width={56}
+            height={40}
+            className="rounded object-cover"
+          />
           <div>
             <h1 className="text-3xl font-black text-white">{countryName}</h1>
             <p className="text-gray-400">
@@ -87,10 +93,21 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
       {packages.length === 0 ? (
         <div className="text-center py-16">
           <Globe className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No plans available</h2>
-          <p className="text-gray-400">
-            We don&apos;t currently have eSIM plans for {countryCode}.
-          </p>
+          {fetchError ? (
+            <>
+              <h2 className="text-xl font-semibold text-white mb-2">Unable to load plans</h2>
+              <p className="text-gray-400 max-w-sm mx-auto">
+                Could not connect to the eSIM provider. Please ensure the service is configured and try again.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold text-white mb-2">No plans available</h2>
+              <p className="text-gray-400">
+                We don&apos;t currently have eSIM plans for {countryCode}.
+              </p>
+            </>
+          )}
           <Button variant="outline" className="mt-6 border-white/20 text-white" asChild>
             <Link href="/shop">Browse other countries</Link>
           </Button>

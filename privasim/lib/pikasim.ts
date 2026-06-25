@@ -3,7 +3,7 @@
 
 import type { EsimPackage, PikaSimPackage, PikaSimPurchaseResult } from "@/types";
 
-const PIKASIM_ENDPOINT = "https://pikasim.com/mcp";
+const PIKASIM_ENDPOINT = "https://pikasim.com/agentic-esim";
 
 function getApiKey(): string {
   const key = process.env.PIKASIM_API_KEY;

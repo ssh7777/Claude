@@ -6,7 +6,7 @@ Privacy-first eSIM marketplace. Crypto-only payments (Monero XMR + Ethereum ETH)
 ## Stack
 - Next.js 14 App Router + React 19 + TypeScript
 - No database (fully stateless, in-memory invoice store)
-- PikaSim MCP API (JSON-RPC 2.0 at `https://pikasim.com/mcp`)
+- PikaSim MCP API (JSON-RPC 2.0 at `https://pikasim.com/agentic-esim`)
 - Monero + Ethereum direct wallet payments
 - JWT auth via wallet signature (stateless HMAC challenge tokens)
 
