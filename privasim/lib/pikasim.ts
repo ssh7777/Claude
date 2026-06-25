@@ -132,11 +132,10 @@ export async function searchEsimPackages(
 }
 
 export async function getPackageDetails(packageCode: string): Promise<EsimPackage | null> {
+  // PikaSim doesn't have an individual package endpoint — search all and filter
   try {
-    const result = await apiGet<{ package?: PikaSimPackage } | PikaSimPackage>(
-      `/packages/${packageCode}`
-    );
-    const pkg = "package" in result ? result.package : result as PikaSimPackage;
+    const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/all-countries");
+    const pkg = (result.packages ?? []).find((p) => p.packageCode === packageCode);
     return pkg ? normalizePikaPackage(pkg) : null;
   } catch {
     return null;

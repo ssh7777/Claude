@@ -104,6 +104,15 @@ async function verifyMoneroSignature(
   return true;
 }
 
+export async function issueJWT(walletHash: string, walletType: WalletType): Promise<string> {
+  const sessionPayload: Omit<JWTPayload, "iat" | "exp"> = { walletHash, walletType };
+  return new SignJWT(sessionPayload as Record<string, unknown>)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(JWT_EXPIRY)
+    .sign(getJwtSecret());
+}
+
 export async function verifyJWT(authHeader: string | null): Promise<JWTPayload> {
   if (!authHeader?.startsWith("Bearer ")) {
     throw new Error("Missing or malformed Authorization header");
