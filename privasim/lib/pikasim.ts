@@ -62,13 +62,22 @@ function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
   else if (typeof pkg.priceUsd === "number") priceUsd = pkg.priceUsd;
   else if (typeof pkg.price === "number") priceUsd = pkg.price / 10000;
 
-  // Data amount: prefer volumeGB, fallback to volume bytes, then data string
+  // Data amount: prefer volume bytes (most precise), then volumeGB, then data string
   let dataAmount = "Unknown";
-  if (typeof pkg.volumeGB === "number") {
-    dataAmount = pkg.volumeGB >= 1 ? `${pkg.volumeGB} GB` : `${Math.round(pkg.volumeGB * 1024)} MB`;
-  } else if (typeof pkg.volume === "number" && pkg.volume > 0) {
+  if (typeof pkg.volume === "number" && pkg.volume >= 1048576) {
+    // volume in bytes (>= 1MB sanity check)
     const gb = pkg.volume / 1073741824;
     dataAmount = gb >= 1 ? `${Math.round(gb)} GB` : `${Math.round(gb * 1024)} MB`;
+  } else if (typeof pkg.volumeGB === "number") {
+    // Some PikaSim packages have volumeGB in MB despite the field name.
+    // Detect by price: if cost per "GB" < $0.10, the unit is actually MB.
+    const v = pkg.volumeGB;
+    const isMb = priceUsd > 0 && v > 0 && priceUsd / v < 0.10;
+    if (isMb) {
+      dataAmount = v >= 1024 ? `${Math.round(v / 1024)} GB` : `${Math.round(v)} MB`;
+    } else {
+      dataAmount = v >= 1 ? `${v} GB` : `${Math.round(v * 1024)} MB`;
+    }
   } else if (pkg.data) {
     dataAmount = pkg.data;
   } else if (pkg.isUnlimited) {

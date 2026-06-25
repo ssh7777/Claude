@@ -69,7 +69,7 @@ export default function CheckoutPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to create order");
+      if (!res.ok) throw new Error(data.error ?? data.message ?? `Order failed (HTTP ${res.status})`);
 
       setInvoice({
         invoiceId: data.invoiceId,
