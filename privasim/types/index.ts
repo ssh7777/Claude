@@ -111,20 +111,38 @@ export interface JWTPayload {
 
 export interface PikaSimPackage {
   packageCode: string;
-  packageName: string;
-  slug: string;
-  type: string;
-  price: number;
-  currencyCode: string;
-  data: string;
-  duration: number;
-  durationUnit: string;
-  destination: string;
-  destinationCode: string;
-  networks: string[];
-  sms: boolean;
-  voice: boolean;
-  topup: boolean;
+  // Name fields
+  name?: string;
+  packageName?: string;
+  // Location fields (API may use either form)
+  location?: string;
+  locationCode?: string;
+  destination?: string;
+  destinationCode?: string;
+  // Data fields
+  volumeGB?: number;
+  volume?: number;
+  data?: string;
+  isUnlimited?: boolean;
+  // Duration
+  duration?: number;
+  validityDays?: number;
+  durationUnit?: string;
+  // Type
+  dataType?: string;
+  type?: string;
+  // Price
+  priceUSD?: number;
+  priceUsd?: number;
+  price?: number;
+  priceFormatted?: string;
+  currencyCode?: string;
+  // Features
+  networks?: string[];
+  sms?: boolean;
+  voice?: boolean;
+  topup?: boolean;
+  slug?: string;
 }
 
 export interface PikaSimPurchaseResult {
