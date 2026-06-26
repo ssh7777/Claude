@@ -131,9 +131,14 @@ export default function PaymentModal({
                 <Clock className="h-4 w-4" />
                 {timeLeft}
               </div>
-              <Badge variant={cryptoType === "monero" ? "monero" : "ethereum"}>
-                {cryptoType === "monero" ? "Monero (XMR)" : "Ethereum (ETH)"}
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant={cryptoType === "monero" ? "monero" : "ethereum"}>
+                  {cryptoType === "monero" ? "Monero (XMR)" : "Ethereum (ETH)"}
+                </Badge>
+                {cryptoType === "ethereum" && (
+                  <span className="text-xs text-blue-300 font-medium">Mainnet only — NOT USDT</span>
+                )}
+              </div>
             </div>
 
             {/* QR Code */}
@@ -148,7 +153,9 @@ export default function PaymentModal({
               </a>
             </div>
             <p className="text-xs text-center text-gray-400">
-              Scan with your {cryptoType === "monero" ? "Monero wallet (Cake Wallet)" : "Ethereum wallet"}
+              {cryptoType === "monero"
+                ? "Scan with your Monero wallet (Cake Wallet, Feather, etc.)"
+                : "Scan with MetaMask, Trust Wallet, or any ETH wallet — select Ethereum Mainnet & ETH token"}
             </p>
 
             {/* Amount */}
@@ -202,7 +209,12 @@ export default function PaymentModal({
             <p className="text-xs text-gray-500 text-center">
               Send the exact amount. Do not send from an exchange.
               {cryptoType === "monero" && " Monero confirmations take ~2–10 minutes (10 blocks)."}
-              {cryptoType === "ethereum" && " Ethereum confirmations take ~3 minutes (12 blocks)."}
+              {cryptoType === "ethereum" && (
+                <>
+                  {" "}Send <strong className="text-blue-300">ETH on Ethereum Mainnet</strong> only.
+                  Do not use USDT, BNB, MATIC, or other tokens/chains. Confirmations ~30 seconds.
+                </>
+              )}
             </p>
           </div>
         )}

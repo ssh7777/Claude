@@ -25,9 +25,9 @@ export async function generateEthereumPaymentInfo(
   const address = getEthAddress();
   const amountEth = await usdToEth(amountUsd);
   const invoiceId = generateSecureId();
-  const amountWei = BigInt(Math.floor(amountEth * 1e18)).toString(16);
+  const amountWei = BigInt(Math.floor(amountEth * 1e18)).toString(10);
 
-  const paymentUrl = `ethereum:${address}@1?value=${amountWei}&data=0x`;
+  const paymentUrl = `ethereum:${address}@1?value=${amountWei}`;
 
   const qrCode = await QRCode.toDataURL(paymentUrl, {
     errorCorrectionLevel: "M",
