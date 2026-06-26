@@ -8,37 +8,66 @@ PRIVASIM is a privacy-first eSIM marketplace where travelers and privacy-conscio
 
 - **Website**: https://dpass.vercel.app
 - **Service**: eSIM data plans for 190+ countries
-- **Payment**: Monero (XMR) and Ethereum (ETH) only
-- **KYC**: None required
-- **Delivery**: Instant after blockchain confirmation
+- **Payment**: Monero (XMR) and Ethereum (ETH) only — no credit cards, no PayPal
+- **KYC**: None — no email, phone number, or identity required
+- **Delivery**: Instant after blockchain confirmation (30s ETH, 2–10 min XMR)
 - **Privacy**: No tracking, no cookies, no third-party analytics
+- **Encryption**: AES-256-GCM for all stored eSIM credentials
 
 ## How to Buy an eSIM
 
 1. Visit https://dpass.vercel.app/shop
 2. Select destination country and data plan
-3. Click "Buy Now" and choose Monero or Ethereum
-4. Send exact crypto amount to payment address
-5. eSIM QR code delivered after blockchain confirmation
+3. Click "Buy Now" — choose Monero or Ethereum
+4. Send exact crypto amount to displayed address
+5. Wait for blockchain confirmation
+6. eSIM QR code delivered automatically
 
 ## Supported Countries
 
-Asia Pacific: Japan, South Korea, Thailand, Singapore, Australia, Philippines, Indonesia, Vietnam, Malaysia, India, Hong Kong, and more.
-Europe: UK, Germany, France, Italy, Spain, Netherlands, Switzerland, and more.
+Asia Pacific: Japan, South Korea, Thailand, Singapore, Australia, Philippines, Indonesia, Vietnam, Malaysia, and 30+ more.
+
+Europe: UK, Germany, France, Italy, Spain, Netherlands, Switzerland, and 30+ more.
+
 Americas: USA, Canada, Mexico, Brazil, Argentina, Colombia, and more.
-Middle East & Africa: UAE, Saudi Arabia, Israel, South Africa, Turkey, and more.
+
+Middle East & Africa: UAE, Saudi Arabia, Israel, South Africa, and more.
+
+## Pricing Guide
+
+- 500MB plans: from ~$3 (after 50% retail markup)
+- 1GB plans: from ~$5
+- 3GB plans: from ~$10
+- 5GB plans: from ~$12
+- 10GB plans: from ~$20
+- Duration: 7, 15, or 30 days depending on plan
 
 ## Supported Devices
 
-eSIM requires a carrier-unlocked device: iPhone XS (2018)+, Samsung Galaxy S20+, Google Pixel 3+, most flagship Android phones from 2020+.
+eSIM requires a carrier-unlocked device. Compatible devices include:
+- iPhone XS (2018) and newer
+- Samsung Galaxy S20 and newer
+- Google Pixel 3 and newer
+- Most flagship Android phones from 2020+
 
 ## Payment Details
 
-**Monero (XMR)**: Fully private, untraceable. Recommended for maximum privacy.
-**Ethereum (ETH)**: Faster (~30 seconds). Ethereum Mainnet only — not USDT or other tokens.
+**Monero (XMR)**: Fully private, untraceable cryptocurrency. Recommended for maximum privacy.
+
+**Ethereum (ETH)**: Faster confirmation (~30 seconds). Send ETH on Ethereum Mainnet only. Do not use USDT, USDC, or other tokens.
 
 ## FAQ
 
-Do I need an account? No, just a crypto wallet.
-Refunds available? No — eSIM is provisioned immediately after payment.
-Order status? https://dpass.vercel.app/orders
+**Do I need an account?** No. Just a crypto wallet.
+
+**Will it work for calls?** Most plans are data-only. Phone plans with calling available for select countries.
+
+**Can I reuse the eSIM?** No, activation codes are single-use.
+
+**Are there refunds?** No, eSIM is provisioned immediately after payment.
+
+**How do I check my order?** Visit https://dpass.vercel.app/orders
+
+## Contact & Support
+
+Order support available at https://dpass.vercel.app/orders after purchase.
