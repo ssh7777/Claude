@@ -3,20 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  ShoppingBag,
-  Wifi,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Eye,
-  Copy,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  QrCode,
+  ShoppingBag, Wifi, Clock, CheckCircle, AlertCircle, Eye, Copy,
+  ChevronDown, ChevronUp, RefreshCw, QrCode, Search, Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
 
 const ORDERS_KEY = "privasim_orders";
@@ -44,6 +34,13 @@ interface EsimCodes {
   smDpAddress: string;
 }
 
+interface EsimUsage {
+  status: string;
+  dataUsedGb: number;
+  dataRemainingGb: number;
+  expiresAt: string;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string }> = {
     confirmed: { label: "Payment Confirmed", color: "text-green-400 bg-green-400/10 border-green-400/20" },
@@ -59,7 +56,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate: (id: string, status: string) => void }) {
+function OrderRow({
+  order,
+  onStatusUpdate,
+}: {
+  order: SavedOrder;
+  onStatusUpdate: (id: string, status: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [checking, setChecking] = useState(false);
   const [esimReady, setEsimReady] = useState(false);
@@ -67,6 +70,16 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
   const [codes, setCodes] = useState<EsimCodes | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  // TX hash verification
+  const [showVerify, setShowVerify] = useState(false);
+  const [txHash, setTxHash] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+
+  // eSIM data usage
+  const [usage, setUsage] = useState<EsimUsage | null>(null);
+  const [checkingUsage, setCheckingUsage] = useState(false);
 
   const checkStatus = useCallback(async () => {
     setChecking(true);
@@ -81,13 +94,12 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
         setEsimReady(data.esimReady ?? false);
       }
     } catch {
-      // Ignore — server may not have this order (stateless)
+      // Server may not have this order after a cold start
     } finally {
       setChecking(false);
     }
   }, [order.invoiceId, order.status, onStatusUpdate]);
 
-  // Auto-check status on expand if pending
   useEffect(() => {
     if (expanded && order.status === "pending") {
       checkStatus();
@@ -111,6 +123,54 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
     }
   };
 
+  const verifyPayment = async () => {
+    if (!txHash.trim()) {
+      setVerifyError("Please enter your transaction hash");
+      return;
+    }
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      const res = await fetch(`/api/orders/${order.invoiceId}/verify-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          txHash: txHash.trim(),
+          packageCode: order.packageCode,
+          cryptoType: order.cryptoType,
+          amountCrypto: order.amountCrypto,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Verification failed");
+      onStatusUpdate(order.invoiceId, "confirmed");
+      setCodes({
+        iccid: data.iccid,
+        activationCode: data.activationCode,
+        smDpAddress: data.smDpAddress ?? "",
+      });
+      setEsimReady(true);
+      setShowVerify(false);
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const checkUsage = async () => {
+    if (!codes?.iccid) return;
+    setCheckingUsage(true);
+    try {
+      const res = await fetch(`/api/esim/status?iccid=${codes.iccid}`);
+      if (res.ok) setUsage(await res.json());
+    } catch {
+      // ignore
+    } finally {
+      setCheckingUsage(false);
+    }
+  };
+
   const copy = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(field);
@@ -121,7 +181,40 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
     order.status === "expired" ||
     (order.status === "pending" && new Date(order.expiresAt) < new Date());
 
+  const currentStatus = isExpired && order.status !== "confirmed" ? "expired" : order.status;
   const cryptoSymbol = order.cryptoType === "monero" ? "XMR" : "ETH";
+  const txPlaceholder = cryptoSymbol === "ETH" ? "0x..." : "Transaction ID (64 hex chars)";
+
+  const TxVerifySection = () => (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-400">
+        Paste your {cryptoSymbol === "ETH" ? "Ethereum" : "Monero"} transaction hash to verify on-chain
+        and instantly receive your eSIM.
+      </p>
+      <input
+        type="text"
+        value={txHash}
+        onChange={(e) => setTxHash(e.target.value)}
+        placeholder={txPlaceholder}
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#ff6600]/50 font-mono"
+      />
+      {verifyError && (
+        <div className="flex items-start gap-1.5 text-xs text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg p-2">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {verifyError}
+        </div>
+      )}
+      <Button
+        size="sm"
+        className="w-full bg-[#ff6600] hover:bg-[#e55c00] text-white"
+        onClick={verifyPayment}
+        disabled={verifying || !txHash.trim()}
+      >
+        <Search className={`h-3.5 w-3.5 mr-1.5 ${verifying ? "animate-spin" : ""}`} />
+        {verifying ? "Verifying on blockchain…" : "Verify Payment & Get eSIM"}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
@@ -139,7 +232,7 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
               />
               <span className="font-semibold text-white text-sm truncate">{order.packageName}</span>
             </div>
-            <StatusBadge status={isExpired ? "expired" : order.status} />
+            <StatusBadge status={currentStatus} />
           </div>
           <button
             onClick={() => setExpanded((e) => !e)}
@@ -171,8 +264,9 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
 
       {expanded && (
         <div className="border-t border-white/10 p-4 space-y-3">
-          {/* Pending payment actions */}
-          {(order.status === "pending" && !isExpired) && (
+
+          {/* ── Pending (not expired) ─────────────────────────────────────── */}
+          {order.status === "pending" && !isExpired && (
             <div className="space-y-2">
               <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-3 text-sm text-yellow-300">
                 Waiting for blockchain confirmation. Send exactly{" "}
@@ -198,12 +292,36 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
                 disabled={checking}
               >
                 <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${checking ? "animate-spin" : ""}`} />
-                {checking ? "Checking..." : "Check payment status"}
+                {checking ? "Checking…" : "Check payment status"}
               </Button>
+
+              <div className="border-t border-white/10 pt-2">
+                <button
+                  onClick={() => { setShowVerify((v) => !v); setVerifyError(""); }}
+                  className="text-xs text-[#ff6600] hover:text-orange-300 transition-colors"
+                >
+                  {showVerify ? "▲ Hide" : "▼ Already sent? Verify with transaction hash"}
+                </button>
+                {showVerify && (
+                  <div className="mt-2">
+                    <TxVerifySection />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* eSIM delivery */}
+          {/* ── Expired but payment may have been sent ────────────────────── */}
+          {isExpired && order.status !== "confirmed" && (
+            <div className="space-y-2">
+              <div className="bg-gray-400/5 border border-gray-400/20 rounded-lg p-3 text-sm text-gray-300">
+                Invoice expired. If you already sent payment, enter your transaction hash below to still receive your eSIM.
+              </div>
+              <TxVerifySection />
+            </div>
+          )}
+
+          {/* ── Confirmed — show eSIM codes ───────────────────────────────── */}
           {(order.status === "confirmed" || esimReady) && (
             <div className="space-y-2">
               {!codes ? (
@@ -214,7 +332,7 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
                   size="sm"
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  {revealing ? "Loading..." : "Reveal eSIM Codes"}
+                  {revealing ? "Loading…" : "Reveal eSIM Codes"}
                 </Button>
               ) : (
                 <div className="space-y-2">
@@ -222,6 +340,7 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
                     <QrCode className="h-4 w-4" />
                     Install this eSIM on your device
                   </div>
+
                   {[
                     { label: "ICCID", value: codes.iccid },
                     { label: "Activation Code", value: codes.activationCode },
@@ -238,17 +357,56 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
                             className="text-gray-400 hover:text-white shrink-0 h-6 w-6 p-0"
                             onClick={() => copy(field.value, field.label)}
                           >
-                            {copied === field.label ? (
-                              <CheckCircle className="h-3.5 w-3.5 text-green-400" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
+                            {copied === field.label
+                              ? <CheckCircle className="h-3.5 w-3.5 text-green-400" />
+                              : <Copy className="h-3.5 w-3.5" />}
                           </Button>
                         </div>
                       </div>
                     ))}
+
+                  {/* Data usage */}
+                  {usage ? (
+                    <div className="bg-blue-400/5 border border-blue-400/20 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-blue-300 text-xs font-medium mb-2">
+                        <Activity className="h-3.5 w-3.5" />
+                        Data Usage
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-gray-500">Status</div>
+                          <div className="text-white capitalize">{usage.status}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500">Used</div>
+                          <div className="text-white">{usage.dataUsedGb.toFixed(2)} GB</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500">Remaining</div>
+                          <div className="text-green-400">{usage.dataRemainingGb.toFixed(2)} GB</div>
+                        </div>
+                        {usage.expiresAt && (
+                          <div>
+                            <div className="text-gray-500">Expires</div>
+                            <div className="text-white">{new Date(usage.expiresAt).toLocaleDateString()}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm" variant="outline"
+                      className="w-full border-white/20 text-gray-400 hover:text-white text-xs"
+                      onClick={checkUsage}
+                      disabled={checkingUsage}
+                    >
+                      <Activity className={`h-3.5 w-3.5 mr-1.5 ${checkingUsage ? "animate-spin" : ""}`} />
+                      {checkingUsage ? "Checking…" : "Check Data Usage"}
+                    </Button>
+                  )}
+
                   <p className="text-xs text-gray-500">
-                    Go to phone Settings → Mobile Data → Add eSIM → Scan QR or enter manually.
+                    Settings → Mobile Data → Add eSIM → Scan QR or enter manually.
                   </p>
                 </div>
               )}
@@ -263,7 +421,7 @@ function OrderRow({ order, onStatusUpdate }: { order: SavedOrder; onStatusUpdate
           )}
 
           <p className="text-xs text-gray-600">
-            Invoice ID: <code className="text-gray-500">{order.invoiceId.slice(0, 12)}...</code>
+            Invoice: <code className="text-gray-500">{order.invoiceId.slice(0, 12)}…</code>
           </p>
         </div>
       )}
@@ -318,7 +476,9 @@ export default function OrdersPage() {
             <h1 className="text-2xl font-bold text-white">My Orders</h1>
           </div>
           {orders.length > 0 && (
-            <span className="text-sm text-gray-400">{orders.length} order{orders.length !== 1 ? "s" : ""}</span>
+            <span className="text-sm text-gray-400">
+              {orders.length} order{orders.length !== 1 ? "s" : ""}
+            </span>
           )}
         </div>
 

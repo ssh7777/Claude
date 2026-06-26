@@ -277,6 +277,7 @@ export default function CheckoutPage() {
           }}
           invoiceId={invoice.invoiceId}
           packageName={pkg.name}
+          packageCode={packageCode}
           amountUsd={invoice.amountUsd}
           amountCrypto={invoice.amountCrypto}
           cryptoType={cryptoType as "monero" | "ethereum"}
