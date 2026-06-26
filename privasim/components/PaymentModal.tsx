@@ -47,7 +47,6 @@ export default function PaymentModal({
   const [status, setStatus] = useState<"pending" | "confirmed" | "expired">("pending");
 
   // TX hash verification
-  const [showVerify, setShowVerify] = useState(false);
   const [txHash, setTxHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
@@ -121,8 +120,15 @@ export default function PaymentModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Verification failed");
-      setVerifiedCodes({ iccid: data.iccid, activationCode: data.activationCode, smDpAddress: data.smDpAddress ?? "" });
+      const codes = { iccid: data.iccid, activationCode: data.activationCode, smDpAddress: data.smDpAddress ?? "" };
+      setVerifiedCodes(codes);
       setStatus("confirmed");
+      // Persist codes to localStorage so they survive page refresh
+      try {
+        const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+        saved[invoiceId] = codes;
+        localStorage.setItem("privasim_codes", JSON.stringify(saved));
+      } catch {}
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : "Verification failed");
     } finally {
@@ -299,40 +305,33 @@ export default function PaymentModal({
               )}
             </p>
 
-            {/* TX Hash verification — for users who already sent */}
-            <div className="border-t border-white/10 pt-3">
-              <button
-                onClick={() => { setShowVerify((v) => !v); setVerifyError(""); }}
-                className="text-xs text-[#ff6600] hover:text-orange-300 transition-colors w-full text-center"
-              >
-                {showVerify ? "▲ Hide" : "▼ Already sent? Verify transaction hash for instant delivery"}
-              </button>
-              {showVerify && (
-                <div className="mt-3 space-y-2">
-                  <input
-                    type="text"
-                    value={txHash}
-                    onChange={(e) => setTxHash(e.target.value)}
-                    placeholder={cryptoType === "ethereum" ? "0x..." : "Transaction ID (64 hex chars)"}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#ff6600]/50 font-mono"
-                  />
-                  {verifyError && (
-                    <div className="flex items-start gap-1.5 text-xs text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg p-2">
-                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                      {verifyError}
-                    </div>
-                  )}
-                  <Button
-                    size="sm"
-                    className="w-full bg-[#ff6600] hover:bg-[#e55c00] text-white"
-                    onClick={verifyPayment}
-                    disabled={verifying || !txHash.trim()}
-                  >
-                    <Search className={`h-3.5 w-3.5 mr-1.5 ${verifying ? "animate-spin" : ""}`} />
-                    {verifying ? "Verifying on blockchain…" : "Verify Payment & Get eSIM Now"}
-                  </Button>
+            {/* TX Hash verification — always visible for users who already sent */}
+            <div className="border-t border-white/10 pt-3 space-y-2">
+              <p className="text-xs font-medium text-[#ff6600]">
+                Already sent? Paste your TX hash to get your eSIM instantly:
+              </p>
+              <input
+                type="text"
+                value={txHash}
+                onChange={(e) => { setTxHash(e.target.value); setVerifyError(""); }}
+                placeholder={cryptoType === "ethereum" ? "0x..." : "Transaction ID (64 hex chars)"}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#ff6600]/50 font-mono"
+              />
+              {verifyError && (
+                <div className="flex items-start gap-1.5 text-xs text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg p-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {verifyError}
                 </div>
               )}
+              <Button
+                size="sm"
+                className="w-full bg-[#ff6600] hover:bg-[#e55c00] text-white"
+                onClick={verifyPayment}
+                disabled={verifying || !txHash.trim()}
+              >
+                <Search className={`h-3.5 w-3.5 mr-1.5 ${verifying ? "animate-spin" : ""}`} />
+                {verifying ? "Verifying on blockchain…" : "Verify Payment & Get eSIM Now"}
+              </Button>
             </div>
           </div>
         )}

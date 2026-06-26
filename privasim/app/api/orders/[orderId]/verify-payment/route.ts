@@ -84,10 +84,28 @@ export async function POST(
   if (cryptoType === "ethereum") {
     try {
       const { ethers } = await import("ethers");
-      const rpcUrl = process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com";
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      // Try primary RPC, fall back to alternatives if it fails
+      const primaryRpc = process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com";
+      const fallbackRpcs = [
+        "https://cloudflare-eth.com",
+        "https://rpc.ankr.com/eth",
+        "https://ethereum.publicnode.com",
+      ];
 
-      const tx = await provider.getTransaction(txHash.trim()).catch(() => null);
+      let provider = new ethers.JsonRpcProvider(primaryRpc);
+      // Quick connectivity check — if primary fails within 3s, try fallback
+      let tx = await Promise.race([
+        provider.getTransaction(txHash.trim()).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ]);
+      if (!tx) {
+        for (const rpcUrl of fallbackRpcs) {
+          provider = new ethers.JsonRpcProvider(rpcUrl);
+          tx = await provider.getTransaction(txHash.trim()).catch(() => null);
+          if (tx) break;
+        }
+      }
+
       if (!tx) {
         return NextResponse.json({
           error: "Transaction not found on Ethereum. It may still be pending — wait ~30 seconds and try again.",
@@ -119,9 +137,9 @@ export async function POST(
 
       if (expectedAmount && expectedAmount > 0) {
         const diff = Math.abs(sentEth - expectedAmount) / expectedAmount;
-        if (diff > 0.10) {
+        if (diff > 0.30) {
           return NextResponse.json({
-            error: `Amount mismatch: sent ${sentEth.toFixed(6)} ETH, order expected ~${expectedAmount.toFixed(6)} ETH`,
+            error: `Amount mismatch: sent ${sentEth.toFixed(6)} ETH but order requires ~${expectedAmount.toFixed(6)} ETH (±30%). Please send the exact amount shown on your invoice.`,
           }, { status: 400 });
         }
       }
@@ -201,7 +219,7 @@ export async function POST(
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("eSIM purchase failed after payment verified:", msg);
     return NextResponse.json({
-      error: "Payment verified but eSIM purchase temporarily failed. Please try again in 30 seconds.",
+      error: `Payment verified but eSIM purchase failed: ${msg}. Please try again in 30 seconds.`,
       verified: true,
       retryable: true,
     }, { status: 503 });
