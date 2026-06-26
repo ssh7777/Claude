@@ -19,7 +19,7 @@ const nextConfig = {
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob: https://flagcdn.com",
             "font-src 'self'",
-            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://pikasim.com",
+            "connect-src 'self' https://pikasim.com https://va.vercel-insights.com https://api.coingecko.com",
             "frame-ancestors 'none'",
           ].join("; "),
         },
@@ -27,7 +27,7 @@ const nextConfig = {
     },
   ],
   experimental: {
-    serverComponentsExternalPackages: ["ethers"],
+    serverComponentsExternalPackages: ["ethers", "@anthropic-ai/sdk"],
   },
 };
 

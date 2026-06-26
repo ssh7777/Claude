@@ -1,0 +1,44 @@
+# PRIVASIM
+
+> Anonymous eSIM marketplace. Buy mobile data for 190+ countries with Monero or Ethereum. Zero identity required.
+
+PRIVASIM is a privacy-first eSIM marketplace where travelers and privacy-conscious users can purchase eSIM data plans for 190+ countries without providing any personal information.
+
+## Key Facts
+
+- **Website**: https://dpass.vercel.app
+- **Service**: eSIM data plans for 190+ countries
+- **Payment**: Monero (XMR) and Ethereum (ETH) only
+- **KYC**: None required
+- **Delivery**: Instant after blockchain confirmation
+- **Privacy**: No tracking, no cookies, no third-party analytics
+
+## How to Buy an eSIM
+
+1. Visit https://dpass.vercel.app/shop
+2. Select destination country and data plan
+3. Click "Buy Now" and choose Monero or Ethereum
+4. Send exact crypto amount to payment address
+5. eSIM QR code delivered after blockchain confirmation
+
+## Supported Countries
+
+Asia Pacific: Japan, South Korea, Thailand, Singapore, Australia, Philippines, Indonesia, Vietnam, Malaysia, India, Hong Kong, and more.
+Europe: UK, Germany, France, Italy, Spain, Netherlands, Switzerland, and more.
+Americas: USA, Canada, Mexico, Brazil, Argentina, Colombia, and more.
+Middle East & Africa: UAE, Saudi Arabia, Israel, South Africa, Turkey, and more.
+
+## Supported Devices
+
+eSIM requires a carrier-unlocked device: iPhone XS (2018)+, Samsung Galaxy S20+, Google Pixel 3+, most flagship Android phones from 2020+.
+
+## Payment Details
+
+**Monero (XMR)**: Fully private, untraceable. Recommended for maximum privacy.
+**Ethereum (ETH)**: Faster (~30 seconds). Ethereum Mainnet only — not USDT or other tokens.
+
+## FAQ
+
+Do I need an account? No, just a crypto wallet.
+Refunds available? No — eSIM is provisioned immediately after payment.
+Order status? https://dpass.vercel.app/orders
