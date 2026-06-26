@@ -21,13 +21,28 @@ export async function getCryptoPrices(): Promise<CryptoPrices> {
     const res = await fetch(url, {
       headers,
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) {
-      return priceCache ?? { xmr: 175, eth: 3500, updatedAt: Date.now() };
-    }
+    if (!res.ok) throw new Error(`CoinGecko ${res.status}`);
     data = (await res.json()) as typeof data;
   } catch {
-    return priceCache ?? { xmr: 175, eth: 3500, updatedAt: Date.now() };
+    // Fallback: try an alternative free price source
+    try {
+      const altRes = await fetch(
+        "https://api.binance.com/api/v3/ticker/price?symbols=%5B%22ETHUSDT%22,%22XMRUSDT%22%5D",
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (altRes.ok) {
+        const pairs = (await altRes.json()) as { symbol: string; price: string }[];
+        const eth = parseFloat(pairs.find((p) => p.symbol === "ETHUSDT")?.price ?? "0");
+        const xmr = parseFloat(pairs.find((p) => p.symbol === "XMRUSDT")?.price ?? "0");
+        if (eth > 0 && xmr > 0) {
+          priceCache = { xmr, eth, updatedAt: Date.now() };
+          return priceCache;
+        }
+      }
+    } catch {}
+    return priceCache ?? { xmr: 175, eth: 2600, updatedAt: Date.now() };
   }
 
   priceCache = {
