@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPackageDetails } from "@/lib/pikasim";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export async function GET(
   req: NextRequest,

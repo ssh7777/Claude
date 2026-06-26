@@ -14,6 +14,8 @@ export function formatUsd(amount: number): string {
 }
 
 export function formatDataAmount(amount: string): string {
+  // Already formatted with a unit (e.g. "1 GB", "500 MB", "Unlimited") — pass through
+  if (/[a-zA-Z]/.test(amount)) return amount;
   const num = parseFloat(amount);
   if (isNaN(num)) return amount;
   if (num >= 1000) return `${(num / 1024).toFixed(0)} TB`;

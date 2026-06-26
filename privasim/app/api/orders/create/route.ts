@@ -4,7 +4,6 @@ import { getPackageDetails } from "@/lib/pikasim";
 import { generateMoneroPaymentInfo } from "@/lib/monero";
 import { generateEthereumPaymentInfo } from "@/lib/ethereum";
 import { createInvoiceRecord } from "@/lib/db";
-import { encryptField } from "@/lib/crypto-utils";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import type { CryptoType } from "@/types";
 
@@ -39,21 +38,21 @@ export async function POST(req: NextRequest) {
   }
 
   if (!["monero", "ethereum"].includes(cryptoType)) {
-    return NextResponse.json({ error: "cryptoType must be 'monero' or 'ethereum'" }, { status: 400 });
+    return NextResponse.json(
+      { error: "cryptoType must be 'monero' or 'ethereum'" },
+      { status: 400 }
+    );
   }
 
   try {
-    // Fetch package details to get price
     const pkg = await getPackageDetails(packageCode);
     if (!pkg) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    // Apply 50% markup on all plans
-    const markup = 1.50;
-    const priceUsd = Math.ceil(pkg.priceUsd * markup * 100) / 100;
+    // Apply 50% markup
+    const priceUsd = Math.ceil(pkg.priceUsd * 1.5 * 100) / 100;
 
-    // Generate payment info
     const paymentInfo =
       cryptoType === "monero"
         ? await generateMoneroPaymentInfo(priceUsd)
@@ -61,17 +60,26 @@ export async function POST(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Store invoice (in-memory — no external DB needed)
+    const amountCrypto =
+      cryptoType === "monero"
+        ? (paymentInfo as { amountXmr: number }).amountXmr
+        : (paymentInfo as { amountEth: number }).amountEth;
+
+    // Store invoice with package metadata for orders page display.
+    // Payment address is stored plaintext — it's already shown to the user in the QR code.
     await createInvoiceRecord({
       invoice_id: paymentInfo.invoiceId,
       wallet_id_hash: walletHash,
       package_code: packageCode,
+      package_name: pkg.name,
+      country: pkg.country,
+      country_code: pkg.countryCode,
+      data_amount: pkg.dataAmount,
+      duration_days: pkg.durationDays,
       amount_usd: priceUsd,
-      amount_crypto: cryptoType === "monero"
-        ? (paymentInfo as typeof paymentInfo & { amountXmr: number }).amountXmr
-        : (paymentInfo as typeof paymentInfo & { amountEth: number }).amountEth,
+      amount_crypto: amountCrypto,
       crypto_type: cryptoType,
-      payment_address_encrypted: await encryptField(paymentInfo.address),
+      payment_address: paymentInfo.address,
       expires_at: expiresAt,
     });
 
@@ -79,11 +87,12 @@ export async function POST(req: NextRequest) {
       invoiceId: paymentInfo.invoiceId,
       packageCode,
       packageName: pkg.name,
+      country: pkg.country,
+      countryCode: pkg.countryCode,
+      dataAmount: pkg.dataAmount,
+      durationDays: pkg.durationDays,
       amountUsd: priceUsd,
-      amountCrypto:
-        cryptoType === "monero"
-          ? (paymentInfo as typeof paymentInfo & { amountXmr: number }).amountXmr
-          : (paymentInfo as typeof paymentInfo & { amountEth: number }).amountEth,
+      amountCrypto,
       cryptoType,
       paymentAddress: paymentInfo.address,
       qrCode: paymentInfo.qrCode,
@@ -92,9 +101,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Order creation failed:", err);
-    const msg = err instanceof Error
-      ? `${err.name}: ${err.message}`
-      : (typeof err === "string" ? err : JSON.stringify(err));
+    const msg =
+      err instanceof Error
+        ? `${err.name}: ${err.message}`
+        : typeof err === "string"
+          ? err
+          : JSON.stringify(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

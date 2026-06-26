@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "@/lib/crypto-utils";
+import { timingSafeEqual, encryptField } from "@/lib/crypto-utils";
 import { getMoneroWebhookSecret } from "@/lib/monero";
-import { getInvoiceByExternalId, updateInvoiceStatus } from "@/lib/db";
-import { purchaseEsim, getPackageDetails } from "@/lib/pikasim";
+import { getInvoiceById, updateInvoiceStatus, updateInvoiceEsimData } from "@/lib/db";
+import { purchaseEsim } from "@/lib/pikasim";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 interface MoneroWebhookPayload {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   if (!invoiceId) return NextResponse.json({ error: "No invoice ID" }, { status: 400 });
 
-  const invoice = await getInvoiceByExternalId(invoiceId);
+  const invoice = await getInvoiceById(invoiceId);
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
   if (invoice.status === "confirmed") return NextResponse.json({ message: "Already processed" });
@@ -50,8 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   const tolerance = 0.02;
-  const amountCrypto = invoice.amount_crypto as number;
-  if (Math.abs(amount - amountCrypto) / amountCrypto > tolerance) {
+  if (Math.abs(amount - invoice.amount_crypto) / invoice.amount_crypto > tolerance) {
     await updateInvoiceStatus(invoiceId, "failed", txId, confirmations);
     return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
   }
@@ -59,23 +58,32 @@ export async function POST(req: NextRequest) {
   try {
     await updateInvoiceStatus(invoiceId, "confirmed", txId, confirmations);
 
-    const packageCode = (invoice.package_code as string) ?? "";
+    const packageCode = invoice.package_code;
     if (!packageCode) throw new Error("Package code missing from invoice");
 
-    const [pikaResult, pkgDetails] = await Promise.all([
-      purchaseEsim(packageCode),
-      getPackageDetails(packageCode),
+    const pikaResult = await purchaseEsim(packageCode);
+
+    // Encrypt and store eSIM credentials so user can retrieve them
+    const [iccidEnc, codeEnc] = await Promise.all([
+      encryptField(pikaResult.iccid),
+      encryptField(pikaResult.activationCode),
     ]);
 
-    console.log("Monero payment confirmed — eSIM purchased", {
+    await updateInvoiceEsimData(invoiceId, {
+      iccid_encrypted: iccidEnc,
+      activation_code_encrypted: codeEnc,
+      sm_dp_address: pikaResult.smDpAddress ?? "",
+      pika_order_id: pikaResult.orderId,
+    });
+
+    console.log("XMR payment confirmed — eSIM provisioned", {
       invoiceId,
       iccid: pikaResult.iccid,
-      packageName: pkgDetails?.name,
     });
 
     return NextResponse.json({ message: "Order created successfully" });
   } catch (err) {
-    console.error("Post-payment processing failed:", err);
-    return NextResponse.json({ message: "Processing queued" });
+    console.error("Post-payment XMR processing failed:", err);
+    return NextResponse.json({ message: "Payment confirmed — eSIM provisioning queued" });
   }
 }

@@ -25,7 +25,6 @@ export async function generateEthereumPaymentInfo(
   const address = getEthAddress();
   const amountEth = await usdToEth(amountUsd);
   const invoiceId = generateSecureId();
-  // EIP-681: value must be decimal wei
   const amountWei = BigInt(Math.floor(amountEth * 1e18)).toString(10);
 
   const paymentUrl = `ethereum:${address}@1?value=${amountWei}`;
@@ -65,8 +64,10 @@ export async function verifyEthereumPayment(
     const receipt = await provider.getTransactionReceipt(txHash);
     if (!receipt || receipt.status !== 1) return false;
 
+    // Verify destination address
     if (tx.to?.toLowerCase() !== expectedAddress.toLowerCase()) return false;
 
+    // Verify amount (within 2% tolerance)
     const sentEth = parseFloat(ethers.formatEther(tx.value));
     const tolerance = 0.02;
     const withinTolerance =

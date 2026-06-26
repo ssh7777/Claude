@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         total: packages.length,
       },
       {
-        headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
       }
     );
   } catch (err) {
