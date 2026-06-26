@@ -55,6 +55,18 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return response.json();
 }
 
+function extractDataFromName(name: string): string | null {
+  const match = name.match(/\b(\d+(?:\.\d+)?)\s*(TB|GB|MB|KB)\b/i);
+  if (!match) return null;
+  const num = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+  if (unit === "KB") return `${Math.round(num / 1024)} MB`;
+  if (unit === "MB") return num >= 1024 ? `${Math.round(num / 1024)} GB` : `${num} MB`;
+  if (unit === "GB") return `${num} GB`;
+  if (unit === "TB") return `${num} TB`;
+  return null;
+}
+
 function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
   // Price: priceUSD is in dollars; price is in smallest unit (÷10000)
   let priceUsd = 0;
@@ -62,15 +74,24 @@ function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
   else if (typeof pkg.priceUsd === "number") priceUsd = pkg.priceUsd;
   else if (typeof pkg.price === "number") priceUsd = pkg.price / 10000;
 
-  // Data amount: prefer volume bytes (most precise), then volumeGB, then data string
+  // Data amount — priority order:
+  // 1. Package name (most accurate — "South Korea 100MB 7 Day" → "100 MB")
+  // 2. Raw bytes field (volume in bytes)
+  // 3. volumeGB field with unit detection heuristic
+  // 4. data string field
+  // 5. Unlimited flag
   let dataAmount = "Unknown";
-  if (typeof pkg.volume === "number" && pkg.volume >= 1048576) {
-    // volume in bytes (>= 1MB sanity check)
+  const pkgName = pkg.name ?? pkg.packageName ?? "";
+  const nameData = pkgName ? extractDataFromName(pkgName) : null;
+  if (nameData) {
+    dataAmount = nameData;
+  } else if (typeof pkg.volume === "number" && pkg.volume >= 1048576) {
+    // volume in bytes (>= 1 MB sanity check)
     const gb = pkg.volume / 1073741824;
     dataAmount = gb >= 1 ? `${Math.round(gb)} GB` : `${Math.round(gb * 1024)} MB`;
   } else if (typeof pkg.volumeGB === "number") {
-    // Some PikaSim packages have volumeGB in MB despite the field name.
-    // Detect by price: if cost per "GB" < $0.10, the unit is actually MB.
+    // Some PikaSim packages send volumeGB in MB despite the field name.
+    // Detect by price ratio: if price per "GB" < $0.10, unit is actually MB.
     const v = pkg.volumeGB;
     const isMb = priceUsd > 0 && v > 0 && priceUsd / v < 0.10;
     if (isMb) {

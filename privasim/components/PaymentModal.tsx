@@ -57,21 +57,21 @@ export default function PaymentModal({
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  // Poll for payment confirmation
+  // Poll for payment confirmation using the status endpoint
   useEffect(() => {
     if (!open || status !== "pending") return;
     const poll = setInterval(async () => {
       try {
-        const res = await fetch(`/api/orders?invoiceId=${invoiceId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("privasim_jwt") ?? ""}` },
-        });
-        const data = await res.json();
-        if (data.orders?.some((o: { status: string }) => o.status === "completed")) {
-          setStatus("confirmed");
-          clearInterval(poll);
+        const res = await fetch(`/api/orders/${invoiceId}/status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "confirmed") {
+            setStatus("confirmed");
+            clearInterval(poll);
+          }
         }
       } catch {
-        // Ignore polling errors
+        // Ignore polling errors — server may not have this invoice in memory
       }
     }, 15_000);
     return () => clearInterval(poll);

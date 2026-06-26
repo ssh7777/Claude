@@ -6,7 +6,7 @@ import { searchEsimPackages } from "@/lib/pikasim";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 interface PageProps {
   params: { country: string };

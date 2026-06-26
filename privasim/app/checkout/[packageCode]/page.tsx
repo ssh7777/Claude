@@ -18,6 +18,33 @@ import PaymentModal from "@/components/PaymentModal";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
 import type { EsimPackage, CryptoType } from "@/types";
 
+const ORDERS_KEY = "privasim_orders";
+
+interface SavedOrder {
+  invoiceId: string;
+  packageCode: string;
+  packageName: string;
+  country: string;
+  countryCode: string;
+  dataAmount: string;
+  durationDays: number;
+  amountUsd: number;
+  amountCrypto: number;
+  cryptoType: string;
+  paymentAddress: string;
+  expiresAt: string;
+  createdAt: string;
+  status: string;
+}
+
+function saveOrderToLocal(order: SavedOrder) {
+  try {
+    const existing: SavedOrder[] = JSON.parse(localStorage.getItem(ORDERS_KEY) ?? "[]");
+    const updated = [order, ...existing.filter((o) => o.invoiceId !== order.invoiceId)];
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(updated.slice(0, 50)));
+  } catch {}
+}
+
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
@@ -56,7 +83,6 @@ export default function CheckoutPage() {
     setCreating(true);
     setError("");
 
-    // Include wallet JWT if user has connected one (optional — orders work anonymously too)
     const jwt = localStorage.getItem("privasim_jwt");
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
@@ -70,6 +96,24 @@ export default function CheckoutPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? data.message ?? `Order failed (HTTP ${res.status})`);
+
+      // Save order to localStorage so it appears in orders page without wallet
+      saveOrderToLocal({
+        invoiceId: data.invoiceId,
+        packageCode: data.packageCode,
+        packageName: data.packageName,
+        country: data.country ?? pkg?.country ?? "",
+        countryCode: data.countryCode ?? pkg?.countryCode ?? "",
+        dataAmount: data.dataAmount ?? pkg?.dataAmount ?? "",
+        durationDays: data.durationDays ?? pkg?.durationDays ?? 0,
+        amountUsd: data.amountUsd,
+        amountCrypto: data.amountCrypto,
+        cryptoType: data.cryptoType ?? cryptoType,
+        paymentAddress: data.paymentAddress,
+        expiresAt: data.expiresAt,
+        createdAt: new Date().toISOString(),
+        status: "pending",
+      });
 
       setInvoice({
         invoiceId: data.invoiceId,
@@ -142,7 +186,7 @@ export default function CheckoutPage() {
             {[
               "Instant eSIM delivery",
               "No personal data required",
-              "Encrypted ICCID storage",
+              "Encrypted eSIM credentials",
               "Works on unlocked devices",
             ].map((item) => (
               <li key={item} className="flex items-center gap-2 text-sm text-gray-300">
@@ -179,7 +223,7 @@ export default function CheckoutPage() {
                 <div className="w-4 h-4 rounded-full bg-[#ff6600]" />
                 <span className="text-sm font-medium text-white">Monero</span>
               </div>
-              <div className="text-xs text-gray-400">Most private</div>
+              <div className="text-xs text-gray-400">Most private · XMR</div>
             </button>
             <button
               onClick={() => setCryptoType("ethereum")}
@@ -193,7 +237,7 @@ export default function CheckoutPage() {
                 <div className="w-4 h-4 rounded-full bg-[#627eea]" />
                 <span className="text-sm font-medium text-white">Ethereum</span>
               </div>
-              <div className="text-xs text-gray-400">ETH / USDT</div>
+              <div className="text-xs text-gray-400">ETH Mainnet only</div>
             </button>
           </div>
         </div>
@@ -208,7 +252,7 @@ export default function CheckoutPage() {
         <div className="flex items-center gap-2 mb-4 p-3 bg-[#ff6600]/5 border border-[#ff6600]/15 rounded-lg">
           <Shield className="h-4 w-4 text-[#ff6600] shrink-0" />
           <p className="text-xs text-gray-400">
-            No account or KYC required. Connect a wallet to track your orders, or pay anonymously.
+            No account or KYC required. Your order is saved locally — no email needed to retrieve it.
           </p>
         </div>
 
@@ -218,11 +262,13 @@ export default function CheckoutPage() {
           onClick={handleCreateOrder}
           disabled={creating}
         >
-          {creating ? "Generating invoice..." : `Pay ${formatUsd(displayPrice)} in ${cryptoType === "monero" ? "Monero" : "Ethereum"}`}
+          {creating
+            ? "Generating invoice..."
+            : `Pay ${formatUsd(displayPrice)} in ${cryptoType === "monero" ? "Monero" : "Ethereum"}`}
         </Button>
       </div>
 
-      {invoice && (
+      {invoice && pkg && (
         <PaymentModal
           open={true}
           onClose={() => {
