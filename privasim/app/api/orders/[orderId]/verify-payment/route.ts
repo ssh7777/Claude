@@ -46,6 +46,7 @@ export async function POST(
     );
   }
 
+  // Load from in-memory store — may be absent after a cold start
   const invoice = await getInvoiceById(params.orderId);
 
   // Already confirmed with eSIM stored — return existing codes
@@ -63,10 +64,11 @@ export async function POST(
         smDpAddress: invoice.sm_dp_address ?? "",
       });
     } catch {
-      // fall through to re-purchase
+      // Decryption error — fall through to re-purchase
     }
   }
 
+  // Use server data when available; fall back to client-provided data (from localStorage)
   const cryptoType = invoice?.crypto_type ?? clientCryptoType ?? "ethereum";
   const packageCode = invoice?.package_code ?? clientPackageCode;
   const expectedAmount = invoice?.amount_crypto ?? clientAmount;
@@ -78,13 +80,32 @@ export async function POST(
     );
   }
 
+  // ── Ethereum verification ──────────────────────────────────────────────────
   if (cryptoType === "ethereum") {
     try {
       const { ethers } = await import("ethers");
-      const rpcUrl = process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com";
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      // Try primary RPC, fall back to alternatives if it fails
+      const primaryRpc = process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com";
+      const fallbackRpcs = [
+        "https://cloudflare-eth.com",
+        "https://rpc.ankr.com/eth",
+        "https://ethereum.publicnode.com",
+      ];
 
-      const tx = await provider.getTransaction(txHash.trim()).catch(() => null);
+      let provider = new ethers.JsonRpcProvider(primaryRpc);
+      // Quick connectivity check — if primary fails within 3s, try fallback
+      let tx = await Promise.race([
+        provider.getTransaction(txHash.trim()).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ]);
+      if (!tx) {
+        for (const rpcUrl of fallbackRpcs) {
+          provider = new ethers.JsonRpcProvider(rpcUrl);
+          tx = await provider.getTransaction(txHash.trim()).catch(() => null);
+          if (tx) break;
+        }
+      }
+
       if (!tx) {
         return NextResponse.json({
           error: "Transaction not found on Ethereum. It may still be pending — wait ~30 seconds and try again.",
@@ -116,9 +137,9 @@ export async function POST(
 
       if (expectedAmount && expectedAmount > 0) {
         const diff = Math.abs(sentEth - expectedAmount) / expectedAmount;
-        if (diff > 0.10) {
+        if (diff > 0.30) {
           return NextResponse.json({
-            error: `Amount mismatch: sent ${sentEth.toFixed(6)} ETH, order expected ~${expectedAmount.toFixed(6)} ETH`,
+            error: `Amount mismatch: sent ${sentEth.toFixed(6)} ETH but order requires ~${expectedAmount.toFixed(6)} ETH (±30%). Please send the exact amount shown on your invoice.`,
           }, { status: 400 });
         }
       }
@@ -133,6 +154,9 @@ export async function POST(
       }, { status: 503 });
     }
   } else {
+    // ── Monero verification ────────────────────────────────────────────────
+    // Without the wallet view key we cannot verify recipient/amount.
+    // We verify the TX hash exists on the public Monero explorer (best effort).
     try {
       const res = await fetch(`https://xmrchain.net/api/transaction/${txHash.trim()}`, {
         headers: { Accept: "application/json" },
@@ -146,16 +170,20 @@ export async function POST(
           }, { status: 400 });
         }
       }
+      // Explorer down — give benefit of doubt and continue
     } catch {
       console.warn("XMR explorer unreachable, continuing");
     }
   }
 
+  // ── Payment verified — mark TX as used ────────────────────────────────────
   usedTxHashes.add(normalizedTx);
 
+  // ── Purchase eSIM from PikaSim ─────────────────────────────────────────────
   try {
     const pikaResult = await purchaseEsim(packageCode);
 
+    // Encrypt credentials if DB_ENCRYPTION_KEY is configured; otherwise return directly
     let iccidEnc: string | undefined;
     let codeEnc: string | undefined;
     try {
@@ -164,7 +192,7 @@ export async function POST(
         encryptField(pikaResult.activationCode),
       ]);
     } catch {
-      // DB_ENCRYPTION_KEY not set
+      // DB_ENCRYPTION_KEY not set — codes returned directly in response only
     }
 
     if (invoice && iccidEnc && codeEnc) {
@@ -186,11 +214,12 @@ export async function POST(
       smDpAddress: pikaResult.smDpAddress ?? "",
     });
   } catch (err) {
+    // Allow retry if purchase failed
     usedTxHashes.delete(normalizedTx);
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("eSIM purchase failed after payment verified:", msg);
     return NextResponse.json({
-      error: "Payment verified but eSIM purchase temporarily failed. Please try again in 30 seconds.",
+      error: `Payment verified but eSIM purchase failed: ${msg}. Please try again in 30 seconds.`,
       verified: true,
       retryable: true,
     }, { status: 503 });

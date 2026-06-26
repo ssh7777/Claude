@@ -71,11 +71,12 @@ function OrderRow({
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const [showVerify, setShowVerify] = useState(false);
+  // TX hash verification
   const [txHash, setTxHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
 
+  // eSIM data usage
   const [usage, setUsage] = useState<EsimUsage | null>(null);
   const [checkingUsage, setCheckingUsage] = useState(false);
 
@@ -98,6 +99,17 @@ function OrderRow({
     }
   }, [order.invoiceId, order.status, onStatusUpdate]);
 
+  // Load saved eSIM codes from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+      if (saved[order.invoiceId]) {
+        setCodes(saved[order.invoiceId]);
+        setEsimReady(true);
+      }
+    } catch {}
+  }, [order.invoiceId]);
+
   useEffect(() => {
     if (expanded && order.status === "pending") {
       checkStatus();
@@ -105,20 +117,18 @@ function OrderRow({
   }, [expanded, order.status, checkStatus]);
 
   const revealCodes = async () => {
-    setRevealing(true);
-    setError("");
+    // Check localStorage first (persisted from when codes were first received)
     try {
-      const res = await fetch(`/api/orders/${order.invoiceId}/decrypt`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to retrieve eSIM codes");
-      setCodes(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to retrieve codes");
-    } finally {
-      setRevealing(false);
-    }
+      const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+      if (saved[order.invoiceId]) {
+        setCodes(saved[order.invoiceId]);
+        setEsimReady(true);
+        return;
+      }
+    } catch {}
+    setRevealing(true);
+    setError("eSIM codes not found in local storage. Please use the transaction hash below to re-verify your payment and retrieve your codes.");
+    setRevealing(false);
   };
 
   const verifyPayment = async () => {
@@ -141,14 +151,20 @@ function OrderRow({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Verification failed");
-      onStatusUpdate(order.invoiceId, "confirmed");
-      setCodes({
+      const newCodes = {
         iccid: data.iccid,
         activationCode: data.activationCode,
         smDpAddress: data.smDpAddress ?? "",
-      });
+      };
+      onStatusUpdate(order.invoiceId, "confirmed");
+      setCodes(newCodes);
       setEsimReady(true);
-      setShowVerify(false);
+      // Persist codes to localStorage so they survive page refresh
+      try {
+        const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+        saved[order.invoiceId] = newCodes;
+        localStorage.setItem("privasim_codes", JSON.stringify(saved));
+      } catch {}
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : "Verification failed");
     } finally {
@@ -263,6 +279,7 @@ function OrderRow({
       {expanded && (
         <div className="border-t border-white/10 p-4 space-y-3">
 
+          {/* ── Pending (not expired) ─────────────────────────────────────── */}
           {order.status === "pending" && !isExpired && (
             <div className="space-y-2">
               <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-3 text-sm text-yellow-300">
@@ -293,21 +310,15 @@ function OrderRow({
               </Button>
 
               <div className="border-t border-white/10 pt-2">
-                <button
-                  onClick={() => { setShowVerify((v) => !v); setVerifyError(""); }}
-                  className="text-xs text-[#ff6600] hover:text-orange-300 transition-colors"
-                >
-                  {showVerify ? "▲ Hide" : "▼ Already sent? Verify with transaction hash"}
-                </button>
-                {showVerify && (
-                  <div className="mt-2">
-                    <TxVerifySection />
-                  </div>
-                )}
+                <p className="text-xs font-medium text-[#ff6600] mb-2">
+                  Already sent? Verify your transaction hash to get your eSIM instantly:
+                </p>
+                <TxVerifySection />
               </div>
             </div>
           )}
 
+          {/* ── Expired but payment may have been sent ────────────────────── */}
           {isExpired && order.status !== "confirmed" && (
             <div className="space-y-2">
               <div className="bg-gray-400/5 border border-gray-400/20 rounded-lg p-3 text-sm text-gray-300">
@@ -317,6 +328,7 @@ function OrderRow({
             </div>
           )}
 
+          {/* ── Confirmed — show eSIM codes ───────────────────────────────── */}
           {(order.status === "confirmed" || esimReady) && (
             <div className="space-y-2">
               {!codes ? (
@@ -360,6 +372,7 @@ function OrderRow({
                       </div>
                     ))}
 
+                  {/* Data usage */}
                   {usage ? (
                     <div className="bg-blue-400/5 border border-blue-400/20 rounded-lg p-3">
                       <div className="flex items-center gap-1.5 text-blue-300 text-xs font-medium mb-2">

@@ -179,12 +179,41 @@ export async function checkAgentBalance(): Promise<{ balanceUsd: number }> {
   return { balanceUsd: result.balanceUsd ?? result.balance_usd ?? result.balance ?? 0 };
 }
 
+function normalizeStr(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  return s || undefined;
+}
+
 export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchaseResult> {
-  const result = await apiPost<PikaSimPurchaseResult>("/orders", { packageCode });
-  if (!result.iccid || !result.activationCode) {
-    throw new Error("PikaSim purchase returned incomplete data: " + JSON.stringify(result));
+  // Use Record to accept both camelCase and snake_case field names at runtime
+  const raw = await apiPost<Record<string, unknown>>("/orders", { packageCode });
+
+  // PikaSim may return camelCase or snake_case; normalize both
+  const iccid = normalizeStr(raw.iccid ?? raw.ICCID);
+  const activationCode = normalizeStr(
+    raw.activationCode ?? raw.activation_code ?? raw.lpa ?? raw.ac ?? raw.code
+  );
+  const smDpAddress = normalizeStr(
+    raw.smDpAddress ?? raw.sm_dp_address ?? raw.smdp ?? raw.sm_dp ?? raw.address
+  );
+  const orderId = normalizeStr(raw.orderId ?? raw.order_id ?? raw.id ?? raw.uuid);
+
+  if (!iccid || !activationCode) {
+    const fields = Object.keys(raw).join(", ");
+    throw new Error(
+      `eSIM purchase returned incomplete data. Fields received: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
+    );
   }
-  return result;
+
+  return {
+    orderId: orderId ?? "",
+    iccid,
+    activationCode,
+    smDpAddress: smDpAddress ?? "",
+    status: normalizeStr(raw.status) ?? "active",
+    qrCodeUrl: normalizeStr(raw.qrCodeUrl ?? raw.qr_code_url),
+  };
 }
 
 export async function purchasePhonePlan(packageCode: string): Promise<PikaSimPurchaseResult> {
