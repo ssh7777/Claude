@@ -1,9 +1,11 @@
-// PikaSim REST API wrapper — SERVER-SIDE ONLY
-// This file must NEVER be imported from client components
+// PikaSim API wrapper — SERVER-SIDE ONLY
+// Package listing: REST at https://pikasim.com/api (GET only — POST /orders 404s)
+// Purchases & account ops: MCP JSON-RPC 2.0 at https://pikasim.com/agentic-esim
 
 import type { EsimPackage, ProductType, PikaSimPackage, PikaSimPurchaseResult } from "@/types";
 
-const PIKASIM_BASE = "https://pikasim.com/api";
+const PIKASIM_REST  = "https://pikasim.com/api";
+const PIKASIM_MCP   = "https://pikasim.com/agentic-esim";
 
 function getApiKey(): string {
   const key = process.env.PIKASIM_API_KEY;
@@ -11,8 +13,59 @@ function getApiKey(): string {
   return key;
 }
 
+// ── MCP JSON-RPC 2.0 transport ──────────────────────────────────────────────
+
+async function callMCP(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+  const body = {
+    jsonrpc: "2.0",
+    id: Date.now(),
+    method: "tools/call",
+    params: { name: toolName, arguments: args },
+  };
+
+  const response = await fetch(PIKASIM_MCP, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": `Bearer ${getApiKey()}`,
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`PikaSim MCP ${response.status}: ${text.slice(0, 300)}`);
+  }
+
+  const json = await response.json() as {
+    result?: unknown;
+    error?: { message?: string; code?: number };
+  };
+
+  if (json.error) {
+    throw new Error(`PikaSim tool error: ${json.error.message ?? JSON.stringify(json.error)}`);
+  }
+
+  // MCP may wrap the payload in content blocks: { result: { content: [{ type:"text", text:"{...}" }] } }
+  // Or it may return the payload directly: { result: { iccid: "...", ... } }
+  const result = json.result as Record<string, unknown> | undefined;
+  if (result && Array.isArray(result.content)) {
+    const textBlock = (result.content as { type: string; text?: string }[])
+      .find((b) => b.type === "text" && b.text);
+    if (textBlock?.text) {
+      try { return JSON.parse(textBlock.text); } catch { return textBlock.text; }
+    }
+  }
+
+  return result ?? json;
+}
+
+// ── REST GET transport (package listing only) ─────────────────────────────
+
 async function apiGet<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${PIKASIM_BASE}${path}`);
+  const url = new URL(`${PIKASIM_REST}${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   }
@@ -21,39 +74,17 @@ async function apiGet<T>(path: string, params?: Record<string, string>): Promise
   const headers: Record<string, string> = { Accept: "application/json" };
   if (key) headers["X-API-Key"] = key;
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers,
-    cache: "no-store",
-  });
+  const response = await fetch(url.toString(), { method: "GET", headers, cache: "no-store" });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`PikaSim ${response.status} ${response.statusText}: ${text.slice(0, 300)}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
-async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${PIKASIM_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "X-API-Key": getApiKey(),
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`PikaSim ${response.status} ${response.statusText}: ${text.slice(0, 300)}`);
-  }
-
-  return response.json();
-}
+// ── Package normalization ─────────────────────────────────────────────────
 
 function extractDataFromName(name: string): string | null {
   const match = name.match(/\b(\d+(?:\.\d+)?)\s*(TB|GB|MB|KB)\b/i);
@@ -68,30 +99,20 @@ function extractDataFromName(name: string): string | null {
 }
 
 function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
-  // Price: priceUSD is in dollars; price is in smallest unit (÷10000)
   let priceUsd = 0;
   if (typeof pkg.priceUSD === "number") priceUsd = pkg.priceUSD;
   else if (typeof pkg.priceUsd === "number") priceUsd = pkg.priceUsd;
   else if (typeof pkg.price === "number") priceUsd = pkg.price / 10000;
 
-  // Data amount — priority order:
-  // 1. Package name (most accurate — "South Korea 100MB 7 Day" → "100 MB")
-  // 2. Raw bytes field (volume in bytes)
-  // 3. volumeGB field with unit detection heuristic
-  // 4. data string field
-  // 5. Unlimited flag
   let dataAmount = "Unknown";
   const pkgName = pkg.name ?? pkg.packageName ?? "";
   const nameData = pkgName ? extractDataFromName(pkgName) : null;
   if (nameData) {
     dataAmount = nameData;
   } else if (typeof pkg.volume === "number" && pkg.volume >= 1048576) {
-    // volume in bytes (>= 1 MB sanity check)
     const gb = pkg.volume / 1073741824;
     dataAmount = gb >= 1 ? `${Math.round(gb)} GB` : `${Math.round(gb * 1024)} MB`;
   } else if (typeof pkg.volumeGB === "number") {
-    // Some PikaSim packages send volumeGB in MB despite the field name.
-    // Detect by price ratio: if price per "GB" < $0.10, unit is actually MB.
     const v = pkg.volumeGB;
     const isMb = priceUsd > 0 && v > 0 && priceUsd / v < 0.10;
     if (isMb) {
@@ -105,7 +126,7 @@ function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
     dataAmount = "Unlimited";
   }
 
-  const country = pkg.location ?? pkg.destination ?? "";
+  const country     = pkg.location     ?? pkg.destination     ?? "";
   const countryCode = pkg.locationCode ?? pkg.destinationCode ?? "";
   const durationDays = pkg.duration ?? pkg.validityDays ?? 0;
   const type: ProductType = (pkg.dataType ?? pkg.type) === "phone" ? "phone" : "data";
@@ -126,6 +147,8 @@ function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
   };
 }
 
+// ── Public API ─────────────────────────────────────────────────────────────
+
 export async function searchEsimPackages(
   country?: string,
   type: "data" | "phone" | "all" = "all"
@@ -135,21 +158,15 @@ export async function searchEsimPackages(
   if (type !== "all") params.type = type;
 
   try {
-    const result = await apiGet<{ packages?: PikaSimPackage[] }>(
-      "/packages/all-countries",
-      params
-    );
+    const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/all-countries", params);
     let packages = result.packages ?? [];
 
-    // Client-side country filter as fallback if API ignores the param
     if (country) {
       const code = country.toUpperCase();
       packages = packages.filter(
         (p) => (p.locationCode ?? p.destinationCode ?? "").toUpperCase() === code
       );
     }
-
-    // Client-side type filter as fallback
     if (type !== "all") {
       packages = packages.filter((p) => (p.dataType ?? p.type) === type);
     }
@@ -162,7 +179,6 @@ export async function searchEsimPackages(
 }
 
 export async function getPackageDetails(packageCode: string): Promise<EsimPackage | null> {
-  // PikaSim doesn't have an individual package endpoint — search all and filter
   try {
     const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/all-countries");
     const pkg = (result.packages ?? []).find((p) => p.packageCode === packageCode);
@@ -173,9 +189,9 @@ export async function getPackageDetails(packageCode: string): Promise<EsimPackag
 }
 
 export async function checkAgentBalance(): Promise<{ balanceUsd: number }> {
-  const result = await apiGet<{ balanceUsd?: number; balance?: number; balance_usd?: number }>(
-    "/account/balance"
-  );
+  const result = await callMCP("check_balance", {}) as {
+    balanceUsd?: number; balance?: number; balance_usd?: number;
+  };
   return { balanceUsd: result.balanceUsd ?? result.balance_usd ?? result.balance ?? 0 };
 }
 
@@ -186,10 +202,8 @@ function normalizeStr(v: unknown): string | undefined {
 }
 
 export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchaseResult> {
-  // Use Record to accept both camelCase and snake_case field names at runtime
-  const raw = await apiPost<Record<string, unknown>>("/orders", { packageCode });
+  const raw = await callMCP("purchase_esim", { packageCode }) as Record<string, unknown>;
 
-  // PikaSim may return camelCase or snake_case; normalize both
   const iccid = normalizeStr(raw.iccid ?? raw.ICCID);
   const activationCode = normalizeStr(
     raw.activationCode ?? raw.activation_code ?? raw.lpa ?? raw.ac ?? raw.code
@@ -202,7 +216,7 @@ export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchase
   if (!iccid || !activationCode) {
     const fields = Object.keys(raw).join(", ");
     throw new Error(
-      `eSIM purchase returned incomplete data. Fields received: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
+      `eSIM purchase returned incomplete data. Fields: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
     );
   }
 
@@ -226,7 +240,7 @@ export async function getEsimStatus(iccid: string): Promise<{
   dataRemainingGb: number;
   expiresAt: string;
 }> {
-  const result = await apiGet<{
+  const result = await callMCP("get_esim_status", { iccid }) as {
     status?: string;
     dataUsed?: number;
     dataRemaining?: number;
@@ -234,8 +248,7 @@ export async function getEsimStatus(iccid: string): Promise<{
     data_remaining_gb?: number;
     expiresAt?: string;
     expires_at?: string;
-  }>(`/orders/${iccid}/status`);
-
+  };
   return {
     status: result.status ?? "unknown",
     dataUsedGb: result.dataUsed ?? result.data_used_gb ?? 0,
@@ -245,19 +258,16 @@ export async function getEsimStatus(iccid: string): Promise<{
 }
 
 export async function topupEsim(iccid: string, packageCode: string): Promise<boolean> {
-  await apiPost(`/orders/${iccid}/topup`, { packageCode });
+  await callMCP("topup_esim", { iccid, packageCode });
   return true;
 }
 
 export async function cancelEsim(iccid: string): Promise<boolean> {
-  await apiPost(`/orders/${iccid}/cancel`, {});
+  await callMCP("cancel_esim", { iccid });
   return true;
 }
 
 export async function listAgentOrders(page = 1, limit = 50): Promise<unknown[]> {
-  const result = await apiGet<{ orders?: unknown[] }>(
-    "/orders",
-    { page: String(page), limit: String(limit) }
-  );
+  const result = await callMCP("list_orders", { page, limit }) as { orders?: unknown[] };
   return result.orders ?? [];
 }
