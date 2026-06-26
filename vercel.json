@@ -1,6 +1,8 @@
 {
-  "installCommand": "cd privasim && npm install --legacy-peer-deps",
-  "buildCommand": "cd privasim && npm run build && mkdir -p ../.vercel && cp -r .vercel/output ../.vercel/",
+  "installCommand": "npm install --legacy-peer-deps --prefix privasim",
+  "buildCommand": "npm run build --prefix privasim",
+  "outputDirectory": "privasim/.next",
+  "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
     "ETHEREUM_WALLET_ADDRESS": "0x87176027Cc61d260926dAAe68551e246260dc30E",
