@@ -68,7 +68,6 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
         </div>
       </div>
 
-      {/* Type filter */}
       <div className="flex gap-2 mb-8">
         {(["all", "data", "phone"] as const).map((t) => (
           <Link
@@ -146,4 +145,3 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
     </div>
   );
 }
-
