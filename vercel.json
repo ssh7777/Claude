@@ -8,6 +8,6 @@
   "env": {
     "ETHEREUM_WALLET_ADDRESS": "0x87176027Cc61d260926dAAe68551e246260dc30E",
     "MONERO_WALLET_PRIMARY": "85oa4tGVEpRLAhQijJtD5LaPtQQAQhr5XBS2gXtqeYSohGkXvUDxfZKU3oSmFWcJ215h7eSoiU3xrfL8keUJnGSjHqEWVNr",
-    "NEXT_PUBLIC_APP_URL": "https://dpass.vercel.app"
+    "NEXT_PUBLIC_APP_URL": "https://claude-pqapgzaz5-guardpass.vercel.app"
   }
 }
