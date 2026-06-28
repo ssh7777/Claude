@@ -4,11 +4,23 @@ import { NextRequest, NextResponse } from "next/server";
 // Protected by X-Test-Key header matching PIKASIM_API_KEY so it's not open to the public.
 
 export async function GET(req: NextRequest) {
-  const provided = req.headers.get("x-test-key") ?? "";
   const apiKey = process.env.PIKASIM_API_KEY ?? "";
+  // Accept key via header OR query param so this can be opened directly in a browser
+  const provided =
+    req.headers.get("x-test-key") ??
+    new URL(req.url).searchParams.get("key") ??
+    "";
 
   if (!apiKey || provided !== apiKey) {
-    return NextResponse.json({ error: "Unauthorized — pass X-Test-Key: <PIKASIM_API_KEY>" }, { status: 401 });
+    return new Response(
+      `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#f90">
+        <h2>PikaSim Diagnostic</h2>
+        <p>Open this URL in your browser:</p>
+        <code style="color:#fff">https://dpass.vercel.app/api/test/pikasim?key=YOUR_PIKASIM_API_KEY</code>
+        <p style="color:#f44">Missing or wrong key. Pass ?key=&lt;PIKASIM_API_KEY&gt; in the URL.</p>
+      </body></html>`,
+      { status: 401, headers: { "Content-Type": "text/html" } }
+    );
   }
 
   const results: Record<string, unknown> = {
@@ -143,5 +155,12 @@ export async function GET(req: NextRequest) {
     results.mcp_purchase_probe = { error: String(err) };
   }
 
-  return NextResponse.json(results, { status: 200 });
+  const pretty = JSON.stringify(results, null, 2);
+  return new Response(
+    `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#0f0">
+      <h2 style="color:#ff6600">PikaSim Diagnostic Results</h2>
+      <pre style="white-space:pre-wrap;color:#ccc">${pretty}</pre>
+    </body></html>`,
+    { status: 200, headers: { "Content-Type": "text/html" } }
+  );
 }
