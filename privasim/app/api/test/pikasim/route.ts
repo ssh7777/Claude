@@ -103,5 +103,45 @@ export async function GET(req: NextRequest) {
     results.rest_packages = { error: String(err) };
   }
 
+  // Test purchase_esim with an invalid package code — should get "not found" error, no charge
+  // This proves the auth + tool call chain works end-to-end without spending money.
+  try {
+    const res = await fetch("https://pikasim.com/agentic-esim", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "purchase_esim", arguments: { packageCode: "TEST_INVALID_PROBE" } },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const text = await res.text();
+    let parsed: unknown;
+    try { parsed = JSON.parse(text); } catch { parsed = text.slice(0, 500); }
+
+    // Expected: HTTP 200 with JSON-RPC error body (package not found) — that's a success for us.
+    // If we get HTTP 401/403 → API key wrong or not set.
+    // If we get HTTP 404 → wrong endpoint URL.
+    // If we get HTTP 200 with iccid → it actually purchased (unlikely with invalid code).
+    results.mcp_purchase_probe = {
+      status: res.status,
+      ok: res.ok,
+      note: res.status === 401 || res.status === 403
+        ? "AUTH FAILED — check PIKASIM_API_KEY"
+        : res.status === 404
+        ? "WRONG ENDPOINT — /agentic-esim not found"
+        : "Endpoint reachable — see response for tool result",
+      response: parsed,
+    };
+  } catch (err) {
+    results.mcp_purchase_probe = { error: String(err) };
+  }
+
   return NextResponse.json(results, { status: 200 });
 }
