@@ -1,11 +1,11 @@
 // PikaSim API wrapper — SERVER-SIDE ONLY
-// Package listing: REST at https://pikasim.com/api (GET only — POST /orders 404s)
-// Purchases & account ops: MCP JSON-RPC 2.0 at https://pikasim.com/agentic-esim
+// Package listing: REST at https://pikasim.com/api (GET only)
+// Purchases & account ops: MCP JSON-RPC 2.0 at https://pikasim.com/mcp
 
 import type { EsimPackage, ProductType, PikaSimPackage, PikaSimPurchaseResult } from "@/types";
 
 const PIKASIM_REST  = "https://pikasim.com/api";
-const PIKASIM_MCP   = "https://pikasim.com/agentic-esim";
+const PIKASIM_MCP   = "https://pikasim.com/mcp";
 
 function getApiKey(): string {
   const key = process.env.PIKASIM_API_KEY;

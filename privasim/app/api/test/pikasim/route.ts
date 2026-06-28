@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   };
 
   // Test PikaSim MCP endpoint — check_balance
-  const mcpEndpoint = "https://pikasim.com/agentic-esim";
+  const mcpEndpoint = "https://pikasim.com/mcp";
   try {
     const res = await fetch(mcpEndpoint, {
       method: "POST",
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
   // Test purchase_esim with an invalid package code — should get "not found" error, no charge
   // This proves the auth + tool call chain works end-to-end without spending money.
   try {
-    const res = await fetch("https://pikasim.com/agentic-esim", {
+    const res = await fetch("https://pikasim.com/mcp", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

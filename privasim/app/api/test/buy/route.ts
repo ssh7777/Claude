@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   let pikaError: string | null = null;
 
   try {
-    const res = await fetch("https://pikasim.com/agentic-esim", {
+    const res = await fetch("https://pikasim.com/mcp", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
