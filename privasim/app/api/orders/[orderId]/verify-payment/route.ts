@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInvoiceById, updateInvoiceStatus, updateInvoiceEsimData } from "@/lib/db";
+import { getInvoiceById, updateInvoiceStatus, updateInvoiceEsimData, updateInvoicePikaOrderId } from "@/lib/db";
 import { purchaseEsim } from "@/lib/pikasim";
 import { encryptField, decryptField } from "@/lib/crypto-utils";
 import { rateLimit } from "@/lib/rateLimit";
@@ -183,35 +183,55 @@ export async function POST(
   try {
     const pikaResult = await purchaseEsim(packageCode);
 
-    // Encrypt credentials if DB_ENCRYPTION_KEY is configured; otherwise return directly
-    let iccidEnc: string | undefined;
-    let codeEnc: string | undefined;
-    try {
-      [iccidEnc, codeEnc] = await Promise.all([
-        encryptField(pikaResult.iccid),
-        encryptField(pikaResult.activationCode),
-      ]);
-    } catch {
-      // DB_ENCRYPTION_KEY not set — codes returned directly in response only
+    // Store PikaSim order ID for webhook matching regardless of whether ICCID is ready
+    if (invoice && pikaResult.orderId) {
+      await updateInvoicePikaOrderId(params.orderId, pikaResult.orderId);
     }
 
-    if (invoice && iccidEnc && codeEnc) {
-      await updateInvoiceStatus(params.orderId, "confirmed", txHash.trim(), cryptoType === "ethereum" ? 12 : 10);
-      await updateInvoiceEsimData(params.orderId, {
-        iccid_encrypted: iccidEnc,
-        activation_code_encrypted: codeEnc,
-        sm_dp_address: pikaResult.smDpAddress ?? "",
-        pika_order_id: pikaResult.orderId,
+    // If PikaSim returned ICCID synchronously — deliver immediately
+    if (pikaResult.iccid && pikaResult.activationCode) {
+      let iccidEnc: string | undefined;
+      let codeEnc: string | undefined;
+      try {
+        [iccidEnc, codeEnc] = await Promise.all([
+          encryptField(pikaResult.iccid),
+          encryptField(pikaResult.activationCode),
+        ]);
+      } catch {
+        // DB_ENCRYPTION_KEY not set — codes returned in response only
+      }
+
+      if (invoice && iccidEnc && codeEnc) {
+        await updateInvoiceStatus(params.orderId, "confirmed", txHash.trim(), cryptoType === "ethereum" ? 12 : 10);
+        await updateInvoiceEsimData(params.orderId, {
+          iccid_encrypted: iccidEnc,
+          activation_code_encrypted: codeEnc,
+          sm_dp_address: pikaResult.smDpAddress ?? "",
+          pika_order_id: pikaResult.orderId,
+        });
+      }
+
+      console.log("Payment verified, eSIM provisioned synchronously", { orderId: params.orderId, iccid: pikaResult.iccid });
+
+      return NextResponse.json({
+        success: true,
+        iccid: pikaResult.iccid,
+        activationCode: pikaResult.activationCode,
+        smDpAddress: pikaResult.smDpAddress ?? "",
       });
     }
 
-    console.log("Payment verified, eSIM provisioned", { orderId: params.orderId, iccid: pikaResult.iccid });
+    // PikaSim is processing asynchronously — will webhook us when ready
+    console.log("Payment verified, eSIM order placed (async)", { orderId: params.orderId, pikaOrderId: pikaResult.orderId });
+    if (invoice) {
+      await updateInvoiceStatus(params.orderId, "pending", txHash.trim(), cryptoType === "ethereum" ? 12 : 10);
+    }
 
     return NextResponse.json({
       success: true,
-      iccid: pikaResult.iccid,
-      activationCode: pikaResult.activationCode,
-      smDpAddress: pikaResult.smDpAddress ?? "",
+      processing: true,
+      pikaOrderId: pikaResult.orderId,
+      message: "Payment verified. Your eSIM is being provisioned — check this page in 30–60 seconds.",
     });
   } catch (err) {
     // Allow retry if purchase failed

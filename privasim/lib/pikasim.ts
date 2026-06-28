@@ -213,19 +213,21 @@ export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchase
   );
   const orderId = normalizeStr(raw.orderId ?? raw.order_id ?? raw.id ?? raw.uuid);
 
-  if (!iccid || !activationCode) {
+  // PikaSim may be async — return what we have even if ICCID is missing yet.
+  // The caller should check result.iccid; if empty, store orderId and wait for webhook.
+  if (!orderId && !iccid) {
     const fields = Object.keys(raw).join(", ");
     throw new Error(
-      `eSIM purchase returned incomplete data. Fields: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
+      `eSIM purchase returned no usable data. Fields: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
     );
   }
 
   return {
     orderId: orderId ?? "",
-    iccid,
-    activationCode,
+    iccid: iccid ?? "",
+    activationCode: activationCode ?? "",
     smDpAddress: smDpAddress ?? "",
-    status: normalizeStr(raw.status) ?? "active",
+    status: normalizeStr(raw.status) ?? "processing",
     qrCodeUrl: normalizeStr(raw.qrCodeUrl ?? raw.qr_code_url),
   };
 }

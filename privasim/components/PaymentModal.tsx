@@ -50,6 +50,7 @@ export default function PaymentModal({
   const [txHash, setTxHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
+  const [processingAsync, setProcessingAsync] = useState(false);
   const [verifiedCodes, setVerifiedCodes] = useState<{
     iccid: string;
     activationCode: string;
@@ -114,6 +115,13 @@ export default function PaymentModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Verification failed");
+
+      if (data.processing) {
+        // PikaSim is provisioning asynchronously — show processing state
+        setProcessingAsync(true);
+        return;
+      }
+
       const codes = { iccid: data.iccid, activationCode: data.activationCode, smDpAddress: data.smDpAddress ?? "" };
       setVerifiedCodes(codes);
       setStatus("confirmed");
@@ -139,13 +147,28 @@ export default function PaymentModal({
       <DialogContent className="bg-[#12122a] border-white/10 text-white max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">
-            {status === "confirmed" ? "Payment Confirmed!" : "Complete Your Payment"}
+            {processingAsync ? "eSIM Being Provisioned…" : status === "confirmed" ? "Payment Confirmed!" : "Complete Your Payment"}
           </DialogTitle>
           <DialogDescription className="text-gray-400">{packageName}</DialogDescription>
         </DialogHeader>
 
+        {/* ── Async processing ──────────────────────────────────────────── */}
+        {processingAsync && (
+          <div className="flex flex-col items-center gap-4 py-6">
+            <div className="h-16 w-16 rounded-full border-4 border-[#ff6600] border-t-transparent animate-spin" />
+            <p className="text-center text-gray-300 font-semibold">Payment verified! Provisioning your eSIM…</p>
+            <p className="text-xs text-center text-gray-400">
+              PikaSim is generating your eSIM. This takes 15–60 seconds.<br />
+              Go to <strong className="text-white">My Orders</strong> — your activation code will appear there automatically.
+            </p>
+            <Button className="bg-[#ff6600] hover:bg-[#e55c00] text-white w-full" onClick={onClose}>
+              Go to My Orders
+            </Button>
+          </div>
+        )}
+
         {/* ── Confirmed ─────────────────────────────────────────────────── */}
-        {status === "confirmed" && (
+        {!processingAsync && status === "confirmed" && (
           <div className="flex flex-col items-center gap-4 py-6">
             <CheckCircle className="h-16 w-16 text-green-400" />
             <p className="text-center text-gray-300">
@@ -196,7 +219,7 @@ export default function PaymentModal({
         )}
 
         {/* ── Expired ───────────────────────────────────────────────────── */}
-        {status === "expired" && (
+        {!processingAsync && status === "expired" && (
           <div className="flex flex-col items-center gap-4 py-6">
             <AlertCircle className="h-16 w-16 text-red-400" />
             <p className="text-center text-gray-300">
@@ -209,7 +232,7 @@ export default function PaymentModal({
         )}
 
         {/* ── Pending ───────────────────────────────────────────────────── */}
-        {status === "pending" && (
+        {!processingAsync && status === "pending" && (
           <div className="space-y-3">
             {/* Timer + network badge */}
             <div className="flex items-center justify-between text-sm">

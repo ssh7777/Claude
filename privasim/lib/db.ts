@@ -96,6 +96,21 @@ export async function getInvoicesByWalletHash(walletHash: string): Promise<Store
   );
 }
 
+export async function getInvoiceByPikaOrderId(pikaOrderId: string): Promise<StoredInvoice | null> {
+  for (const inv of invoiceStore.values()) {
+    if (inv.pika_order_id === pikaOrderId) return inv;
+  }
+  return null;
+}
+
+export async function updateInvoicePikaOrderId(invoiceId: string, pikaOrderId: string): Promise<boolean> {
+  const invoice = invoiceStore.get(invoiceId);
+  if (!invoice) return false;
+  invoice.pika_order_id = pikaOrderId;
+  invoiceStore.set(invoiceId, invoice);
+  return true;
+}
+
 export async function updateInvoiceStatus(
   invoiceId: string,
   status: "pending" | "confirmed" | "failed" | "expired",
