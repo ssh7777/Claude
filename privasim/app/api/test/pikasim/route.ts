@@ -11,13 +11,27 @@ export async function GET(req: NextRequest) {
     new URL(req.url).searchParams.get("key") ??
     "";
 
-  if (!apiKey || provided !== apiKey) {
+  if (!apiKey) {
+    return new Response(
+      `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#f90">
+        <h2 style="color:#f44">⚠ PIKASIM_API_KEY Not Configured</h2>
+        <p style="color:#fff"><strong>The PIKASIM_API_KEY environment variable is not set on this server.</strong></p>
+        <p>Go to: <strong>Vercel Dashboard → Your Project → Settings → Environment Variables</strong></p>
+        <p>Add: <code style="color:#0f0">PIKASIM_API_KEY</code> = your PikaSim reseller key (starts with <code style="color:#0f0">pk_live_</code>)</p>
+        <p>Also add: <code style="color:#0f0">PIKASIM_WEBHOOK_SECRET</code> = the webhook secret from PikaSim dashboard</p>
+        <p style="color:#aaa">After adding, click <strong>Redeploy</strong> in the Vercel dashboard.</p>
+      </body></html>`,
+      { status: 503, headers: { "Content-Type": "text/html" } }
+    );
+  }
+
+  if (provided !== apiKey) {
     return new Response(
       `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#f90">
         <h2>PikaSim Diagnostic</h2>
         <p>Open this URL in your browser:</p>
-        <code style="color:#fff">https://dpass.vercel.app/api/test/pikasim?key=YOUR_PIKASIM_API_KEY</code>
-        <p style="color:#f44">Missing or wrong key. Pass ?key=&lt;PIKASIM_API_KEY&gt; in the URL.</p>
+        <code style="color:#fff">https://claude-pqapgzaz5-guardpass.vercel.app/api/test/pikasim?key=YOUR_PIKASIM_API_KEY</code>
+        <p style="color:#f44">Wrong key. Pass ?key=&lt;PIKASIM_API_KEY&gt; in the URL (same value as the one set in Vercel).</p>
       </body></html>`,
       { status: 401, headers: { "Content-Type": "text/html" } }
     );
