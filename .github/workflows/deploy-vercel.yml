@@ -22,6 +22,11 @@ jobs:
           cd privasim
           npx vercel deploy --prod \
             --token "${{ secrets.VERCEL_TOKEN }}" \
+            --env PIKASIM_API_KEY="${{ secrets.PIKASIM_API_KEY }}" \
+            --env JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --env DB_ENCRYPTION_KEY="${{ secrets.DB_ENCRYPTION_KEY }}" \
+            --env MONERO_WEBHOOK_SECRET="${{ secrets.MONERO_WEBHOOK_SECRET }}" \
+            --env ETHEREUM_WEBHOOK_SECRET="${{ secrets.ETHEREUM_WEBHOOK_SECRET }}" \
             --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
