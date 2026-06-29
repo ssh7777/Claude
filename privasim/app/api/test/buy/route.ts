@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseMcpBody } from "@/lib/pikasim";
 
 // Test endpoint: calls PikaSim purchase_esim directly, bypassing crypto payment.
 // Use this to verify the PikaSim API key and purchase flow work before going live.
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/json, text/event-stream",
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
@@ -94,7 +95,8 @@ export async function GET(req: NextRequest) {
     });
     pikaStatus = res.status;
     const text = await res.text();
-    try { pikaRaw = JSON.parse(text); } catch { pikaRaw = text.slice(0, 1000); }
+    const env = parseMcpBody(text);
+    pikaRaw = Object.keys(env).length ? env : text.slice(0, 1000);
   } catch (err) {
     pikaError = String(err);
   }

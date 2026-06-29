@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseMcpBody } from "@/lib/pikasim";
 
 // Diagnostic endpoint — tests PikaSim API connectivity and env var setup.
 // Protected by X-Test-Key header matching PIKASIM_API_KEY so it's not open to the public.
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/json, text/event-stream",
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
@@ -69,7 +70,8 @@ export async function GET(req: NextRequest) {
 
     const text = await res.text();
     let parsed: unknown;
-    try { parsed = JSON.parse(text); } catch { parsed = text.slice(0, 500); }
+    try { parsed = Object.keys(parseMcpBody(text)).length ? parseMcpBody(text) : text.slice(0, 500); }
+    catch { parsed = text.slice(0, 500); }
 
     results.mcp_check_balance = {
       status: res.status,
@@ -86,7 +88,7 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/json, text/event-stream",
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
@@ -100,7 +102,8 @@ export async function GET(req: NextRequest) {
 
     const text = await res.text();
     let parsed: unknown;
-    try { parsed = JSON.parse(text); } catch { parsed = text.slice(0, 500); }
+    try { parsed = Object.keys(parseMcpBody(text)).length ? parseMcpBody(text) : text.slice(0, 500); }
+    catch { parsed = text.slice(0, 500); }
 
     results.mcp_tools_list = {
       status: res.status,
@@ -136,7 +139,7 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/json, text/event-stream",
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
@@ -149,7 +152,8 @@ export async function GET(req: NextRequest) {
     });
     const text = await res.text();
     let parsed: unknown;
-    try { parsed = JSON.parse(text); } catch { parsed = text.slice(0, 500); }
+    try { parsed = Object.keys(parseMcpBody(text)).length ? parseMcpBody(text) : text.slice(0, 500); }
+    catch { parsed = text.slice(0, 500); }
 
     // Expected: HTTP 200 with JSON-RPC error body (package not found) — that's a success for us.
     // If we get HTTP 401/403 → API key wrong or not set.
@@ -161,7 +165,9 @@ export async function GET(req: NextRequest) {
       note: res.status === 401 || res.status === 403
         ? "AUTH FAILED — check PIKASIM_API_KEY"
         : res.status === 404
-        ? "WRONG ENDPOINT — /agentic-esim not found"
+        ? "WRONG ENDPOINT — /mcp not found"
+        : res.status === 406
+        ? "ACCEPT HEADER REJECTED — must send application/json + text/event-stream"
         : "Endpoint reachable — see response for tool result",
       response: parsed,
     };

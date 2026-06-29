@@ -15,6 +15,28 @@ function getApiKey(): string {
 
 // ── MCP JSON-RPC 2.0 transport ──────────────────────────────────────────────
 
+// MCP Streamable HTTP may reply with either a plain JSON body or an
+// SSE stream (text/event-stream) whose `data:` lines carry the JSON-RPC
+// payload. This parses both into the JSON-RPC envelope.
+export function parseMcpBody(text: string): { result?: unknown; error?: { message?: string; code?: number } } {
+  const trimmed = text.trim();
+  if (!trimmed) return {};
+  // Plain JSON
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try { return JSON.parse(trimmed); } catch { /* fall through to SSE */ }
+  }
+  // SSE: collect the last non-empty `data:` line that parses as JSON
+  let parsed: { result?: unknown; error?: { message?: string; code?: number } } = {};
+  for (const line of trimmed.split(/\r?\n/)) {
+    const m = line.match(/^data:\s*(.*)$/);
+    if (!m) continue;
+    const payload = m[1].trim();
+    if (!payload || payload === "[DONE]") continue;
+    try { parsed = JSON.parse(payload); } catch { /* keep previous */ }
+  }
+  return parsed;
+}
+
 async function callMCP(toolName: string, args: Record<string, unknown>): Promise<unknown> {
   const body = {
     jsonrpc: "2.0",
@@ -27,19 +49,20 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      "Accept": "application/json, text/event-stream",
       "Authorization": `Bearer ${getApiKey()}`,
     },
     body: JSON.stringify(body),
     cache: "no-store",
   });
 
+  const rawText = await response.text();
+
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`PikaSim MCP ${response.status}: ${text.slice(0, 300)}`);
+    throw new Error(`PikaSim MCP ${response.status}: ${rawText.slice(0, 300)}`);
   }
 
-  const json = await response.json() as {
+  const json = parseMcpBody(rawText) as {
     result?: unknown;
     error?: { message?: string; code?: number };
   };
