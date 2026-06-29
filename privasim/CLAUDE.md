@@ -64,8 +64,8 @@ PikaSim API (`pikasim.com`) is **blocked by the cloud sandbox egress proxy**. AP
 
 ## Deployment Status
 - Code: complete, builds clean, all 22 routes
-- Deployed: NOT YET — needs Vercel token from user
-- To deploy: `vercel --token <TOKEN> --cwd /home/user/Claude/privasim`
+- Deployed: YES — https://privasim-two.vercel.app
+- Auto-deploys via GitHub Actions on push to main (.github/workflows/deploy-vercel.yml)
 
 ## What's NOT Implemented (intentional)
 - No order history persistence (in-memory only, resets on redeploy)
