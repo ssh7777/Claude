@@ -1,0 +1,30 @@
+name: Check ETH wallet for incoming payment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recent transactions to PRIVASIM ETH wallet
+        run: |
+          ADDR="0x87176027Cc61d260926dAAe68551e246260dc30E"
+          echo "===== Etherscan txlist (latest 5) ====="
+          curl -sS "https://api.etherscan.io/api?module=account&action=txlist&address=$ADDR&sort=desc&page=1&offset=5" \
+            | python3 -c "
+          import sys, json, datetime
+          j = json.load(sys.stdin)
+          txs = j.get('result', [])
+          if not isinstance(txs, list):
+            print('API said:', j.get('message'), txs); sys.exit(0)
+          for t in txs:
+            eth = int(t['value']) / 1e18
+            ts = datetime.datetime.utcfromtimestamp(int(t['timeStamp'])).isoformat()
+            print(f\"hash={t['hash']}\")
+            print(f\"  time={ts}Z from={t['from']}\")
+            print(f\"  to={t['to']} value={eth:.8f} ETH conf={t['confirmations']} status={'OK' if t.get('txreceipt_status')=='1' else t.get('txreceipt_status')}\")
+          "
+          echo "===== Current balance ====="
+          curl -sS "https://api.etherscan.io/api?module=account&action=balance&address=$ADDR&tag=latest" \
+            | python3 -c "import sys,json; j=json.load(sys.stdin); print(int(j['result'])/1e18 if str(j.get('result','')).isdigit() else j, 'ETH')"
