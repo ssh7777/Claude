@@ -1,0 +1,75 @@
+name: Probe PikaSim docs and live site
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch PikaSim docs pages as text
+        run: |
+          for url in \
+            "https://pikasim.com/api-docs-for-ai" \
+            "https://pikasim.com/reseller/api-docs"; do
+            echo "===================== $url ====================="
+            curl -sL "$url" | python3 -c "
+          import sys, html, re
+          t = sys.stdin.read()
+          t = re.sub(r'<script[\s\S]*?</script>', ' ', t)
+          t = re.sub(r'<style[\s\S]*?</style>', ' ', t)
+          t = re.sub(r'<[^>]+>', ' ', t)
+          t = html.unescape(t)
+          t = re.sub(r'[ \t]+', ' ', t)
+          t = re.sub(r'\n\s*\n+', '\n', t)
+          print(t[:60000])
+          "
+          done
+
+      - name: MCP tools/list (authenticated)
+        run: |
+          echo "===== tools/list ====="
+          curl -sS -X POST https://pikasim.com/mcp \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -H "Authorization: Bearer $PIKASIM_API_KEY" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 20000
+          echo
+          echo "===== check_balance ====="
+          curl -sS -X POST https://pikasim.com/mcp \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -H "Authorization: Bearer $PIKASIM_API_KEY" \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"check_balance","arguments":{}}}' | head -c 5000
+        env:
+          PIKASIM_API_KEY: ${{ secrets.PIKASIM_API_KEY }}
+
+      - name: Smoke-test live site routes
+        run: |
+          BASE="https://privasim-two.vercel.app"
+          for path in / /shop /shop/JP /blog /orders /privacy /sitemap.xml /robots.txt /llms.txt /api/blog /nonexistent-page; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" "$BASE$path")
+            bytes=$(wc -c </tmp/body)
+            echo "[$code] $path (${bytes}B)"
+          done
+          echo "===== /api/blog body ====="
+          curl -s "$BASE/api/blog" | head -c 3000
+          echo
+          echo "===== blog slugs reachable? ====="
+          curl -s "$BASE/api/blog" | python3 -c "
+          import sys, json
+          try:
+            j = json.load(sys.stdin)
+            posts = j.get('posts', j if isinstance(j, list) else [])
+            for p in posts[:20]:
+              print(p.get('slug'))
+          except Exception as e:
+            print('parse error', e)
+          " > /tmp/slugs
+          cat /tmp/slugs
+          while read -r slug; do
+            [ -z "$slug" ] && continue
+            code=$(curl -s -o /tmp/body -w "%{http_code}" "$BASE/blog/$slug")
+            bytes=$(wc -c </tmp/body)
+            echo "[$code] /blog/$slug (${bytes}B)"
+          done < /tmp/slugs

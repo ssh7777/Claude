@@ -38,6 +38,7 @@ export default async function BlogPage() {
                 <span className="text-xs text-[#ff6600] font-medium mb-2 block">Featured</span>
               )}
               <h2 className="text-lg font-bold text-white mb-2">{post.title}</h2>
+              <p className="text-sm text-gray-400 mb-3 line-clamp-2">{post.excerpt}</p>
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <Clock className="h-3 w-3" />
                 {new Date(post.published_at).toLocaleDateString("en-US", {

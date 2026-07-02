@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
+import { countryName } from "@/lib/countries";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 
 export const revalidate = 300;
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
 
 interface PageProps {
   params: { country: string };
@@ -15,9 +18,21 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const countryCode = params.country.toUpperCase();
+  const name = countryName(countryCode);
   return {
-    title: `eSIMs for ${countryCode}`,
-    description: `Buy anonymous eSIM data and phone plans for ${countryCode} with Monero or Ethereum.`,
+    title: `${name} eSIM — Anonymous Data Plans, No KYC`,
+    description: `Buy a prepaid ${name} eSIM with Monero or Ethereum. Instant QR delivery, no account, no ID, no KYC. Data plans from $3 for ${name} travel.`,
+    keywords: [
+      `${name} esim`, `esim for ${name}`, `${name} travel data`,
+      `anonymous esim ${name}`, `buy ${name} esim crypto`, `${name} prepaid data`,
+    ],
+    alternates: { canonical: `${APP_URL}/shop/${countryCode}` },
+    openGraph: {
+      title: `${name} eSIM — Anonymous Data Plans`,
+      description: `Prepaid ${name} eSIM. Pay with Monero or Ethereum, no KYC, instant delivery.`,
+      url: `${APP_URL}/shop/${countryCode}`,
+      siteName: "PRIVASIM",
+    },
   };
 }
 
@@ -38,10 +53,39 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
 
   const dataPackages = packages.filter((p) => p.type === "data");
   const phonePackages = packages.filter((p) => p.type === "phone");
-  const countryName = packages[0]?.country ?? countryCode;
+  const displayName = packages[0]?.country || countryName(countryCode);
+
+  const jsonLd = packages.length > 0 && {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${displayName} eSIM plans`,
+    numberOfItems: packages.length,
+    itemListElement: packages.slice(0, 20).map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: p.name,
+        description: `${p.dataAmount} eSIM data plan for ${displayName}, valid ${p.durationDays} days. Anonymous purchase with Monero or Ethereum.`,
+        offers: {
+          "@type": "Offer",
+          price: (Math.ceil(p.priceUsd * 1.5 * 100) / 100).toFixed(2),
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: `${APP_URL}/checkout/${p.code}`,
+        },
+      },
+    })),
+  };
 
   return (
     <div className="container py-12">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <div className="mb-8">
         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white mb-4" asChild>
           <Link href="/shop">
@@ -54,13 +98,13 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`}
-            alt={countryName}
+            alt={displayName}
             width={56}
             height={40}
             className="rounded object-cover"
           />
           <div>
-            <h1 className="text-3xl font-black text-white">{countryName}</h1>
+            <h1 className="text-3xl font-black text-white">{displayName}</h1>
             <p className="text-gray-400">
               {dataPackages.length} data plans &bull; {phonePackages.length} phone plans
             </p>

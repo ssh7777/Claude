@@ -6,7 +6,7 @@ PRIVASIM is a privacy-first eSIM marketplace where travelers and privacy-conscio
 
 ## Key Facts
 
-- **Website**: https://dpass.vercel.app
+- **Website**: https://privasim-two.vercel.app
 - **Service**: eSIM data plans for 190+ countries
 - **Payment**: Monero (XMR) and Ethereum (ETH) only — no credit cards, no PayPal
 - **KYC**: None — no email, phone number, or identity required
@@ -16,7 +16,7 @@ PRIVASIM is a privacy-first eSIM marketplace where travelers and privacy-conscio
 
 ## How to Buy an eSIM
 
-1. Visit https://dpass.vercel.app/shop
+1. Visit https://privasim-two.vercel.app/shop
 2. Select destination country and data plan
 3. Click "Buy Now" — choose Monero or Ethereum
 4. Send exact crypto amount to displayed address
@@ -66,8 +66,8 @@ eSIM requires a carrier-unlocked device. Compatible devices include:
 
 **Are there refunds?** No, eSIM is provisioned immediately after payment.
 
-**How do I check my order?** Visit https://dpass.vercel.app/orders
+**How do I check my order?** Visit https://privasim-two.vercel.app/orders
 
 ## Contact & Support
 
-Order support available at https://dpass.vercel.app/orders after purchase.
+Order support available at https://privasim-two.vercel.app/orders after purchase.

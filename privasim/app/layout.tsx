@@ -9,7 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://dpass.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
 
 export const viewport: Viewport = {
   width: "device-width",

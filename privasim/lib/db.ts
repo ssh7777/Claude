@@ -158,46 +158,5 @@ export async function getOrderById(orderId: string) {
   return getInvoiceById(orderId);
 }
 
-const BLOG_POSTS = [
-  {
-    id: "1",
-    slug: "why-privacy-matters-esim",
-    title: "Why Privacy Matters When Buying an eSIM",
-    published_at: "2024-11-01T00:00:00Z",
-    featured: true,
-    content:
-      "Traditional eSIM providers require your passport, email address, and payment card — all permanently tied to your identity. PRIVASIM changes this by accepting only Monero and Ethereum, with zero KYC requirements and no personal data stored.",
-    excerpt:
-      "Traditional eSIM providers require your passport, email, and payment card. PRIVASIM changes this completely.",
-  },
-  {
-    id: "2",
-    slug: "monero-vs-ethereum-payments",
-    title: "Monero vs Ethereum: Which Payment Is More Private?",
-    published_at: "2024-11-15T00:00:00Z",
-    featured: false,
-    content:
-      "Monero (XMR) provides the strongest privacy guarantees with stealth addresses, ring signatures, and RingCT — transactions are unlinkable and untraceable by design. Ethereum transactions are visible on-chain but still avoid the direct identity linkage that comes with credit cards.",
-    excerpt:
-      "Monero provides the strongest privacy guarantees. Ethereum transactions are public but avoid identity linkage.",
-  },
-  {
-    id: "3",
-    slug: "how-esim-works-privacy",
-    title: "How eSIM Technology Works and What Data It Exposes",
-    published_at: "2024-12-01T00:00:00Z",
-    featured: false,
-    content:
-      "An eSIM (embedded SIM) stores carrier profile data digitally instead of on a physical chip. Your ICCID and IMSI are known to the carrier network, but with PRIVASIM your purchase itself remains fully anonymous — we store only an encrypted ICCID, never linked to your identity.",
-    excerpt:
-      "An eSIM stores carrier data digitally. Your ICCID is known to the carrier, but your purchase stays anonymous.",
-  },
-];
-
-export async function getBlogPosts(limit = 20, offset = 0) {
-  return BLOG_POSTS.slice(offset, offset + limit);
-}
-
-export async function getBlogPostBySlug(slug: string) {
-  return BLOG_POSTS.find((p) => p.slug === slug) ?? null;
-}
+// Blog content lives in lib/blog.ts (static, git-versioned).
+export { getBlogPosts, getBlogPostBySlug, getAllBlogSlugs } from "@/lib/blog";
