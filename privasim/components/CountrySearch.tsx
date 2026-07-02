@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Flag from "@/components/Flag";
 
 const POPULAR_COUNTRIES = [
   { code: "JP", name: "Japan" },
@@ -86,14 +87,7 @@ export default function CountrySearch() {
                 onClick={() => handleCountryClick(country.code)}
                 className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 transition-colors text-left"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
-                  alt={country.name}
-                  width={24}
-                  height={16}
-                  className="rounded-sm object-cover shrink-0"
-                />
+                <Flag code={country.code} className="text-xl shrink-0" />
                 <div>
                   <div className="text-sm text-white">{country.name}</div>
                   <div className="text-xs text-gray-400">{country.code}</div>

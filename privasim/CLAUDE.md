@@ -67,7 +67,18 @@ PikaSim API (`pikasim.com`) is **blocked by the cloud sandbox egress proxy**. AP
 - Deployed: YES — https://privasim-two.vercel.app
 - Auto-deploys via GitHub Actions on push to main (.github/workflows/deploy-vercel.yml)
 
+## PikaSim MCP — Verified Facts (from live tools/list probe)
+- 15 tools; our pk_live_ reseller key works as an agent-wallet key
+- Purchase tools: `purchase_esim` (data ONLY) and `purchase_phone_plan`
+  (phone-plan codes are INVALID in purchase_esim — lib/pikasim.ts handles both)
+- `get_topup_options(iccid)` REQUIRED before `topup_esim` — top-up codes
+  differ from purchase codes
+- Tool results come as TEXT content blocks (prose like "Wallet Balance:
+  $10.00 USD"), not JSON — lib/pikasim.ts extracts via regex (__rawText path)
+- Responses are SSE (`event: message` / `data: {...}`) — parseMcpBody handles it
+- Wallet balance funds purchases; top up at pikasim.com/reseller/dashboard
+
 ## What's NOT Implemented (intentional)
-- No order history persistence (in-memory only, resets on redeploy)
-- No automated payment confirmation → eSIM delivery pipeline (manual via PikaSim dashboard)
+- No order history persistence (in-memory only, resets on redeploy);
+  client keeps order data in localStorage and can re-claim via TX hash
 - No Monero full signature verification (accepted if format valid; TODO for production)

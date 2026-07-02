@@ -75,7 +75,7 @@ const RULES: Rule[] = [
       "Installing your eSIM (needs Wi-Fi):\n\n**iPhone:** Settings → Cellular → Add eSIM → scan the QR code\n**Android:** Settings → Network → SIMs → Add eSIM → scan the QR\n\nThen enable **data roaming** for the new line when you arrive. Activation codes are single-use — don't share them. Full guide: [/blog/esim-installation-guide](/blog/esim-installation-guide).",
   },
   {
-    test: /\b(order|status|track|where.{0,15}(esim|order)|not (arriv|receiv|deliver)|still waiting|didn'?t (get|arrive|come))\b/i,
+    test: /\b(order|status|track|where.{0,15}(esim|order)|not?t? (arriv|receiv|deliver)\w*|still waiting|didn'?t (get|arrive|come)|paid but)\b/i,
     reply:
       "Track your order at [/orders](/orders) — it's stored in your browser, no account needed.\n\n• **Pending** — waiting for blockchain confirmation (~30s ETH, 2–10 min XMR)\n• **Processing** — payment confirmed, eSIM being provisioned (30–60s)\n• **Delivered** — QR code and activation code shown\n\nIf you paid but see nothing after 10 minutes, open your order and paste your transaction hash to claim delivery.",
   },

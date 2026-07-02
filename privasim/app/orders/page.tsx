@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
+import Flag from "@/components/Flag";
 
 const ORDERS_KEY = "privasim_orders";
 
@@ -236,14 +237,7 @@ function OrderRow({
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://flagcdn.com/w20/${order.countryCode.toLowerCase()}.png`}
-                alt={order.country}
-                width={16}
-                height={12}
-                className="rounded-sm shrink-0"
-              />
+              <Flag code={order.countryCode} className="text-base shrink-0" />
               <span className="font-semibold text-white text-sm truncate">{order.packageName}</span>
             </div>
             <StatusBadge status={currentStatus} />

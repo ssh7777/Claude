@@ -3,6 +3,7 @@ import { Wifi, Phone, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Flag from "@/components/Flag";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
 import type { EsimPackage } from "@/types";
 
@@ -16,14 +17,7 @@ export default function EsimCard({ pkg }: EsimCardProps) {
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`https://flagcdn.com/w40/${pkg.countryCode.toLowerCase()}.png`}
-              alt={pkg.country}
-              width={28}
-              height={20}
-              className="rounded-sm object-cover shrink-0"
-            />
+            <Flag code={pkg.countryCode} className="text-2xl shrink-0" />
             <div>
               <div className="text-xs text-gray-400 uppercase tracking-wide">{pkg.countryCode}</div>
               <div className="text-sm font-medium text-white truncate max-w-[160px]">

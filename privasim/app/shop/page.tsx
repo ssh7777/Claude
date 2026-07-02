@@ -4,6 +4,7 @@ import { Globe } from "lucide-react";
 import CountrySearch from "@/components/CountrySearch";
 import EsimCard from "@/components/EsimCard";
 import { searchEsimPackages } from "@/lib/pikasim";
+import Flag from "@/components/Flag";
 
 export const metadata: Metadata = {
   title: "Browse eSIMs",
@@ -150,14 +151,7 @@ export default async function ShopPage() {
                   href={`/shop/${c.code}`}
                   className="flex flex-col items-center p-3 bg-white/4 border border-white/8 rounded-lg hover:border-[#ff6600]/40 hover:bg-white/8 transition-all text-center group"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`https://flagcdn.com/w40/${c.code.toLowerCase()}.png`}
-                    alt={c.name}
-                    width={32}
-                    height={22}
-                    className="mb-1.5 rounded-sm object-cover"
-                  />
+                  <Flag code={c.code} className="text-3xl mb-1.5" />
                   <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
                     {c.name}
                   </span>

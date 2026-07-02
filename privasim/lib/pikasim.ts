@@ -71,18 +71,46 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
     throw new Error(`PikaSim tool error: ${json.error.message ?? JSON.stringify(json.error)}`);
   }
 
-  // MCP may wrap the payload in content blocks: { result: { content: [{ type:"text", text:"{...}" }] } }
-  // Or it may return the payload directly: { result: { iccid: "...", ... } }
+  // MCP wraps the payload in content blocks: { result: { content: [{ type:"text", text:"..." }] } }
+  // The text may be JSON or free-form prose ("Wallet Balance: $10.00 USD").
+  // Return parsed JSON when possible, otherwise { __rawText } for regex extraction.
   const result = json.result as Record<string, unknown> | undefined;
   if (result && Array.isArray(result.content)) {
     const textBlock = (result.content as { type: string; text?: string }[])
       .find((b) => b.type === "text" && b.text);
     if (textBlock?.text) {
-      try { return JSON.parse(textBlock.text); } catch { return textBlock.text; }
+      try { return JSON.parse(textBlock.text); } catch { return { __rawText: textBlock.text }; }
     }
   }
 
   return result ?? json;
+}
+
+// ── Free-text extraction (PikaSim MCP answers in prose) ────────────────────
+
+function extractIccid(text: string): string | undefined {
+  return text.match(/\b(89\d{17,18})\b/)?.[1];
+}
+
+function extractLpa(text: string): { activationCode?: string; smDpAddress?: string } {
+  // Full LPA string: LPA:1$smdp.example.com$ACTIVATION-CODE
+  const lpa = text.match(/LPA:1\$([^$\s]+)\$([A-Za-z0-9._-]+)/i);
+  if (lpa) return { smDpAddress: lpa[1], activationCode: `LPA:1$${lpa[1]}$${lpa[2]}` };
+  const smdp = text.match(/SM-?DP\+?(?:\s*Address)?\s*[:=]\s*([^\s,]+)/i)?.[1];
+  const code = text.match(/Activation\s*Code\s*[:=]\s*([^\s,]+)/i)?.[1];
+  return { smDpAddress: smdp, activationCode: code };
+}
+
+function extractOrderId(text: string): string | undefined {
+  return (
+    text.match(/Order\s*(?:ID|#)?\s*[:=]?\s*([A-Za-z0-9_-]{6,})/i)?.[1] ??
+    text.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)?.[1]
+  );
+}
+
+function extractUsd(text: string): number | undefined {
+  const m = text.match(/\$\s*([\d,]+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1].replace(/,/g, "")) : undefined;
 }
 
 // ── REST GET transport (package listing only) ─────────────────────────────
@@ -213,8 +241,12 @@ export async function getPackageDetails(packageCode: string): Promise<EsimPackag
 
 export async function checkAgentBalance(): Promise<{ balanceUsd: number }> {
   const result = await callMCP("check_balance", {}) as {
-    balanceUsd?: number; balance?: number; balance_usd?: number;
+    balanceUsd?: number; balance?: number; balance_usd?: number; __rawText?: string;
   };
+  if (result.__rawText) {
+    // e.g. "Wallet Balance: $10.00 USD"
+    return { balanceUsd: extractUsd(result.__rawText) ?? 0 };
+  }
   return { balanceUsd: result.balanceUsd ?? result.balance_usd ?? result.balance ?? 0 };
 }
 
@@ -224,8 +256,27 @@ function normalizeStr(v: unknown): string | undefined {
   return s || undefined;
 }
 
-export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchaseResult> {
-  const raw = await callMCP("purchase_esim", { packageCode }) as Record<string, unknown>;
+function parsePurchaseResult(raw: Record<string, unknown>): PikaSimPurchaseResult {
+  // Prose response — extract ICCID / LPA / order ID with regexes
+  if (typeof raw.__rawText === "string") {
+    const text = raw.__rawText;
+    const iccid = extractIccid(text);
+    const { activationCode, smDpAddress } = extractLpa(text);
+    const orderId = extractOrderId(text);
+    const qrCodeUrl = text.match(/https?:\/\/\S*(?:qr|install)\S*/i)?.[0];
+
+    if (!orderId && !iccid) {
+      throw new Error(`eSIM purchase returned no usable data: ${text.slice(0, 400)}`);
+    }
+    return {
+      orderId: orderId ?? "",
+      iccid: iccid ?? "",
+      activationCode: activationCode ?? "",
+      smDpAddress: smDpAddress ?? "",
+      status: iccid ? "completed" : "processing",
+      qrCodeUrl,
+    };
+  }
 
   const iccid = normalizeStr(raw.iccid ?? raw.ICCID);
   const activationCode = normalizeStr(
@@ -255,8 +306,24 @@ export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchase
   };
 }
 
+export async function purchaseEsim(packageCode: string): Promise<PikaSimPurchaseResult> {
+  try {
+    const raw = await callMCP("purchase_esim", { packageCode }) as Record<string, unknown>;
+    return parsePurchaseResult(raw);
+  } catch (err) {
+    // Phone-plan codes are rejected by purchase_esim — retry with the phone tool.
+    const msg = err instanceof Error ? err.message : "";
+    if (/phone|not valid|invalid package/i.test(msg)) {
+      const raw = await callMCP("purchase_phone_plan", { packageCode }) as Record<string, unknown>;
+      return parsePurchaseResult(raw);
+    }
+    throw err;
+  }
+}
+
 export async function purchasePhonePlan(packageCode: string): Promise<PikaSimPurchaseResult> {
-  return purchaseEsim(packageCode);
+  const raw = await callMCP("purchase_phone_plan", { packageCode }) as Record<string, unknown>;
+  return parsePurchaseResult(raw);
 }
 
 export async function getEsimStatus(iccid: string): Promise<{
@@ -264,6 +331,7 @@ export async function getEsimStatus(iccid: string): Promise<{
   dataUsedGb: number;
   dataRemainingGb: number;
   expiresAt: string;
+  summary?: string;
 }> {
   const result = await callMCP("get_esim_status", { iccid }) as {
     status?: string;
@@ -273,7 +341,26 @@ export async function getEsimStatus(iccid: string): Promise<{
     data_remaining_gb?: number;
     expiresAt?: string;
     expires_at?: string;
+    __rawText?: string;
   };
+
+  if (result.__rawText) {
+    const text = result.__rawText;
+    const gb = (label: RegExp) => {
+      const m = text.match(label);
+      if (!m) return 0;
+      const n = parseFloat(m[1]);
+      return /mb/i.test(m[2] ?? "") ? n / 1024 : n;
+    };
+    return {
+      status: text.match(/status\s*[:=]?\s*(\w+)/i)?.[1]?.toLowerCase() ?? "active",
+      dataUsedGb: gb(/used[^\d]{0,12}([\d.]+)\s*(GB|MB)/i),
+      dataRemainingGb: gb(/remaining[^\d]{0,12}([\d.]+)\s*(GB|MB)/i),
+      expiresAt: text.match(/expir\w*\s*[:=]?\s*([\d]{4}-[\d]{2}-[\d]{2}[^\s,]*)/i)?.[1] ?? "",
+      summary: text,
+    };
+  }
+
   return {
     status: result.status ?? "unknown",
     dataUsedGb: result.dataUsed ?? result.data_used_gb ?? 0,
@@ -282,9 +369,34 @@ export async function getEsimStatus(iccid: string): Promise<{
   };
 }
 
-export async function topupEsim(iccid: string, packageCode: string): Promise<boolean> {
-  await callMCP("topup_esim", { iccid, packageCode });
-  return true;
+// List valid top-up packages for an existing eSIM. Top-up codes differ from
+// new-purchase codes — always call this before topupEsim.
+export async function getTopupOptions(iccid: string): Promise<{
+  options: { packageCode: string; name?: string; priceUsd?: number }[];
+  summary?: string;
+}> {
+  const result = await callMCP("get_topup_options", { iccid }) as {
+    options?: { packageCode: string; name?: string; priceUsd?: number }[];
+    packages?: { packageCode: string; name?: string; priceUsd?: number }[];
+    __rawText?: string;
+  };
+
+  if (result.__rawText) {
+    const text = result.__rawText;
+    // Package codes are shown in [brackets] by MCP tools
+    const codes = [...text.matchAll(/\[([A-Za-z0-9._-]{3,})\]/g)].map((m) => m[1]);
+    return {
+      options: codes.map((packageCode) => ({ packageCode })),
+      summary: text,
+    };
+  }
+
+  return { options: result.options ?? result.packages ?? [] };
+}
+
+export async function topupEsim(iccid: string, packageCode: string): Promise<{ success: boolean; summary?: string }> {
+  const result = await callMCP("topup_esim", { iccid, packageCode }) as { __rawText?: string };
+  return { success: true, summary: result.__rawText };
 }
 
 export async function cancelEsim(iccid: string): Promise<boolean> {
@@ -292,7 +404,11 @@ export async function cancelEsim(iccid: string): Promise<boolean> {
   return true;
 }
 
-export async function listAgentOrders(page = 1, limit = 50): Promise<unknown[]> {
-  const result = await callMCP("list_orders", { page, limit }) as { orders?: unknown[] };
-  return result.orders ?? [];
+export async function listAgentOrders(page = 1, limit = 50): Promise<{ orders: unknown[]; summary?: string }> {
+  const result = await callMCP("list_orders", { page, limit }) as {
+    orders?: unknown[];
+    __rawText?: string;
+  };
+  if (result.__rawText) return { orders: [], summary: result.__rawText };
+  return { orders: result.orders ?? [] };
 }

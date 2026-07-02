@@ -6,6 +6,7 @@ import { searchEsimPackages } from "@/lib/pikasim";
 import { countryName } from "@/lib/countries";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
+import Flag from "@/components/Flag";
 
 export const revalidate = 300;
 
@@ -95,14 +96,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
         </Button>
 
         <div className="flex items-center gap-3 mb-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`}
-            alt={displayName}
-            width={56}
-            height={40}
-            className="rounded object-cover"
-          />
+          <Flag code={countryCode} className="text-5xl" />
           <div>
             <h1 className="text-3xl font-black text-white">{displayName}</h1>
             <p className="text-gray-400">

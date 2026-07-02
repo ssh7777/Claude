@@ -17,7 +17,7 @@ const nextConfig = {
             "default-src 'self'",
             "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https://flagcdn.com",
+            "img-src 'self' data: blob:",
             "font-src 'self'",
             "connect-src 'self' https://pikasim.com https://va.vercel-insights.com https://api.coingecko.com",
             "frame-ancestors 'none'",
