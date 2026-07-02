@@ -10,21 +10,22 @@ jobs:
       - name: Recent transactions to PRIVASIM ETH wallet
         run: |
           ADDR="0x87176027Cc61d260926dAAe68551e246260dc30E"
-          echo "===== Etherscan txlist (latest 5) ====="
-          curl -sS "https://api.etherscan.io/api?module=account&action=txlist&address=$ADDR&sort=desc&page=1&offset=5" \
+          echo "===== Blockscout: latest transactions ====="
+          curl -sS "https://eth.blockscout.com/api/v2/addresses/$ADDR/transactions?filter=to" \
             | python3 -c "
-          import sys, json, datetime
+          import sys, json
           j = json.load(sys.stdin)
-          txs = j.get('result', [])
-          if not isinstance(txs, list):
-            print('API said:', j.get('message'), txs); sys.exit(0)
-          for t in txs:
-            eth = int(t['value']) / 1e18
-            ts = datetime.datetime.utcfromtimestamp(int(t['timeStamp'])).isoformat()
-            print(f\"hash={t['hash']}\")
-            print(f\"  time={ts}Z from={t['from']}\")
-            print(f\"  to={t['to']} value={eth:.8f} ETH conf={t['confirmations']} status={'OK' if t.get('txreceipt_status')=='1' else t.get('txreceipt_status')}\")
+          items = j.get('items', [])
+          if not items:
+            print('No incoming transactions found.', j.get('message',''))
+          for t in items[:5]:
+            eth = int(t.get('value','0')) / 1e18
+            print(f\"hash={t.get('hash')}\")
+            print(f\"  time={t.get('timestamp')} from={t.get('from',{}).get('hash')}\")
+            print(f\"  value={eth:.8f} ETH status={t.get('status')} block={t.get('block_number')}\")
           "
-          echo "===== Current balance ====="
-          curl -sS "https://api.etherscan.io/api?module=account&action=balance&address=$ADDR&tag=latest" \
-            | python3 -c "import sys,json; j=json.load(sys.stdin); print(int(j['result'])/1e18 if str(j.get('result','')).isdigit() else j, 'ETH')"
+          echo "===== Current balance (publicnode RPC) ====="
+          curl -sS -X POST https://ethereum-rpc.publicnode.com \
+            -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBalance\",\"params\":[\"$ADDR\",\"latest\"]}" \
+            | python3 -c "import sys,json; j=json.load(sys.stdin); print(int(j.get('result','0x0'),16)/1e18, 'ETH')"
