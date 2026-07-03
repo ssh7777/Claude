@@ -7,69 +7,66 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch PikaSim docs pages as text
+      - name: REST API discovery — package structure, regions, phone/global plans
         run: |
-          for url in \
-            "https://pikasim.com/api-docs-for-ai" \
-            "https://pikasim.com/reseller/api-docs"; do
-            echo "===================== $url ====================="
-            curl -sL "$url" | python3 -c "
-          import sys, html, re
-          t = sys.stdin.read()
-          t = re.sub(r'<script[\s\S]*?</script>', ' ', t)
-          t = re.sub(r'<style[\s\S]*?</style>', ' ', t)
-          t = re.sub(r'<[^>]+>', ' ', t)
-          t = html.unescape(t)
-          t = re.sub(r'[ \t]+', ' ', t)
-          t = re.sub(r'\n\s*\n+', '\n', t)
-          print(t[:60000])
+          echo "===== sample package objects (first 2, full fields) ====="
+          curl -sS "https://pikasim.com/api/packages/all-countries" \
+            | python3 -c "
+          import sys, json
+          j = json.load(sys.stdin)
+          pkgs = j.get('packages', [])
+          print('total packages:', len(pkgs))
+          print(json.dumps(pkgs[:2], indent=1)[:3000])
+          types = {}
+          locs = {}
+          for p in pkgs:
+            t = p.get('dataType') or p.get('type') or '?'
+            types[t] = types.get(t, 0) + 1
+            lc = p.get('locationCode') or p.get('destinationCode') or '?'
+            locs[lc] = locs.get(lc, 0) + 1
+          print('by type:', types)
+          print('distinct locations:', len(locs))
+          print('global-ish keys:', {k: v for k, v in locs.items() if not (len(k) == 2 and k.isalpha())})
           "
+          echo "===== try region/global endpoints ====="
+          for u in \
+            "https://pikasim.com/api/packages/global" \
+            "https://pikasim.com/api/packages/region/global" \
+            "https://pikasim.com/api/packages/all-countries?region=global" \
+            "https://pikasim.com/api/packages/all-countries?regionSlug=global" \
+            "https://pikasim.com/api/phone-plans" \
+            "https://pikasim.com/api/packages/phone" \
+            "https://pikasim.com/api/packages/all-countries?type=phone"; do
+            code=$(curl -s -o /tmp/r -w "%{http_code}" "$u")
+            size=$(wc -c < /tmp/r)
+            summary=$(python3 -c "
+          import json
+          try:
+            j = json.load(open('/tmp/r'))
+            p = j.get('packages', j if isinstance(j, list) else [])
+            print(f'{len(p)} pkgs' if isinstance(p, list) else str(j)[:120])
+          except Exception:
+            print(open('/tmp/r').read()[:100].replace(chr(10), ' '))
+          ")
+            echo "[$code] $u (${size}B) -> $summary"
           done
-
-      - name: MCP tools/list (authenticated)
-        run: |
-          echo "===== tools/list ====="
+          echo "===== MCP search: global phone plans (public tool) ====="
           curl -sS -X POST https://pikasim.com/mcp \
             -H "Content-Type: application/json" \
             -H "Accept: application/json, text/event-stream" \
-            -H "Authorization: Bearer $PIKASIM_API_KEY" \
-            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 20000
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_phone_plans","arguments":{"region":"Global"}}}' | head -c 6000
           echo
-          echo "===== check_balance ====="
+          echo "===== MCP search: region Global data ====="
           curl -sS -X POST https://pikasim.com/mcp \
             -H "Content-Type: application/json" \
             -H "Accept: application/json, text/event-stream" \
-            -H "Authorization: Bearer $PIKASIM_API_KEY" \
-            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"check_balance","arguments":{}}}' | head -c 5000
-        env:
-          PIKASIM_API_KEY: ${{ secrets.PIKASIM_API_KEY }}
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_esim_packages","arguments":{"region":"Global"}}}' | head -c 4000
 
       - name: Smoke-test live site routes
         run: |
           BASE="https://privasim-two.vercel.app"
-          for path in / /shop /shop/JP /blog /orders /privacy /sitemap.xml /robots.txt /llms.txt /api/blog /nonexistent-page; do
+          for path in / /shop /shop/JP /blog /orders /privacy /guide /topup /sitemap.xml; do
             code=$(curl -s -o /tmp/body -w "%{http_code}" "$BASE$path")
             bytes=$(wc -c </tmp/body)
             echo "[$code] $path (${bytes}B)"
           done
-          echo "===== /api/blog body ====="
-          curl -s "$BASE/api/blog" | head -c 3000
-          echo
-          echo "===== blog slugs reachable? ====="
-          curl -s "$BASE/api/blog" | python3 -c "
-          import sys, json
-          try:
-            j = json.load(sys.stdin)
-            posts = j.get('posts', j if isinstance(j, list) else [])
-            for p in posts[:20]:
-              print(p.get('slug'))
-          except Exception as e:
-            print('parse error', e)
-          " > /tmp/slugs
-          cat /tmp/slugs
-          while read -r slug; do
-            [ -z "$slug" ] && continue
-            code=$(curl -s -o /tmp/body -w "%{http_code}" "$BASE/blog/$slug")
-            bytes=$(wc -c </tmp/body)
-            echo "[$code] /blog/$slug (${bytes}B)"
-          done < /tmp/slugs
