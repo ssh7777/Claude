@@ -1,0 +1,65 @@
+name: Set Vercel project env vars permanently
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setenv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write all production env vars to the privasim project
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+          PIKASIM_API_KEY: ${{ secrets.PIKASIM_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_ENCRYPTION_KEY: ${{ secrets.DB_ENCRYPTION_KEY }}
+          MONERO_WEBHOOK_SECRET: ${{ secrets.MONERO_WEBHOOK_SECRET }}
+          ETHEREUM_WEBHOOK_SECRET: ${{ secrets.ETHEREUM_WEBHOOK_SECRET }}
+          PIKASIM_WEBHOOK_SECRET: ${{ secrets.PIKASIM_WEBHOOK_SECRET }}
+        run: |
+          set_env() {
+            NAME="$1"; VALUE="$2"
+            if [ -z "$VALUE" ]; then
+              echo "SKIP  $NAME (no value in secrets)"
+              return
+            fi
+            # Delete existing entries with this name first (idempotent)
+            IDS=$(curl -sS "https://api.vercel.com/v9/projects/privasim/env" -H "Authorization: Bearer $VT" \
+              | python3 -c "
+          import sys, json
+          for e in json.load(sys.stdin).get('envs', []):
+            if e.get('key') == '$NAME':
+              print(e['id'])
+          ")
+            for id in $IDS; do
+              curl -sS -o /dev/null -X DELETE "https://api.vercel.com/v9/projects/privasim/env/$id" -H "Authorization: Bearer $VT"
+            done
+            code=$(curl -sS -o /tmp/r -w "%{http_code}" -X POST "https://api.vercel.com/v10/projects/privasim/env" \
+              -H "Authorization: Bearer $VT" -H "Content-Type: application/json" \
+              -d "$(python3 -c "
+          import json, os
+          print(json.dumps({'key': '$NAME', 'value': os.environ['VAL'], 'type': 'encrypted', 'target': ['production', 'preview']}))
+          " )" )
+            echo "SET   $NAME -> HTTP $code"
+          }
+          export VAL=""
+
+          for NAME in PIKASIM_API_KEY JWT_SECRET DB_ENCRYPTION_KEY MONERO_WEBHOOK_SECRET ETHEREUM_WEBHOOK_SECRET PIKASIM_WEBHOOK_SECRET; do
+            export VAL="${!NAME}"
+            set_env "$NAME" "$VAL"
+          done
+
+          export VAL="85oa4tGVEpRLAhQijJtD5LaPtQQAQhr5XBS2gXtqeYSohGkXvUDxfZKU3oSmFWcJ215h7eSoiU3xrfL8keUJnGSjHqEWVNr"
+          set_env "MONERO_WALLET_PRIMARY" "$VAL"
+          export VAL="0x87176027Cc61d260926dAAe68551e246260dc30E"
+          set_env "ETHEREUM_WALLET_ADDRESS" "$VAL"
+          export VAL="https://privasim-two.vercel.app"
+          set_env "NEXT_PUBLIC_APP_URL" "$VAL"
+
+          echo "===== Final project env keys ====="
+          curl -sS "https://api.vercel.com/v9/projects/privasim/env" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          for e in json.load(sys.stdin).get('envs', []):
+            print('env:', e.get('key'), '->', ','.join(e.get('target', [])))
+          "

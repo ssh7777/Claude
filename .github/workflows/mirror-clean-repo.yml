@@ -36,20 +36,10 @@ jobs:
                 - name: Install dependencies
                   run: npm install --legacy-peer-deps
 
+                # Env vars are stored on the Vercel project itself (set once
+                # via the vercel-set-env workflow) — only VERCEL_TOKEN needed.
                 - name: Deploy to Vercel
-                  run: |
-                    npx vercel deploy --prod \
-                      --token "${{ secrets.VERCEL_TOKEN }}" \
-                      --env PIKASIM_API_KEY="${{ secrets.PIKASIM_API_KEY }}" \
-                      --env JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                      --env DB_ENCRYPTION_KEY="${{ secrets.DB_ENCRYPTION_KEY }}" \
-                      --env MONERO_WEBHOOK_SECRET="${{ secrets.MONERO_WEBHOOK_SECRET }}" \
-                      --env ETHEREUM_WEBHOOK_SECRET="${{ secrets.ETHEREUM_WEBHOOK_SECRET }}" \
-                      --env PIKASIM_WEBHOOK_SECRET="${{ secrets.PIKASIM_WEBHOOK_SECRET }}" \
-                      --env MONERO_WALLET_PRIMARY="85oa4tGVEpRLAhQijJtD5LaPtQQAQhr5XBS2gXtqeYSohGkXvUDxfZKU3oSmFWcJ215h7eSoiU3xrfL8keUJnGSjHqEWVNr" \
-                      --env ETHEREUM_WALLET_ADDRESS="0x87176027Cc61d260926dAAe68551e246260dc30E" \
-                      --env NEXT_PUBLIC_APP_URL="https://privasim-two.vercel.app" \
-                      --yes
+                  run: npx vercel deploy --prod --token "${{ secrets.VERCEL_TOKEN }}" --yes
           YAML
 
           # Daily deals refresh — root layout paths
