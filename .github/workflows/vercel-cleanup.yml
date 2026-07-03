@@ -1,0 +1,72 @@
+name: Vercel cleanup — delete old projects and deployments
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all projects except "privasim" (keeps privasim-two.vercel.app)
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "===== Current projects ====="
+          curl -sS "https://api.vercel.com/v9/projects?limit=100" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          j = json.load(sys.stdin)
+          for p in j.get('projects', []):
+            print(p['id'], p['name'])
+          " | tee /tmp/projects
+
+          echo "===== Deleting everything except 'privasim' ====="
+          while read -r id name; do
+            if [ "$name" = "privasim" ]; then
+              echo "KEEP   $name ($id)"
+              continue
+            fi
+            code=$(curl -sS -o /tmp/del -w "%{http_code}" -X DELETE \
+              "https://api.vercel.com/v9/projects/$id" -H "Authorization: Bearer $VT")
+            echo "DELETE $name ($id) -> HTTP $code"
+          done < /tmp/projects
+
+      - name: Prune old deployments of "privasim" (keep current production)
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          PID=$(curl -sS "https://api.vercel.com/v9/projects/privasim" -H "Authorization: Bearer $VT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo "privasim project id: $PID"
+
+          KEEP=$(curl -sS "https://api.vercel.com/v6/deployments?projectId=$PID&target=production&state=READY&limit=1" \
+            -H "Authorization: Bearer $VT" | python3 -c "import sys,json; d=json.load(sys.stdin)['deployments']; print(d[0]['uid'] if d else '')")
+          echo "Keeping current production deployment: $KEEP"
+
+          curl -sS "https://api.vercel.com/v6/deployments?projectId=$PID&limit=100" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          j = json.load(sys.stdin)
+          for d in j.get('deployments', []):
+            print(d['uid'], d.get('state'), d.get('created'))
+          " > /tmp/deps
+
+          COUNT=0
+          while read -r uid state created; do
+            if [ "$uid" = "$KEEP" ]; then
+              echo "KEEP   $uid (current production)"
+              continue
+            fi
+            code=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE \
+              "https://api.vercel.com/v13/deployments/$uid" -H "Authorization: Bearer $VT")
+            COUNT=$((COUNT+1))
+            echo "DELETE $uid ($state) -> HTTP $code"
+          done < /tmp/deps
+          echo "Deleted $COUNT old deployments."
+
+          echo "===== Final state ====="
+          curl -sS "https://api.vercel.com/v9/projects?limit=100" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          for p in json.load(sys.stdin).get('projects', []):
+            print('project:', p['name'])
+          "
