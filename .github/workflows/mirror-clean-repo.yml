@@ -1,0 +1,104 @@
+name: Mirror clean privasim repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build clean tree (app at root)
+        run: |
+          mkdir -p /tmp/clean
+          git archive HEAD:privasim | tar -x -C /tmp/clean
+          mkdir -p /tmp/clean/.github/workflows
+
+          # Deploy workflow — root-level app, linked to existing "privasim" project
+          cat > /tmp/clean/.github/workflows/deploy.yml <<'YAML'
+          name: Deploy to Vercel
+
+          on:
+            push:
+              branches: [main]
+
+          jobs:
+            deploy:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: '20'
+
+                - name: Install dependencies
+                  run: npm install --legacy-peer-deps
+
+                - name: Deploy to Vercel
+                  run: |
+                    npx vercel deploy --prod \
+                      --token "${{ secrets.VERCEL_TOKEN }}" \
+                      --env PIKASIM_API_KEY="${{ secrets.PIKASIM_API_KEY }}" \
+                      --env JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                      --env DB_ENCRYPTION_KEY="${{ secrets.DB_ENCRYPTION_KEY }}" \
+                      --env MONERO_WEBHOOK_SECRET="${{ secrets.MONERO_WEBHOOK_SECRET }}" \
+                      --env ETHEREUM_WEBHOOK_SECRET="${{ secrets.ETHEREUM_WEBHOOK_SECRET }}" \
+                      --env PIKASIM_WEBHOOK_SECRET="${{ secrets.PIKASIM_WEBHOOK_SECRET }}" \
+                      --env MONERO_WALLET_PRIMARY="85oa4tGVEpRLAhQijJtD5LaPtQQAQhr5XBS2gXtqeYSohGkXvUDxfZKU3oSmFWcJ215h7eSoiU3xrfL8keUJnGSjHqEWVNr" \
+                      --env ETHEREUM_WALLET_ADDRESS="0x87176027Cc61d260926dAAe68551e246260dc30E" \
+                      --env NEXT_PUBLIC_APP_URL="https://privasim-two.vercel.app" \
+                      --yes
+          YAML
+
+          # Daily deals refresh — root layout paths
+          sed 's#privasim/data/daily-deals.json#data/daily-deals.json#g' \
+            .github/workflows/daily-deals.yml > /tmp/clean/.github/workflows/daily-deals.yml
+
+          cat > /tmp/clean/README.md <<'MD'
+          # PRIVASIM — Anonymous eSIM Marketplace
+
+          Privacy-first eSIM store for 190+ countries. Crypto-only payments (Monero + Ethereum), no accounts, no KYC.
+
+          - **Live**: https://privasim-two.vercel.app
+          - **Stack**: Next.js 14, React 19, TypeScript. Stateless (no database).
+          - **Deploys**: every push to `main` auto-deploys via GitHub Actions → Vercel.
+          - **Daily content**: `data/daily-deals.json` refreshes automatically each day.
+
+          ## Required GitHub Actions secrets
+
+          `VERCEL_TOKEN`, `PIKASIM_API_KEY`, `JWT_SECRET`, `DB_ENCRYPTION_KEY`,
+          `MONERO_WEBHOOK_SECRET`, `ETHEREUM_WEBHOOK_SECRET`, `PIKASIM_WEBHOOK_SECRET`
+
+          ## Local development
+
+          ```bash
+          npm install --legacy-peer-deps
+          npm run dev
+          ```
+
+          See `CLAUDE.md` for architecture details.
+          MD
+          echo "clean tree: $(find /tmp/clean -type f | wc -l) files"
+
+      - name: Push to ssh7777/privasim
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "::error::GH_PAT secret is missing — add a fine-grained PAT with Contents read/write on ssh7777/privasim"
+            exit 1
+          fi
+          cd /tmp/clean
+          git init -b main
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add -A
+          git commit -m "PRIVASIM: production-ready clean import
+
+          Full application (Next.js 14, crypto payments, PikaSim integration,
+          SEO, blog, chatbot, top-up, tracker, admin) mirrored from the
+          development repo with the app at the repository root."
+          git push --force "https://x-access-token:${GH_PAT}@github.com/ssh7777/privasim.git" main
+          echo "Mirrored to ssh7777/privasim"
