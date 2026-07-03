@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-03",
+  "deals": [
+    { "countryCode": "JP", "country": "Japan", "name": "Japan 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.1 },
+    { "countryCode": "US", "country": "United States", "name": "USA 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.4 },
+    { "countryCode": "TH", "country": "Thailand", "name": "Thailand 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 1.9 },
+    { "countryCode": "GB", "country": "United Kingdom", "name": "UK 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.0 },
+    { "countryCode": "SE", "country": "Sweden", "name": "Sweden 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.5 }
+  ]
+}

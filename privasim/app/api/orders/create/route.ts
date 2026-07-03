@@ -5,6 +5,7 @@ import { generateMoneroPaymentInfo } from "@/lib/monero";
 import { generateEthereumPaymentInfo } from "@/lib/ethereum";
 import { createInvoiceRecord } from "@/lib/db";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
+import { retailPrice } from "@/lib/prices";
 import type { CryptoType } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -24,14 +25,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let body: { packageCode?: string; cryptoType?: CryptoType };
+  let body: { packageCode?: string; cryptoType?: CryptoType; topupIccid?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { packageCode, cryptoType = "monero" } = body;
+  const { packageCode, cryptoType = "monero", topupIccid } = body;
 
   if (!packageCode) {
     return NextResponse.json({ error: "packageCode is required" }, { status: 400 });
@@ -45,13 +46,38 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const pkg = await getPackageDetails(packageCode);
+    // Top-up invoices: price comes from the eSIM's own top-up options
+    // (top-up codes differ from purchase codes and aren't in the catalog).
+    let pkg: Awaited<ReturnType<typeof getPackageDetails>>;
+    if (topupIccid) {
+      const { getTopupOptions } = await import("@/lib/pikasim");
+      const { options } = await getTopupOptions(topupIccid);
+      const opt = options.find((o) => o.packageCode === packageCode);
+      if (!opt || !opt.priceUsd) {
+        return NextResponse.json(
+          { error: "Top-up option not available for this eSIM" },
+          { status: 404 }
+        );
+      }
+      pkg = {
+        code: opt.packageCode,
+        name: `Top-up: ${opt.name ?? opt.packageCode}`,
+        country: "Top-up",
+        countryCode: "",
+        dataAmount: opt.name?.split("·")[0]?.trim() ?? "",
+        durationDays: 0,
+        priceUsd: opt.priceUsd,
+        type: "data",
+        networks: [],
+      };
+    } else {
+      pkg = await getPackageDetails(packageCode);
+    }
     if (!pkg) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    // Apply 50% markup
-    const priceUsd = Math.ceil(pkg.priceUsd * 1.5 * 100) / 100;
+    const priceUsd = retailPrice(pkg.priceUsd);
 
     const paymentInfo =
       cryptoType === "monero"
@@ -81,6 +107,7 @@ export async function POST(req: NextRequest) {
       crypto_type: cryptoType,
       payment_address: paymentInfo.address,
       expires_at: expiresAt,
+      topup_iccid: topupIccid,
     });
 
     return NextResponse.json({

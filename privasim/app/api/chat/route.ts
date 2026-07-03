@@ -2,15 +2,15 @@ import { NextRequest } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { detectCountry, countryName } from "@/lib/countries";
+import { retailPrice } from "@/lib/prices";
 
 // ARIA — keyless assistant. Intent-matched answers grounded in live package
 // data from PikaSim. No external AI API required, so it always works.
 
 const CHAT_RATE_LIMIT = { windowMs: 60_000, max: 20 };
-const MARKUP = 1.5;
 
 function usd(n: number): string {
-  return `$${(Math.ceil(n * MARKUP * 100) / 100).toFixed(2)}`;
+  return `$${retailPrice(n).toFixed(2)}`;
 }
 
 async function answerCountryQuery(code: string, wantsPhone: boolean): Promise<string> {

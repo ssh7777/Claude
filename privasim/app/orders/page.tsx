@@ -366,6 +366,15 @@ function OrderRow({
                       </div>
                     ))}
 
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="border-white/20 text-white text-xs" asChild>
+                      <a href={`/esim/${encodeURIComponent(codes.iccid)}`}>Track this eSIM</a>
+                    </Button>
+                    <Button size="sm" className="bg-[#ff6600] hover:bg-[#e55c00] text-white text-xs" asChild>
+                      <a href={`/topup?iccid=${encodeURIComponent(codes.iccid)}`}>Top up data</a>
+                    </Button>
+                  </div>
+
                   {/* Data usage */}
                   {usage ? (
                     <div className="bg-blue-400/5 border border-blue-400/20 rounded-lg p-3">

@@ -26,6 +26,8 @@ export interface StoredInvoice {
   sm_dp_address?: string;
   pika_order_id?: string;
   esim_purchased_at?: string;
+  // Top-up orders: the existing eSIM this invoice refills (instead of a new purchase)
+  topup_iccid?: string;
 }
 
 const invoiceStore = new Map<string, StoredInvoice>();
@@ -55,6 +57,7 @@ export async function createInvoiceRecord(data: {
   crypto_type: string;
   payment_address: string;
   expires_at: string;
+  topup_iccid?: string;
 }): Promise<StoredInvoice> {
   const record: StoredInvoice = {
     invoice_id: data.invoice_id,
@@ -72,6 +75,7 @@ export async function createInvoiceRecord(data: {
     expires_at: data.expires_at,
     status: "pending",
     created_at: new Date().toISOString(),
+    topup_iccid: data.topup_iccid,
   };
   invoiceStore.set(data.invoice_id, record);
   return record;

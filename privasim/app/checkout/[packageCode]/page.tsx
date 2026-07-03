@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { retailPrice } from "@/lib/prices";
 import { Badge } from "@/components/ui/badge";
 import PaymentModal from "@/components/PaymentModal";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
@@ -144,7 +145,7 @@ export default function CheckoutPage() {
 
   if (!pkg) return null;
 
-  const displayPrice = pkg.priceUsd * 1.5;
+  const displayPrice = retailPrice(pkg.priceUsd);
 
   return (
     <div className="container py-12">

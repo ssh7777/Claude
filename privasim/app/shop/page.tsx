@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Phone } from "lucide-react";
 import CountrySearch from "@/components/CountrySearch";
 import EsimCard from "@/components/EsimCard";
 import { searchEsimPackages } from "@/lib/pikasim";
@@ -120,8 +120,40 @@ export default async function ShopPage() {
         </p>
       </div>
 
-      <div className="mb-12">
+      <div className="mb-8">
         <CountrySearch />
+      </div>
+
+      {/* Global + phone plan entry points */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12 max-w-3xl mx-auto">
+        <a
+          href="/shop/global"
+          className="flex items-center gap-4 p-5 rounded-xl bg-gradient-to-br from-[#ff6600]/20 to-[#ff9944]/5 border border-[#ff6600]/30 hover:border-[#ff6600]/60 transition-all group"
+        >
+          <div className="h-12 w-12 rounded-lg bg-[#ff6600] flex items-center justify-center shrink-0">
+            <Globe className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <div className="font-bold text-white group-hover:text-[#ff9944] transition-colors">
+              Global eSIMs
+            </div>
+            <div className="text-sm text-gray-400">One eSIM for 120+ countries</div>
+          </div>
+        </a>
+        <a
+          href="/shop/global#phone"
+          className="flex items-center gap-4 p-5 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-400/5 border border-blue-400/30 hover:border-blue-400/60 transition-all group"
+        >
+          <div className="h-12 w-12 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+            <Phone className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <div className="font-bold text-white group-hover:text-blue-300 transition-colors">
+              Data + Calls + SMS
+            </div>
+            <div className="text-sm text-gray-400">Real phone number included</div>
+          </div>
+        </a>
       </div>
 
       <Suspense

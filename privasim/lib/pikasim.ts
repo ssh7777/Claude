@@ -229,14 +229,99 @@ export async function searchEsimPackages(
   }
 }
 
+// Global multi-country data packages (13 plans covering 120+ countries).
+// Dedicated REST endpoint — these do NOT appear in country-filtered results.
+export async function getGlobalPackages(): Promise<EsimPackage[]> {
+  const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/global");
+  return (result.packages ?? []).map((p) => {
+    const pkg = normalizePikaPackage(p);
+    return {
+      ...pkg,
+      country: (p as { region?: string }).region ?? "Global (120+ countries)",
+      countryCode: "GLOBAL",
+    };
+  });
+}
+
+export interface PhonePlan {
+  packageCode: string;
+  name: string;
+  minutes: number;
+  sms: number;
+  dataAmount: string;
+  durationDays: number;
+  priceUsd: number; // wholesale — apply retailPrice() before display
+}
+
+// Phone-number eSIMs (real carrier number, voice + SMS + data).
+// Only exposed via the MCP search tool; the prose response lists plans as:
+//   Phone-number plan [code]: 10 min + 10 SMS + 1GB data | 7 days | $25.34 | ...
+export async function getPhonePlans(scope: { country?: string; region?: string } = { region: "Global" }): Promise<PhonePlan[]> {
+  const raw = await callMCP("search_phone_plans", scope) as { __rawText?: string };
+  const text = raw.__rawText ?? "";
+  const plans: PhonePlan[] = [];
+  const lineRe =
+    /\[([^\]]+)\]:\s*(\d+)\s*min\s*\+\s*(\d+)\s*SMS\s*\+\s*([\d.]+\s*[GM]B)\s*data\s*\|\s*(\d+)\s*days?\s*\|\s*\$([\d.]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = lineRe.exec(text)) !== null) {
+    plans.push({
+      packageCode: m[1],
+      name: `${m[4]} + ${m[2]} min + ${m[3]} SMS`,
+      minutes: parseInt(m[2], 10),
+      sms: parseInt(m[3], 10),
+      dataAmount: m[4].toUpperCase().replace(/\s+/, " "),
+      durationDays: parseInt(m[5], 10),
+      priceUsd: parseFloat(m[6]),
+    });
+  }
+  return plans;
+}
+
+// Details via the public MCP tool — fallback for codes missing from the
+// country REST list (phone plans, global/regional codes).
+async function getPackageDetailsMCP(packageCode: string): Promise<EsimPackage | null> {
+  try {
+    const raw = await callMCP("get_package_details", { packageCode }) as Record<string, unknown>;
+    const text = typeof raw.__rawText === "string" ? raw.__rawText : JSON.stringify(raw);
+    const price = extractUsd(text);
+    if (!price) return null;
+
+    const data = text.match(/([\d.]+)\s*(GB|MB)\b/i);
+    const days = text.match(/(\d+)\s*days?\b/i);
+    const isPhone = /phone|voice|sms|real (carrier )?number/i.test(text);
+    const nameLine = text.split(/\r?\n/).find((l) => l.trim())?.trim() ?? packageCode;
+
+    return {
+      code: packageCode,
+      name: nameLine.slice(0, 80),
+      country: /global/i.test(text) ? "Global" : "",
+      countryCode: /global/i.test(text) ? "GLOBAL" : "",
+      dataAmount: data ? `${data[1]} ${data[2].toUpperCase()}` : "See plan",
+      durationDays: days ? parseInt(days[1], 10) : 0,
+      priceUsd: price,
+      type: isPhone ? "phone" : "data",
+      networks: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getPackageDetails(packageCode: string): Promise<EsimPackage | null> {
   try {
     const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/all-countries");
     const pkg = (result.packages ?? []).find((p) => p.packageCode === packageCode);
-    return pkg ? normalizePikaPackage(pkg) : null;
+    if (pkg) return normalizePikaPackage(pkg);
   } catch {
-    return null;
+    // fall through to MCP
   }
+  // Not in the country list — try global list, then MCP details (phone plans)
+  try {
+    const globals = await getGlobalPackages();
+    const g = globals.find((p) => p.code === packageCode);
+    if (g) return g;
+  } catch { /* ignore */ }
+  return getPackageDetailsMCP(packageCode);
 }
 
 export async function checkAgentBalance(): Promise<{ balanceUsd: number }> {
@@ -383,12 +468,22 @@ export async function getTopupOptions(iccid: string): Promise<{
 
   if (result.__rawText) {
     const text = result.__rawText;
-    // Package codes are shown in [brackets] by MCP tools
-    const codes = [...text.matchAll(/\[([A-Za-z0-9._-]{3,})\]/g)].map((m) => m[1]);
-    return {
-      options: codes.map((packageCode) => ({ packageCode })),
-      summary: text,
-    };
+    // Each option line contains its code in [brackets]; best-effort parse
+    // of data amount, duration and wholesale price from the same line.
+    const options: { packageCode: string; name?: string; priceUsd?: number }[] = [];
+    for (const line of text.split(/\r?\n/)) {
+      const code = line.match(/\[([A-Za-z0-9._+-]{3,})\]/)?.[1];
+      if (!code) continue;
+      const price = line.match(/\$([\d.]+)/)?.[1];
+      const data = line.match(/([\d.]+\s*[GM]B)/i)?.[1];
+      const days = line.match(/(\d+)\s*days?/i)?.[1];
+      options.push({
+        packageCode: code,
+        name: [data?.toUpperCase(), days ? `${days} days` : null].filter(Boolean).join(" · ") || code,
+        priceUsd: price ? parseFloat(price) : undefined,
+      });
+    }
+    return { options, summary: text };
   }
 
   return { options: result.options ?? result.packages ?? [] };

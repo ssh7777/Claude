@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
+import { retailPrice } from "@/lib/prices";
 import { formatUsd, formatDataAmount, formatDuration } from "@/lib/utils";
 import type { EsimPackage } from "@/types";
 
@@ -71,7 +72,7 @@ export default function EsimCard({ pkg }: EsimCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-gray-400">Price</div>
-            <div className="text-lg font-bold text-white">{formatUsd(pkg.priceUsd * 1.5)}</div>
+            <div className="text-lg font-bold text-white">{formatUsd(retailPrice(pkg.priceUsd))}</div>
           </div>
           <Button size="sm" className="bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
             <Link href={`/checkout/${pkg.code}`}>

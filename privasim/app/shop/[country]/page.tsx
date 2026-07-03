@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { countryName } from "@/lib/countries";
+import { retailPrice } from "@/lib/prices";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
@@ -70,7 +71,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
         description: `${p.dataAmount} eSIM data plan for ${displayName}, valid ${p.durationDays} days. Anonymous purchase with Monero or Ethereum.`,
         offers: {
           "@type": "Offer",
-          price: (Math.ceil(p.priceUsd * 1.5 * 100) / 100).toFixed(2),
+          price: retailPrice(p.priceUsd).toFixed(2),
           priceCurrency: "USD",
           availability: "https://schema.org/InStock",
           url: `${APP_URL}/checkout/${p.code}`,

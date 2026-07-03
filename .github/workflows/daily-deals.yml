@@ -1,0 +1,71 @@
+name: Daily blog deals refresh
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # every day 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate today's cheapest-deals data from live catalog
+        run: |
+          python3 - <<'EOF'
+          import json, urllib.request, datetime
+
+          POPULAR = ["JP","US","GB","DE","FR","TH","SG","AU","KR","IT","ES","TR","AE","SE","NL"]
+
+          req = urllib.request.Request(
+              "https://pikasim.com/api/packages/all-countries",
+              headers={"Accept": "application/json", "User-Agent": "privasim-deals-bot"})
+          data = json.load(urllib.request.urlopen(req, timeout=30))
+          pkgs = data.get("packages", [])
+
+          best = {}
+          for p in pkgs:
+              cc = p.get("locationCode") or p.get("destinationCode") or ""
+              if cc not in POPULAR:
+                  continue
+              price = p.get("priceUSD")
+              vol = p.get("volumeGB") or 0
+              if not price or not vol or vol < 0.9:
+                  continue  # at least ~1GB plans
+              per_gb = price / vol
+              cur = best.get(cc)
+              if cur is None or per_gb < cur["per_gb"]:
+                  best[cc] = {
+                      "per_gb": per_gb,
+                      "deal": {
+                          "countryCode": cc,
+                          "country": p.get("location", cc).split(",")[0] if len(p.get("location", "")) < 40 else cc,
+                          "name": p.get("name", ""),
+                          "dataAmount": f'{p.get("volumeGB")} GB',
+                          "days": p.get("duration") or p.get("validityDays") or 0,
+                          "wholesaleUsd": round(price, 2),
+                      },
+                  }
+
+          deals = [v["deal"] for v in sorted(best.values(), key=lambda x: x["per_gb"])][:10]
+          out = {"date": datetime.date.today().isoformat(), "deals": deals}
+          with open("privasim/data/daily-deals.json", "w") as f:
+              json.dump(out, f, indent=1)
+          print(f"wrote {len(deals)} deals for {out['date']}")
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          if git diff --quiet privasim/data/daily-deals.json; then
+            echo "No changes — skipping commit"
+            exit 0
+          fi
+          git add privasim/data/daily-deals.json
+          git commit -m "Daily deals refresh: $(date -u +%F)"
+          git push origin main

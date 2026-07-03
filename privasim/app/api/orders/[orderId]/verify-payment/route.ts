@@ -24,6 +24,7 @@ export async function POST(
     packageCode?: string;
     cryptoType?: string;
     amountCrypto?: number;
+    topupIccid?: string;
   };
   try {
     body = await req.json();
@@ -31,7 +32,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { txHash, packageCode: clientPackageCode, cryptoType: clientCryptoType, amountCrypto: clientAmount } = body;
+  const { txHash, packageCode: clientPackageCode, cryptoType: clientCryptoType, amountCrypto: clientAmount, topupIccid: clientTopupIccid } = body;
 
   if (!txHash?.trim()) {
     return NextResponse.json({ error: "Transaction hash is required" }, { status: 400 });
@@ -178,6 +179,33 @@ export async function POST(
 
   // ── Payment verified — mark TX as used ────────────────────────────────────
   usedTxHashes.add(normalizedTx);
+
+  // ── Top-up orders: refill the existing eSIM instead of buying a new one ──
+  const topupIccid = invoice?.topup_iccid ?? clientTopupIccid;
+  if (topupIccid) {
+    try {
+      const { topupEsim } = await import("@/lib/pikasim");
+      const result = await topupEsim(topupIccid, packageCode);
+      if (invoice) {
+        await updateInvoiceStatus(params.orderId, "confirmed", txHash.trim());
+      }
+      return NextResponse.json({
+        success: true,
+        topup: true,
+        iccid: topupIccid,
+        message: result.summary ?? "Top-up applied — your eSIM has been refilled.",
+      });
+    } catch (err) {
+      usedTxHashes.delete(normalizedTx);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error("Top-up failed after payment verified:", msg);
+      return NextResponse.json({
+        error: `Payment verified but top-up failed: ${msg}. Please try again in 30 seconds.`,
+        verified: true,
+        retryable: true,
+      }, { status: 503 });
+    }
+  }
 
   // ── Purchase eSIM from PikaSim ─────────────────────────────────────────────
   try {

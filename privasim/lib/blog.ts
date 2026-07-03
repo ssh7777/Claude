@@ -1,5 +1,11 @@
 // Blog content — static, versioned in git, rendered server-side.
 // Content is HTML (rendered with dangerouslySetInnerHTML in app/blog/[slug]).
+// The "daily deals" post regenerates automatically: a scheduled workflow
+// (.github/workflows/daily-deals.yml) refreshes data/daily-deals.json from
+// the live catalog every day and pushes, which redeploys the site.
+
+import dealsData from "@/data/daily-deals.json";
+import { retailPrice } from "@/lib/prices";
 
 export interface BlogPost {
   id: string;
@@ -371,16 +377,54 @@ export const BLOG_POSTS: BlogPost[] = [
   },
 ];
 
+// Auto-generated daily post built from the live-refreshed deals data.
+function dailyDealsPost(): BlogPost {
+  const { date, deals } = dealsData as {
+    date: string;
+    deals: { countryCode: string; country: string; name: string; dataAmount: string; days: number; wholesaleUsd: number }[];
+  };
+
+  const rows = deals
+    .map(
+      (d) =>
+        `<tr><td><strong>${d.country || d.countryCode}</strong></td><td>${d.dataAmount}</td><td>${d.days} days</td><td>$${retailPrice(d.wholesaleUsd).toFixed(2)}</td><td><a href="/shop/${d.countryCode}">See plans →</a></td></tr>`
+    )
+    .join("");
+
+  return {
+    id: "daily-deals",
+    slug: "best-esim-deals-today",
+    title: "Today's Best eSIM Deals — Updated Daily",
+    published_at: `${date}T06:00:00Z`,
+    updated_at: `${date}T06:00:00Z`,
+    featured: true,
+    tags: ["deals", "esim", "daily"],
+    excerpt: `The best value-per-GB eSIM plans across popular destinations, refreshed automatically every day. Last updated ${date}.`,
+    content: `
+<p>These are the best value-per-gigabyte eSIM plans in our catalog right now, ranked automatically from live pricing. This page refreshes <strong>every day</strong> — bookmark it before your next trip. All prices are final: pay with Monero or Ethereum, no account, no KYC.</p>
+<table>
+<tr><th>Destination</th><th>Data</th><th>Validity</th><th>Price</th><th></th></tr>
+${rows}
+</table>
+<p><em>Last refreshed: ${date}.</em> Prices update automatically from carrier rates. Every plan delivers instantly after blockchain confirmation — see <a href="/blog/how-to-buy-esim-with-monero">how buying works</a> or <a href="/shop">browse all 190+ countries</a>.</p>
+`,
+  };
+}
+
+function allPosts(): BlogPost[] {
+  return [dailyDealsPost(), ...BLOG_POSTS];
+}
+
 export function getBlogPosts(limit = 20, offset = 0): BlogPost[] {
-  return [...BLOG_POSTS]
+  return allPosts()
     .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
     .slice(offset, offset + limit);
 }
 
 export function getBlogPostBySlug(slug: string): BlogPost | null {
-  return BLOG_POSTS.find((p) => p.slug === slug) ?? null;
+  return allPosts().find((p) => p.slug === slug) ?? null;
 }
 
 export function getAllBlogSlugs(): string[] {
-  return BLOG_POSTS.map((p) => p.slug);
+  return allPosts().map((p) => p.slug);
 }

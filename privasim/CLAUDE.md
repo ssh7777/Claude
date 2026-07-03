@@ -27,11 +27,10 @@ Privacy-first eSIM marketplace. Crypto-only payments (Monero XMR + Ethereum ETH)
 | `components/EsimCard.tsx` | Product card (50% markup applied here) |
 | `app/checkout/[packageCode]/page.tsx` | Checkout page (50% markup applied here) |
 
-## 50% Margin — Applied in 3 Places
-- `lib/pikasim.ts` — never: raw price comes from API
-- `components/EsimCard.tsx:75` — `pkg.priceUsd * 1.5` (display)
-- `app/checkout/[packageCode]/page.tsx:107` — `pkg.priceUsd * 1.5` (display)
-- `app/api/orders/create/route.ts:42` — `pkg.priceUsd * 1.5` (actual invoice)
+## 70% Margin — Single Source of Truth
+- `lib/prices.ts` — `RETAIL_MARGIN = 1.7` and `retailPrice(wholesaleUsd)`
+- Consumers: EsimCard, checkout page, orders/create (invoice), chat bot,
+  country-page JSON-LD, top-up flow. NEVER hardcode a multiplier elsewhere.
 
 ## API Key Security
 - PikaSim API key ONLY in `process.env.PIKASIM_API_KEY`

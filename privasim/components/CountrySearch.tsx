@@ -1,48 +1,55 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
+import { COUNTRY_NAMES, detectCountry } from "@/lib/countries";
 
-const POPULAR_COUNTRIES = [
-  { code: "JP", name: "Japan" },
-  { code: "US", name: "USA" },
-  { code: "GB", name: "UK" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "TH", name: "Thailand" },
-  { code: "SG", name: "Singapore" },
-  { code: "AU", name: "Australia" },
-  { code: "KR", name: "South Korea" },
-  { code: "IT", name: "Italy" },
-  { code: "ES", name: "Spain" },
-  { code: "TR", name: "Turkey" },
-];
+const POPULAR_CODES = ["JP", "US", "GB", "DE", "FR", "TH", "SG", "AU", "KR", "IT", "ES", "TR"];
+
+const ALL_COUNTRIES = Object.entries(COUNTRY_NAMES)
+  .map(([code, name]) => ({ code, name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+const POPULAR_COUNTRIES = POPULAR_CODES.map((code) => ({
+  code,
+  name: COUNTRY_NAMES[code] ?? code,
+}));
 
 export default function CountrySearch() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
-  const filteredCountries = POPULAR_COUNTRIES.filter(
-    (c) =>
-      c.name.toLowerCase().includes(query.toLowerCase()) ||
-      c.code.toLowerCase().includes(query.toLowerCase())
-  );
+  // Search the FULL country list — by name or ISO code
+  const filteredCountries = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return POPULAR_COUNTRIES;
+    return ALL_COUNTRIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase() === q
+    ).slice(0, 12);
+  }, [query]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (query.trim()) {
-        router.push(`/shop/${query.trim().toUpperCase()}`);
-      } else {
+      const q = query.trim();
+      if (!q) {
         router.push("/shop");
+        return;
       }
+      // Resolve free text ("sweden", "SE", "japan") to an ISO code
+      const code =
+        filteredCountries[0]?.code ??
+        detectCountry(q) ??
+        (q.length === 2 && COUNTRY_NAMES[q.toUpperCase()] ? q.toUpperCase() : null);
+      router.push(code ? `/shop/${code}` : "/shop");
+      setFocused(false);
     },
-    [query, router]
+    [query, router, filteredCountries]
   );
 
   const handleCountryClick = (code: string) => {
@@ -77,11 +84,11 @@ export default function CountrySearch() {
           <div className="p-3 border-b border-white/10">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <Globe className="h-3 w-3" />
-              Popular destinations
+              {query ? `Matches for "${query.trim()}"` : "Popular destinations"}
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 p-2 max-h-72 overflow-y-auto">
-            {(query ? filteredCountries : POPULAR_COUNTRIES).map((country) => (
+            {filteredCountries.map((country) => (
               <button
                 key={country.code}
                 onClick={() => handleCountryClick(country.code)}
@@ -96,7 +103,7 @@ export default function CountrySearch() {
             ))}
             {query && filteredCountries.length === 0 && (
               <div className="col-span-3 p-4 text-sm text-gray-400 text-center">
-                Press Enter to search for &ldquo;{query}&rdquo;
+                No country matches &ldquo;{query}&rdquo; — try another spelling.
               </div>
             )}
           </div>

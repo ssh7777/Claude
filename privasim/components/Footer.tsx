@@ -52,8 +52,11 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
-              <li><Link href="/blog/how-to-install-esim" className="hover:text-white transition-colors">How to Install eSIM</Link></li>
-              <li><Link href="/blog/monero-guide" className="hover:text-white transition-colors">Monero Payment Guide</Link></li>
+              <li><Link href="/guide" className="hover:text-white transition-colors">Install Guide</Link></li>
+              <li><Link href="/topup" className="hover:text-white transition-colors">Top Up eSIM</Link></li>
+              <li><Link href="/shop/global" className="hover:text-white transition-colors">Global Plans</Link></li>
+              <li><Link href="/blog/how-to-buy-esim-with-monero" className="hover:text-white transition-colors">Monero Payment Guide</Link></li>
+              <li><Link href="/blog/best-esim-deals-today" className="hover:text-white transition-colors">Today&apos;s Deals</Link></li>
             </ul>
           </div>
         </div>
