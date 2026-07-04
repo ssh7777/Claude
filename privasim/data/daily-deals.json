@@ -1,10 +1,85 @@
 {
-  "date": "2026-07-03",
-  "deals": [
-    { "countryCode": "JP", "country": "Japan", "name": "Japan 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.1 },
-    { "countryCode": "US", "country": "United States", "name": "USA 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.4 },
-    { "countryCode": "TH", "country": "Thailand", "name": "Thailand 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 1.9 },
-    { "countryCode": "GB", "country": "United Kingdom", "name": "UK 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.0 },
-    { "countryCode": "SE", "country": "Sweden", "name": "Sweden 1GB 7Days", "dataAmount": "1 GB", "days": 7, "wholesaleUsd": 2.5 }
-  ]
+ "date": "2026-07-04",
+ "deals": [
+  {
+   "countryCode": "TH",
+   "country": "TH",
+   "name": "Thailand 50GB 10Days",
+   "dataAmount": "50 GB",
+   "days": 10,
+   "wholesaleUsd": 23.98
+  },
+  {
+   "countryCode": "TR",
+   "country": "TR",
+   "name": "Turkey 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 42.95
+  },
+  {
+   "countryCode": "ES",
+   "country": "ES",
+   "name": "Spain 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "FR",
+   "country": "FR",
+   "name": "France 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "DE",
+   "country": "DE",
+   "name": "Germany 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "IT",
+   "country": "IT",
+   "name": "Italy 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "GB",
+   "country": "GB",
+   "name": "United Kingdom 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "AU",
+   "country": "AU",
+   "name": "Australia 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "SG",
+   "country": "SG",
+   "name": "Singapore 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  },
+  {
+   "countryCode": "JP",
+   "country": "JP",
+   "name": "Japan 50GB 30Days",
+   "dataAmount": "50 GB",
+   "days": 30,
+   "wholesaleUsd": 46.99
+  }
+ ]
 }
