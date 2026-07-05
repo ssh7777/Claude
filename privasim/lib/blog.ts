@@ -6,6 +6,7 @@
 
 import dealsData from "@/data/daily-deals.json";
 import { retailPrice } from "@/lib/prices";
+import { countryName } from "@/lib/countries";
 
 export interface BlogPost {
   id: string;
@@ -387,7 +388,7 @@ function dailyDealsPost(): BlogPost {
   const rows = deals
     .map(
       (d) =>
-        `<tr><td><strong>${d.country || d.countryCode}</strong></td><td>${d.dataAmount}</td><td>${d.days} days</td><td>$${retailPrice(d.wholesaleUsd).toFixed(2)}</td><td><a href="/shop/${d.countryCode}">See plans →</a></td></tr>`
+        `<tr><td><strong>${countryName(d.countryCode)}</strong></td><td>${d.dataAmount}</td><td>${d.days} days</td><td>$${retailPrice(d.wholesaleUsd).toFixed(2)}</td><td><a href="/shop/${d.countryCode}">See plans →</a></td></tr>`
     )
     .join("");
 
