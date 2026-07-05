@@ -11,6 +11,15 @@ interface WalletState {
   type: "monero" | "ethereum";
 }
 
+// EIP-6963: modern multi-wallet discovery. Every installed browser wallet
+// (MetaMask, Trust, Brave, Coinbase, Rabby, OKX, Phantom-EVM, …) announces
+// itself with a name and icon — we show them all, no external SDK needed.
+interface DiscoveredWallet {
+  name: string;
+  icon: string;
+  provider: { request: (args: { method: string }) => Promise<unknown> };
+}
+
 export default function WalletConnect() {
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [open, setOpen] = useState(false);
@@ -18,6 +27,7 @@ export default function WalletConnect() {
   const [address, setAddress] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
+  const [discovered, setDiscovered] = useState<DiscoveredWallet[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("privasim_wallet");
@@ -26,15 +36,34 @@ export default function WalletConnect() {
     }
   }, []);
 
-  const connect = async () => {
+  // Discover all installed wallets via EIP-6963
+  useEffect(() => {
+    const found: DiscoveredWallet[] = [];
+    const onAnnounce = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        info: { name: string; icon: string; uuid: string };
+        provider: DiscoveredWallet["provider"];
+      };
+      if (!found.some((w) => w.name === detail.info.name)) {
+        found.push({ name: detail.info.name, icon: detail.info.icon, provider: detail.provider });
+        setDiscovered([...found]);
+      }
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    return () => window.removeEventListener("eip6963:announceProvider", onAnnounce);
+  }, [open]);
+
+  const connect = async (provider?: DiscoveredWallet["provider"]) => {
     setConnecting(true);
     setError("");
     try {
       let addr = address.trim();
 
-      // Auto-detect MetaMask if Ethereum selected and no address typed
-      if (walletType === "ethereum" && !addr && typeof window !== "undefined" && window.ethereum) {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      // Connect via a chosen wallet, or fall back to window.ethereum
+      const eth = provider ?? (typeof window !== "undefined" ? window.ethereum : undefined);
+      if (walletType === "ethereum" && !addr && eth) {
+        const accounts = await eth.request({ method: "eth_requestAccounts" }) as string[];
         addr = accounts[0];
         setAddress(addr);
       }
@@ -108,14 +137,32 @@ export default function WalletConnect() {
           ))}
         </div>
 
-        {walletType === "ethereum" && typeof window !== "undefined" && window.ethereum && (
+        {walletType === "ethereum" && discovered.length > 0 && (
+          <div className="space-y-2">
+            {discovered.map((w) => (
+              <Button
+                key={w.name}
+                onClick={() => connect(w.provider)}
+                disabled={connecting}
+                className="w-full bg-[#627eea] hover:bg-[#4f6acc] text-white justify-start"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={w.icon} alt="" className="h-4 w-4 mr-2 rounded" />
+                {connecting ? "Connecting..." : `Connect ${w.name}`}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {walletType === "ethereum" && discovered.length === 0 &&
+          typeof window !== "undefined" && window.ethereum && (
           <Button
             onClick={() => connect()}
             disabled={connecting}
             className="w-full bg-[#627eea] hover:bg-[#4f6acc] text-white"
           >
             <Wallet className="h-4 w-4 mr-2" />
-            {connecting ? "Connecting..." : "Connect MetaMask"}
+            {connecting ? "Connecting..." : "Connect Browser Wallet"}
           </Button>
         )}
 

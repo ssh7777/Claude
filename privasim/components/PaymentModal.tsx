@@ -21,11 +21,12 @@ interface PaymentModalProps {
   packageCode: string;
   amountUsd: number;
   amountCrypto: number;
-  cryptoType: "monero" | "ethereum";
+  cryptoType: "monero" | "ethereum" | "usdt_eth" | "other";
   paymentAddress: string;
   qrCode: string;
   paymentUrl: string;
   expiresAt: string;
+  anonpayUrl?: string;
 }
 
 export default function PaymentModal({
@@ -41,6 +42,7 @@ export default function PaymentModal({
   qrCode,
   paymentUrl,
   expiresAt,
+  anonpayUrl,
 }: PaymentModalProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(timeUntil(expiresAt));
@@ -139,8 +141,10 @@ export default function PaymentModal({
   };
 
   const isEth = cryptoType === "ethereum";
-  const cryptoSymbol = isEth ? "ETH" : "XMR";
-  const cryptoColor = isEth ? "text-blue-400" : "text-orange-400";
+  const isUsdt = cryptoType === "usdt_eth";
+  const isOther = cryptoType === "other";
+  const cryptoSymbol = isEth ? "ETH" : isUsdt ? "USDT" : "XMR";
+  const cryptoColor = isEth ? "text-blue-400" : isUsdt ? "text-green-400" : "text-orange-400";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -158,7 +162,7 @@ export default function PaymentModal({
             <div className="h-16 w-16 rounded-full border-4 border-[#ff6600] border-t-transparent animate-spin" />
             <p className="text-center text-gray-300 font-semibold">Payment verified! Provisioning your eSIM…</p>
             <p className="text-xs text-center text-gray-400">
-              PikaSim is generating your eSIM. This takes 15–60 seconds.<br />
+              Your eSIM is being generated. This takes 15–60 seconds.<br />
               Go to <strong className="text-white">My Orders</strong> — your activation code will appear there automatically.
             </p>
             <Button className="bg-[#ff6600] hover:bg-[#e55c00] text-white w-full" onClick={onClose}>
@@ -240,8 +244,8 @@ export default function PaymentModal({
                 <Clock className="h-4 w-4" />
                 {timeLeft}
               </div>
-              <Badge variant={isEth ? "ethereum" : "monero"}>
-                {isEth ? "Ethereum (ETH)" : "Monero (XMR)"}
+              <Badge variant={isEth || isUsdt ? "ethereum" : "monero"}>
+                {isEth ? "Ethereum (ETH)" : isUsdt ? "USDT (ERC-20)" : isOther ? "100+ coins" : "Monero (XMR)"}
               </Badge>
             </div>
 
@@ -254,6 +258,39 @@ export default function PaymentModal({
                   Do NOT use Polygon, Arbitrum, BSC, or other L2 chains — your payment will be lost.
                   Only send native ETH, not USDT, USDC, or wrapped tokens.
                 </div>
+              </div>
+            )}
+
+            {/* Network warning for USDT */}
+            {isUsdt && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 flex items-start gap-2">
+                <Info className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-green-300">
+                  <strong>USDT on Ethereum Mainnet only (ERC-20)</strong><br />
+                  Do NOT send TRC-20 (Tron), BEP-20, or Polygon USDT — those funds will be lost.
+                  Scanning the QR prefills the correct token transfer.
+                </div>
+              </div>
+            )}
+
+            {/* AnonPay flow for 100+ coins */}
+            {isOther && anonpayUrl && (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg px-3 py-2 space-y-2">
+                <div className="text-xs text-orange-200">
+                  Pay with <strong>Bitcoin, Litecoin, ZEC, DOGE, TRX, BNB and 100+ other coins</strong>.
+                  Click below, pick your coin, and pay the shown amount — it converts automatically
+                  and settles to our address. When the processor shows{" "}
+                  <strong>&ldquo;complete&rdquo;</strong>, copy the destination transaction ID it displays
+                  and paste it in Step 2 to claim your eSIM instantly.
+                </div>
+                <a
+                  href={anonpayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-center w-full py-2.5 rounded-lg bg-[#ff6600] hover:bg-[#e55c00] text-white text-sm font-bold transition-colors"
+                >
+                  Choose coin &amp; pay →
+                </a>
               </div>
             )}
 
@@ -362,6 +399,10 @@ export default function PaymentModal({
             <p className="text-xs text-gray-600 text-center">
               {isEth
                 ? "ETH confirms in ~30 sec. Do not send from an exchange — use a self-custody wallet."
+                : isUsdt
+                ? "USDT confirms in ~30 sec. ERC-20 on Ethereum Mainnet only — self-custody wallet recommended."
+                : isOther
+                ? "Swaps take 5–30 min depending on the coin. Keep the processor tab open until complete."
                 : "XMR takes 2–10 min (10 block confirmations). Do not send from an exchange."}
             </p>
           </div>

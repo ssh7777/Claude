@@ -64,7 +64,35 @@ export default function CheckoutPage() {
     qrCode: string;
     paymentUrl: string;
     expiresAt: string;
+    anonpayUrl?: string;
   } | null>(null);
+
+  // Promo code — validated against the server; price is ALWAYS recomputed
+  // server-side at invoice creation, this is display only.
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<{ label: string; percent: number } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [checkingPromo, setCheckingPromo] = useState(false);
+
+  const applyPromo = async () => {
+    setCheckingPromo(true);
+    setPromoError("");
+    try {
+      const res = await fetch("/api/discount/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoInput.trim() }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Validation failed");
+      if (!j.valid) { setPromoError(j.reason ?? "Invalid code"); setPromo(null); return; }
+      setPromo({ label: j.label, percent: j.percent });
+    } catch (e) {
+      setPromoError(e instanceof Error ? e.message : "Validation failed");
+    } finally {
+      setCheckingPromo(false);
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/packages/${packageCode}`)
@@ -92,7 +120,11 @@ export default function CheckoutPage() {
       const res = await fetch("/api/orders/create", {
         method: "POST",
         headers,
-        body: JSON.stringify({ packageCode, cryptoType }),
+        body: JSON.stringify({
+          packageCode,
+          cryptoType,
+          discountCode: promo ? promoInput.trim() : undefined,
+        }),
       });
 
       const data = await res.json();
@@ -124,6 +156,7 @@ export default function CheckoutPage() {
         qrCode: data.qrCode,
         paymentUrl: data.paymentUrl,
         expiresAt: data.expiresAt,
+        anonpayUrl: data.anonpayUrl,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create order");
@@ -146,6 +179,9 @@ export default function CheckoutPage() {
   if (!pkg) return null;
 
   const displayPrice = retailPrice(pkg.priceUsd);
+  const finalPrice = promo
+    ? Math.max(0.5, Math.ceil(displayPrice * (1 - promo.percent / 100) * 100) / 100)
+    : displayPrice;
 
   return (
     <div className="container py-12">
@@ -212,35 +248,56 @@ export default function CheckoutPage() {
             Payment Method
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setCryptoType("monero")}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                cryptoType === "monero"
-                  ? "border-orange-500/50 bg-orange-500/10"
-                  : "border-white/10 hover:border-white/20"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-4 h-4 rounded-full bg-[#ff6600]" />
-                <span className="text-sm font-medium text-white">Monero</span>
-              </div>
-              <div className="text-xs text-gray-400">Most private · XMR</div>
-            </button>
-            <button
-              onClick={() => setCryptoType("ethereum")}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                cryptoType === "ethereum"
-                  ? "border-blue-500/50 bg-blue-500/10"
-                  : "border-white/10 hover:border-white/20"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-4 h-4 rounded-full bg-[#627eea]" />
-                <span className="text-sm font-medium text-white">Ethereum</span>
-              </div>
-              <div className="text-xs text-gray-400">ETH Mainnet only</div>
-            </button>
+            {(
+              [
+                { id: "monero", name: "Monero", desc: "Most private · XMR", dot: "#ff6600", ring: "border-orange-500/50 bg-orange-500/10" },
+                { id: "ethereum", name: "Ethereum", desc: "ETH Mainnet only", dot: "#627eea", ring: "border-blue-500/50 bg-blue-500/10" },
+                { id: "usdt_eth", name: "USDT", desc: "Stablecoin · ERC-20", dot: "#26a17b", ring: "border-green-500/50 bg-green-500/10" },
+                { id: "other", name: "100+ Coins", desc: "BTC, LTC, DOGE…", dot: "#f7931a", ring: "border-yellow-500/50 bg-yellow-500/10" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setCryptoType(m.id as CryptoType)}
+                className={`p-3 rounded-lg border text-left transition-all ${
+                  cryptoType === m.id ? m.ring : "border-white/10 hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-4 h-4 rounded-full" style={{ background: m.dot }} />
+                  <span className="text-sm font-medium text-white">{m.name}</span>
+                </div>
+                <div className="text-xs text-gray-400">{m.desc}</div>
+              </button>
+            ))}
           </div>
+        </div>
+
+        {/* Promo code */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-white mb-3">Promo code</h2>
+          <div className="flex gap-2">
+            <input
+              value={promoInput}
+              onChange={(e) => { setPromoInput(e.target.value); setPromo(null); setPromoError(""); }}
+              placeholder="e.g. LAUNCH-20-…"
+              className="flex-1 h-10 px-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#ff6600]"
+            />
+            <Button
+              variant="outline"
+              className="border-white/20 text-white"
+              disabled={!promoInput.trim() || checkingPromo}
+              onClick={applyPromo}
+            >
+              {checkingPromo ? "…" : "Apply"}
+            </Button>
+          </div>
+          {promo && (
+            <p className="text-xs text-green-400 mt-2">
+              ✓ {promo.label}: {promo.percent}% off — you pay {formatUsd(finalPrice)}
+            </p>
+          )}
+          {promoError && <p className="text-xs text-red-400 mt-2">{promoError}</p>}
         </div>
 
         {error && (
@@ -265,7 +322,12 @@ export default function CheckoutPage() {
         >
           {creating
             ? "Generating invoice..."
-            : `Pay ${formatUsd(displayPrice)} in ${cryptoType === "monero" ? "Monero" : "Ethereum"}`}
+            : `Pay ${formatUsd(finalPrice)} ${
+                cryptoType === "monero" ? "in Monero"
+                : cryptoType === "ethereum" ? "in Ethereum"
+                : cryptoType === "usdt_eth" ? "in USDT"
+                : "with 100+ coins"
+              }`}
         </Button>
       </div>
 
@@ -281,11 +343,12 @@ export default function CheckoutPage() {
           packageCode={packageCode}
           amountUsd={invoice.amountUsd}
           amountCrypto={invoice.amountCrypto}
-          cryptoType={cryptoType as "monero" | "ethereum"}
+          cryptoType={cryptoType as "monero" | "ethereum" | "usdt_eth" | "other"}
           paymentAddress={invoice.paymentAddress}
           qrCode={invoice.qrCode}
           paymentUrl={invoice.paymentUrl}
           expiresAt={invoice.expiresAt}
+          anonpayUrl={invoice.anonpayUrl}
         />
       )}
     </div>

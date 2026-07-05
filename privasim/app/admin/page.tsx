@@ -18,6 +18,38 @@ export default function AdminPage() {
     summary: string | null;
   } | null>(null);
 
+  // Discount code generator
+  const [dLabel, setDLabel] = useState("LAUNCH");
+  const [dPercent, setDPercent] = useState("20");
+  const [dDays, setDDays] = useState("30");
+  const [genCode, setGenCode] = useState("");
+  const [genError, setGenError] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+
+  const generateCode = async () => {
+    setGenBusy(true);
+    setGenError("");
+    setGenCode("");
+    try {
+      const res = await fetch("/api/admin/discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": key.trim() },
+        body: JSON.stringify({
+          label: dLabel,
+          percent: Number(dPercent),
+          validDays: Number(dDays),
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Failed");
+      setGenCode(j.code);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "Failed to generate");
+    } finally {
+      setGenBusy(false);
+    }
+  };
+
   const load = async () => {
     if (!key.trim()) return;
     setLoading(true);
@@ -79,6 +111,56 @@ export default function AdminPage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
+          </div>
+
+          <div className="p-5 bg-white/5 border border-white/10 rounded-xl">
+            <h2 className="font-bold text-white mb-1">Discount codes</h2>
+            <p className="text-xs text-gray-400 mb-3">
+              Codes are cryptographically signed — nobody can forge or alter them. Max 50% off,
+              expiry enforced server-side. Share them anywhere for marketing.
+            </p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <Input
+                value={dLabel}
+                onChange={(e) => setDLabel(e.target.value)}
+                placeholder="Label (LAUNCH)"
+                className="bg-white/10 border-white/20 text-white text-sm"
+              />
+              <Input
+                type="number"
+                value={dPercent}
+                onChange={(e) => setDPercent(e.target.value)}
+                placeholder="% off (1–50)"
+                className="bg-white/10 border-white/20 text-white text-sm"
+              />
+              <Input
+                type="number"
+                value={dDays}
+                onChange={(e) => setDDays(e.target.value)}
+                placeholder="Valid days"
+                className="bg-white/10 border-white/20 text-white text-sm"
+              />
+            </div>
+            <Button
+              onClick={generateCode}
+              disabled={genBusy}
+              className="bg-[#ff6600] hover:bg-[#e55c00] text-white"
+            >
+              {genBusy ? "Generating…" : "Generate code"}
+            </Button>
+            {genCode && (
+              <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <code
+                  className="text-green-300 text-sm break-all cursor-pointer"
+                  onClick={() => navigator.clipboard.writeText(genCode)}
+                  title="Click to copy"
+                >
+                  {genCode}
+                </code>
+                <p className="text-xs text-gray-400 mt-1">Click to copy. Customers enter it at checkout.</p>
+              </div>
+            )}
+            {genError && <p className="text-xs text-red-400 mt-2">{genError}</p>}
           </div>
 
           <div className="p-5 bg-white/5 border border-white/10 rounded-xl">

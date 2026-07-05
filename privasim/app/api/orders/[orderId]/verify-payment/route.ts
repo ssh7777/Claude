@@ -81,6 +81,15 @@ export async function POST(
     );
   }
 
+  // ── USDT (ERC-20) verification ────────────────────────────────────────────
+  if (cryptoType === "usdt_eth") {
+    const expectedAddress = process.env.ETHEREUM_WALLET_ADDRESS ?? "";
+    const { verifyUsdtPayment } = await import("@/lib/ethereum");
+    const result = await verifyUsdtPayment(txHash.trim(), expectedAmount ?? 0, expectedAddress);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error ?? "USDT verification failed" }, { status: 400 });
+    }
+  } else
   // ── Ethereum verification ──────────────────────────────────────────────────
   if (cryptoType === "ethereum") {
     try {

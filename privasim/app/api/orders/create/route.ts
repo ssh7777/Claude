@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyJWT } from "@/lib/auth";
 import { getPackageDetails } from "@/lib/pikasim";
 import { generateMoneroPaymentInfo } from "@/lib/monero";
-import { generateEthereumPaymentInfo } from "@/lib/ethereum";
+import { generateEthereumPaymentInfo, generateUsdtPaymentInfo } from "@/lib/ethereum";
 import { createInvoiceRecord } from "@/lib/db";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { retailPrice } from "@/lib/prices";
@@ -25,22 +25,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let body: { packageCode?: string; cryptoType?: CryptoType; topupIccid?: string };
+  let body: {
+    packageCode?: string;
+    cryptoType?: string;
+    topupIccid?: string;
+    discountCode?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { packageCode, cryptoType = "monero", topupIccid } = body;
+  const { packageCode, cryptoType = "monero", topupIccid, discountCode } = body;
 
   if (!packageCode) {
     return NextResponse.json({ error: "packageCode is required" }, { status: 400 });
   }
 
-  if (!["monero", "ethereum"].includes(cryptoType)) {
+  // "other" = 100+ coins via AnonPay swap → settles as XMR to our wallet
+  if (!["monero", "ethereum", "usdt_eth", "other"].includes(cryptoType)) {
     return NextResponse.json(
-      { error: "cryptoType must be 'monero' or 'ethereum'" },
+      { error: "cryptoType must be 'monero', 'ethereum', 'usdt_eth' or 'other'" },
       { status: 400 }
     );
   }
@@ -77,19 +83,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    const priceUsd = retailPrice(pkg.priceUsd);
+    // Discount codes: verified and applied SERVER-SIDE only — the client
+    // never controls the price. Forged/expired codes are simply ignored.
+    let priceUsd = retailPrice(pkg.priceUsd);
+    let appliedDiscount: { label: string; percent: number } | null = null;
+    if (discountCode) {
+      const { verifyDiscountCode, applyDiscount } = await import("@/lib/discounts");
+      const check = verifyDiscountCode(discountCode);
+      if (check.valid) {
+        priceUsd = applyDiscount(priceUsd, check.percent);
+        appliedDiscount = { label: check.label, percent: check.percent };
+      }
+    }
 
+    // "other" (100+ coins via AnonPay) settles as XMR → use the Monero invoice
     const paymentInfo =
-      cryptoType === "monero"
+      cryptoType === "monero" || cryptoType === "other"
         ? await generateMoneroPaymentInfo(priceUsd)
-        : await generateEthereumPaymentInfo(priceUsd);
+        : cryptoType === "usdt_eth"
+          ? await generateUsdtPaymentInfo(priceUsd)
+          : await generateEthereumPaymentInfo(priceUsd);
 
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      Date.now() + (cryptoType === "other" ? 60 : 15) * 60 * 1000
+    ).toISOString();
 
     const amountCrypto =
-      cryptoType === "monero"
+      cryptoType === "monero" || cryptoType === "other"
         ? (paymentInfo as { amountXmr: number }).amountXmr
-        : (paymentInfo as { amountEth: number }).amountEth;
+        : cryptoType === "usdt_eth"
+          ? (paymentInfo as { amountUsdt: number }).amountUsdt
+          : (paymentInfo as { amountEth: number }).amountEth;
+
+    // AnonPay checkout link: buyer pays in BTC/LTC/100+ coins, Trocador swaps
+    // and delivers XMR to our wallet. No registration, no API key.
+    const anonpayUrl =
+      cryptoType === "other"
+        ? `https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=${encodeURIComponent(paymentInfo.address)}&amount=${(amountCrypto * 1.02).toFixed(6)}&name=PRIVASIM&description=${paymentInfo.invoiceId}`
+        : undefined;
 
     // Store invoice with package metadata for orders page display.
     // Payment address is stored plaintext — it's already shown to the user in the QR code.
@@ -104,7 +135,7 @@ export async function POST(req: NextRequest) {
       duration_days: pkg.durationDays,
       amount_usd: priceUsd,
       amount_crypto: amountCrypto,
-      crypto_type: cryptoType,
+      crypto_type: cryptoType === "other" ? "monero" : cryptoType,
       payment_address: paymentInfo.address,
       expires_at: expiresAt,
       topup_iccid: topupIccid,
@@ -125,6 +156,8 @@ export async function POST(req: NextRequest) {
       qrCode: paymentInfo.qrCode,
       paymentUrl: paymentInfo.paymentUrl,
       expiresAt,
+      anonpayUrl,
+      discount: appliedDiscount,
     });
   } catch (err) {
     console.error("Order creation failed:", err);
