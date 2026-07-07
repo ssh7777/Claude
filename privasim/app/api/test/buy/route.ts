@@ -1,66 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
-import { parseMcpBody } from "@/lib/pikasim";
+import { NextRequest } from "next/server";
+import { searchEsimPackages, purchaseEsim } from "@/lib/pikasim";
+import { retailPrice } from "@/lib/prices";
 
-// Test endpoint: calls PikaSim purchase_esim directly, bypassing crypto payment.
-// Use this to verify the PikaSim API key and purchase flow work before going live.
-// Protected by ?key=<PIKASIM_API_KEY> in the URL.
+// End-to-end purchase test — exercises the SAME purchaseEsim() pipeline that
+// the real crypto checkout uses, so a green result here proves the whole
+// provisioning chain works. Bypasses only the crypto payment step.
+// Protected by ?key=<PIKASIM_API_KEY>. WARNING: a real purchase spends
+// wallet balance.
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const apiKey = process.env.PIKASIM_API_KEY ?? "";
   const provided = url.searchParams.get("key") ?? req.headers.get("x-test-key") ?? "";
   const packageCode = url.searchParams.get("package") ?? "";
+  const country = (url.searchParams.get("country") ?? "JP").toUpperCase();
 
   if (!apiKey || provided !== apiKey) {
     return new Response(
       `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#ff6600">
         <h2>PikaSim Buy Test</h2>
-        <p>Usage: <code style="color:#fff">?key=YOUR_PIKASIM_API_KEY&amp;package=PACKAGE_CODE</code></p>
+        <p>Usage: <code style="color:#fff">?key=YOUR_PIKASIM_API_KEY&amp;country=JP</code> then click a package.</p>
         <p>Wrong or missing API key.</p>
       </body></html>`,
       { status: 401, headers: { "Content-Type": "text/html" } }
     );
   }
 
+  // Step 1 — list cheapest packages so the operator can pick a low-cost one
   if (!packageCode) {
-    // Step 1: list available packages so user can pick one
+    let packages: Awaited<ReturnType<typeof searchEsimPackages>> = [];
     try {
-      const res = await fetch("https://pikasim.com/api/packages/all-countries?country=JP", {
-        headers: { Accept: "application/json", "X-API-Key": apiKey },
-        signal: AbortSignal.timeout(10_000),
-      });
-      const text = await res.text();
-      let packages: { packageCode: string; name?: string; packageName?: string; priceUSD?: number; price?: number }[] = [];
-      try {
-        const j = JSON.parse(text);
-        packages = (j.packages ?? []).slice(0, 10);
-      } catch { /* ignore */ }
-
-      const rows = packages.map(p =>
-        `<tr>
-          <td style="padding:4px 12px">${p.packageCode}</td>
-          <td style="padding:4px 12px">${p.name ?? p.packageName ?? "-"}</td>
-          <td style="padding:4px 12px">$${((p.priceUSD ?? p.price ?? 0) / (p.priceUSD ? 1 : 10000)).toFixed(2)}</td>
-          <td style="padding:4px 12px">
-            <a style="color:#ff6600" href="?key=${encodeURIComponent(apiKey)}&package=${encodeURIComponent(p.packageCode)}">
-              Test Buy
-            </a>
-          </td>
-        </tr>`
-      ).join("");
-
-      return new Response(
-        `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#ccc">
-          <h2 style="color:#ff6600">PikaSim Buy Test — Pick a Package</h2>
-          <p style="color:#f90">⚠ This will charge your PikaSim reseller balance — but NO crypto needed.</p>
-          <p>Showing first 10 Japan packages. Click "Test Buy" to purchase.</p>
-          <table border="1" style="border-collapse:collapse;color:#ccc">
-            <tr style="color:#fff"><th>Code</th><th>Name</th><th>Price</th><th>Action</th></tr>
-            ${rows || "<tr><td colspan=4>No packages found — check PIKASIM_API_KEY</td></tr>"}
-          </table>
-        </body></html>`,
-        { status: 200, headers: { "Content-Type": "text/html" } }
-      );
+      packages = await searchEsimPackages(country, "data");
     } catch (err) {
       return new Response(
         `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#f44">
@@ -69,83 +39,65 @@ export async function GET(req: NextRequest) {
         { status: 500, headers: { "Content-Type": "text/html" } }
       );
     }
+    const rows = [...packages]
+      .sort((a, b) => a.priceUsd - b.priceUsd)
+      .slice(0, 10)
+      .map(
+        (p) => `<tr>
+          <td style="padding:4px 12px">${p.code}</td>
+          <td style="padding:4px 12px">${p.dataAmount} · ${p.durationDays}d</td>
+          <td style="padding:4px 12px">wholesale $${p.priceUsd.toFixed(2)} → retail $${retailPrice(p.priceUsd).toFixed(2)}</td>
+          <td style="padding:4px 12px"><a style="color:#ff6600" href="?key=${encodeURIComponent(apiKey)}&package=${encodeURIComponent(p.code)}">Test Buy →</a></td>
+        </tr>`
+      )
+      .join("");
+
+    return new Response(
+      `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#ccc">
+        <h2 style="color:#ff6600">End-to-End Buy Test — ${country} (cheapest first)</h2>
+        <p style="color:#f90">⚠ Clicking "Test Buy" spends real wallet balance — pick the cheapest.</p>
+        <table border="1" style="border-collapse:collapse;color:#ccc">
+          <tr style="color:#fff"><th>Code</th><th>Plan</th><th>Price</th><th>Action</th></tr>
+          ${rows || "<tr><td colspan=4>No packages — check PIKASIM_API_KEY</td></tr>"}
+        </table>
+        <p style="color:#888;margin-top:1rem">Try other countries: append <code>&amp;country=US</code> etc.</p>
+      </body></html>`,
+      { status: 200, headers: { "Content-Type": "text/html" } }
+    );
   }
 
-  // Step 2: call purchase_esim with the chosen package code
+  // Step 2 — real purchase through the production pipeline
   const startMs = Date.now();
-  let pikaRaw: unknown;
-  let pikaStatus = 0;
-  let pikaError: string | null = null;
-
+  let result: Awaited<ReturnType<typeof purchaseEsim>> | null = null;
+  let error: string | null = null;
   try {
-    const res = await fetch("https://pikasim.com/mcp", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: Date.now(),
-        method: "tools/call",
-        params: { name: "purchase_esim", arguments: { packageCode } },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    pikaStatus = res.status;
-    const text = await res.text();
-    const env = parseMcpBody(text);
-    pikaRaw = Object.keys(env).length ? env : text.slice(0, 1000);
+    result = await purchaseEsim(packageCode);
   } catch (err) {
-    pikaError = String(err);
+    error = err instanceof Error ? err.message : String(err);
   }
-
   const elapsed = Date.now() - startMs;
-  const pretty = JSON.stringify(pikaRaw, null, 2) ?? "";
 
-  // Extract ICCID from response if present
-  const raw = pikaRaw as Record<string, unknown> | null;
-  let iccid = "";
-  let activationCode = "";
-  try {
-    const result = (raw?.result ?? raw) as Record<string, unknown>;
-    // Handle content-block wrapping
-    if (Array.isArray((result as { content?: unknown[] })?.content)) {
-      const block = ((result as { content: { type: string; text?: string }[] }).content).find(b => b.type === "text" && b.text);
-      if (block?.text) {
-        const inner = JSON.parse(block.text) as Record<string, unknown>;
-        iccid = String(inner.iccid ?? inner.ICCID ?? "");
-        activationCode = String(inner.activationCode ?? inner.activation_code ?? "");
-      }
-    } else {
-      iccid = String(result?.iccid ?? result?.ICCID ?? "");
-      activationCode = String(result?.activationCode ?? result?.activation_code ?? "");
-    }
-  } catch { /* ignore */ }
-
-  const success = !!iccid && !!activationCode;
+  const success = !!result && (!!result.iccid || !!result.orderId);
+  const delivered = !!result?.iccid && !!result?.activationCode;
 
   return new Response(
     `<html><body style="font-family:monospace;padding:2rem;background:#111;color:#ccc">
       <h2 style="color:${success ? "#0f0" : "#f44"}">
-        ${success ? "✓ eSIM Purchased Successfully!" : "✗ Purchase Failed"}
+        ${delivered ? "✓ eSIM Purchased & Delivered!" : success ? "✓ Purchase Accepted (provisioning async)" : "✗ Purchase Failed"}
       </h2>
-      <p>Package: <b style="color:#fff">${packageCode}</b> — took ${elapsed}ms — HTTP ${pikaStatus}</p>
-      ${pikaError ? `<p style="color:#f44">Network error: ${pikaError}</p>` : ""}
-      ${success ? `
+      <p>Package: <b style="color:#fff">${packageCode}</b> — took ${elapsed}ms</p>
+      ${error ? `<p style="color:#f44">Error: ${error}</p>` : ""}
+      ${result ? `
         <div style="background:#1a2;padding:1rem;border-radius:8px;margin:1rem 0">
-          <p><b style="color:#0f0">ICCID:</b> <span style="color:#fff">${iccid}</span></p>
-          <p><b style="color:#0f0">Activation Code:</b> <span style="color:#fff">${activationCode}</span></p>
+          <p><b style="color:#0f0">Order ID:</b> <span style="color:#fff">${result.orderId || "(async)"}</span></p>
+          <p><b style="color:#0f0">ICCID:</b> <span style="color:#fff">${result.iccid || "(pending webhook)"}</span></p>
+          <p><b style="color:#0f0">Activation:</b> <span style="color:#fff">${result.activationCode || "(pending)"}</span></p>
+          <p><b style="color:#0f0">SM-DP+:</b> <span style="color:#fff">${result.smDpAddress || "-"}</span></p>
+          <p><b style="color:#0f0">Status:</b> <span style="color:#fff">${result.status}</span></p>
         </div>
-        <p style="color:#0f0">✓ The full purchase flow works! Real customers will receive these codes after paying.</p>
-      ` : `
-        <p style="color:#f90">See raw response below to diagnose the issue:</p>
-      `}
-      <details open>
-        <summary style="cursor:pointer;color:#ff6600">Raw PikaSim Response</summary>
-        <pre style="color:#aaa;white-space:pre-wrap">${pretty}</pre>
-      </details>
+        ${delivered ? `<p style="color:#0f0">✓ Full pipeline works — real customers get these codes after paying.</p>
+          ${result.iccid ? `<p><a style="color:#ff6600" href="/esim/${encodeURIComponent(result.iccid)}">Track this eSIM →</a></p>` : ""}` : ""}
+      ` : ""}
       <br><a style="color:#ff6600" href="?key=${encodeURIComponent(apiKey)}">← Back to package list</a>
     </body></html>`,
     { status: 200, headers: { "Content-Type": "text/html" } }
