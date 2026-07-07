@@ -36,6 +36,7 @@ interface SavedOrder {
   expiresAt: string;
   createdAt: string;
   status: string;
+  invoiceToken?: string;
 }
 
 function saveOrderToLocal(order: SavedOrder) {
@@ -65,6 +66,7 @@ export default function CheckoutPage() {
     paymentUrl: string;
     expiresAt: string;
     anonpayUrl?: string;
+    invoiceToken?: string;
   } | null>(null);
 
   // Promo code — validated against the server; price is ALWAYS recomputed
@@ -146,6 +148,7 @@ export default function CheckoutPage() {
         expiresAt: data.expiresAt,
         createdAt: new Date().toISOString(),
         status: "pending",
+        invoiceToken: data.invoiceToken,
       });
 
       setInvoice({
@@ -157,6 +160,7 @@ export default function CheckoutPage() {
         paymentUrl: data.paymentUrl,
         expiresAt: data.expiresAt,
         anonpayUrl: data.anonpayUrl,
+        invoiceToken: data.invoiceToken,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create order");
@@ -349,6 +353,7 @@ export default function CheckoutPage() {
           paymentUrl={invoice.paymentUrl}
           expiresAt={invoice.expiresAt}
           anonpayUrl={invoice.anonpayUrl}
+          invoiceToken={invoice.invoiceToken}
         />
       )}
     </div>

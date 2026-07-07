@@ -28,7 +28,9 @@ export async function generateMoneroPaymentInfo(
 
   const paymentUrl = `monero:${address}?amount=${amountXmr.toFixed(12)}&tx_description=PRIVASIM-${invoiceId}`;
 
-  const qrCode = await QRCode.toDataURL(paymentUrl, {
+  // QR encodes the PLAIN address only — URI params confuse some wallets
+  // and generic scanners into treating them as part of the address.
+  const qrCode = await QRCode.toDataURL(address, {
     errorCorrectionLevel: "M",
     width: 256,
     margin: 2,

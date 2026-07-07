@@ -30,6 +30,7 @@ interface Invoice {
   cryptoType: string;
   paymentAddress: string;
   amountUsd: number;
+  invoiceToken?: string;
 }
 
 function TopupInner() {
@@ -108,10 +109,7 @@ function TopupInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           txHash: txHash.trim(),
-          packageCode: selected?.packageCode,
-          cryptoType: invoice.cryptoType,
-          amountCrypto: invoice.amountCrypto,
-          topupIccid: iccid.trim(),
+          invoiceToken: invoice.invoiceToken,
         }),
       });
       const j = await res.json();

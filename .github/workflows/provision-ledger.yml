@@ -1,0 +1,63 @@
+name: Provision persistent ledger (Vercel Edge Config)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Edge Config + read token, wire env vars to privasim
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # 1. Find or create the edge config
+          ID=$(curl -sS "https://api.vercel.com/v1/edge-config" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          for c in json.load(sys.stdin):
+            if c.get('slug') == 'privasim-ledger':
+              print(c['id']); break
+          ")
+          if [ -z "$ID" ]; then
+            ID=$(curl -sS -X POST "https://api.vercel.com/v1/edge-config" \
+              -H "Authorization: Bearer $VT" -H "Content-Type: application/json" \
+              -d '{"slug":"privasim-ledger"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+            echo "Created edge config: $ID"
+          else
+            echo "Found existing edge config: $ID"
+          fi
+
+          # 2. Create a read token
+          READ_TOKEN=$(curl -sS -X POST "https://api.vercel.com/v1/edge-config/$ID/token" \
+            -H "Authorization: Bearer $VT" -H "Content-Type: application/json" \
+            -d '{"label":"privasim-app-read"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+          echo "Read token created"
+
+          # 3. Set project env vars (idempotent: delete same-key entries first)
+          set_env() {
+            NAME="$1"
+            IDS=$(curl -sS "https://api.vercel.com/v9/projects/privasim/env" -H "Authorization: Bearer $VT" \
+              | python3 -c "
+          import sys, json
+          for e in json.load(sys.stdin).get('envs', []):
+            if e.get('key') == '$NAME': print(e['id'])
+          ")
+            for id in $IDS; do
+              curl -sS -o /dev/null -X DELETE "https://api.vercel.com/v9/projects/privasim/env/$id" -H "Authorization: Bearer $VT"
+            done
+            code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "https://api.vercel.com/v10/projects/privasim/env" \
+              -H "Authorization: Bearer $VT" -H "Content-Type: application/json" \
+              -d "$(python3 -c "
+          import json, os
+          print(json.dumps({'key': '$NAME', 'value': os.environ['VAL'], 'type': 'encrypted', 'target': ['production', 'preview']}))
+          ")")
+            echo "SET $NAME -> HTTP $code"
+          }
+
+          export VAL="https://edge-config.vercel.com/$ID?token=$READ_TOKEN"
+          set_env "EDGE_CONFIG"
+          export VAL="$VT"
+          set_env "VERCEL_API_TOKEN"
+
+          echo "Ledger provisioned. Redeploy required for env vars to take effect."

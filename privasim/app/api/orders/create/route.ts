@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
     let priceUsd = retailPrice(pkg.priceUsd);
     let appliedDiscount: { label: string; percent: number } | null = null;
     if (discountCode) {
-      const { verifyDiscountCode, applyDiscount } = await import("@/lib/discounts");
-      const check = verifyDiscountCode(discountCode);
+      const { checkCouponUsable, applyDiscount } = await import("@/lib/discounts");
+      const check = await checkCouponUsable(discountCode);
       if (check.valid) {
         priceUsd = applyDiscount(priceUsd, check.percent);
         appliedDiscount = { label: check.label, percent: check.percent };
@@ -158,6 +158,17 @@ export async function POST(req: NextRequest) {
       expiresAt,
       anonpayUrl,
       discount: appliedDiscount,
+      // Signed proof of the order parameters — required by verify-payment
+      // after cold starts. Tamper-proof; the client can store but not alter it.
+      invoiceToken: (await import("@/lib/invoiceToken")).createInvoiceToken({
+        invoiceId: paymentInfo.invoiceId,
+        packageCode,
+        cryptoType: cryptoType === "other" ? "monero" : cryptoType,
+        amountCrypto,
+        amountUsd: priceUsd,
+        topupIccid,
+        discountCode: appliedDiscount ? discountCode : undefined,
+      }),
     });
   } catch (err) {
     console.error("Order creation failed:", err);

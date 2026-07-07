@@ -27,6 +27,7 @@ interface SavedOrder {
   expiresAt: string;
   createdAt: string;
   status: string;
+  invoiceToken?: string;
 }
 
 interface EsimCodes {
@@ -145,9 +146,7 @@ function OrderRow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           txHash: txHash.trim(),
-          packageCode: order.packageCode,
-          cryptoType: order.cryptoType,
-          amountCrypto: order.amountCrypto,
+          invoiceToken: order.invoiceToken,
         }),
       });
       const data = await res.json();

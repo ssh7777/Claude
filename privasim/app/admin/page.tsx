@@ -18,13 +18,25 @@ export default function AdminPage() {
     summary: string | null;
   } | null>(null);
 
-  // Discount code generator
+  // Discount code generator + management
   const [dLabel, setDLabel] = useState("LAUNCH");
   const [dPercent, setDPercent] = useState("20");
   const [dDays, setDDays] = useState("30");
+  const [dMaxUses, setDMaxUses] = useState("100");
   const [genCode, setGenCode] = useState("");
   const [genError, setGenError] = useState("");
   const [genBusy, setGenBusy] = useState(false);
+  const [coupons, setCoupons] = useState<
+    { code: string; uses: number; maxUses: number; revoked: boolean }[]
+  >([]);
+
+  const loadCoupons = async (k: string) => {
+    try {
+      const res = await fetch("/api/admin/discounts", { headers: { "x-admin-key": k } });
+      const j = await res.json();
+      if (res.ok) setCoupons(j.coupons ?? []);
+    } catch { /* non-fatal */ }
+  };
 
   const generateCode = async () => {
     setGenBusy(true);
@@ -38,16 +50,27 @@ export default function AdminPage() {
           label: dLabel,
           percent: Number(dPercent),
           validDays: Number(dDays),
+          maxUses: Number(dMaxUses) || 0,
         }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Failed");
       setGenCode(j.code);
+      loadCoupons(key.trim());
     } catch (e) {
       setGenError(e instanceof Error ? e.message : "Failed to generate");
     } finally {
       setGenBusy(false);
     }
+  };
+
+  const toggleRevoke = async (code: string, revoked: boolean) => {
+    await fetch("/api/admin/discounts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": key.trim() },
+      body: JSON.stringify({ code, revoked }),
+    });
+    loadCoupons(key.trim());
   };
 
   const load = async () => {
@@ -61,6 +84,7 @@ export default function AdminPage() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Failed");
       setData(j);
+      loadCoupons(key.trim());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -119,7 +143,7 @@ export default function AdminPage() {
               Codes are cryptographically signed — nobody can forge or alter them. Max 50% off,
               expiry enforced server-side. Share them anywhere for marketing.
             </p>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-4 gap-2 mb-3">
               <Input
                 value={dLabel}
                 onChange={(e) => setDLabel(e.target.value)}
@@ -138,6 +162,13 @@ export default function AdminPage() {
                 value={dDays}
                 onChange={(e) => setDDays(e.target.value)}
                 placeholder="Valid days"
+                className="bg-white/10 border-white/20 text-white text-sm"
+              />
+              <Input
+                type="number"
+                value={dMaxUses}
+                onChange={(e) => setDMaxUses(e.target.value)}
+                placeholder="Max uses (0=∞)"
                 className="bg-white/10 border-white/20 text-white text-sm"
               />
             </div>
@@ -161,6 +192,30 @@ export default function AdminPage() {
               </div>
             )}
             {genError && <p className="text-xs text-red-400 mt-2">{genError}</p>}
+
+            {coupons.length > 0 && (
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase">Active codes</h3>
+                <div className="space-y-1.5">
+                  {coupons.map((c) => (
+                    <div key={c.code} className="flex items-center justify-between gap-2 text-xs bg-white/3 rounded px-2 py-1.5">
+                      <code className={`break-all ${c.revoked ? "text-gray-500 line-through" : "text-gray-200"}`}>
+                        {c.code}
+                      </code>
+                      <span className="text-gray-400 shrink-0">
+                        {c.uses}/{c.maxUses || "∞"} used
+                      </span>
+                      <button
+                        onClick={() => toggleRevoke(c.code, !c.revoked)}
+                        className={`shrink-0 px-2 py-0.5 rounded ${c.revoked ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}
+                      >
+                        {c.revoked ? "Reactivate" : "Revoke"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="p-5 bg-white/5 border border-white/10 rounded-xl">

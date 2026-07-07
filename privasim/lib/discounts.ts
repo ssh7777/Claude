@@ -80,3 +80,20 @@ export function applyDiscount(retailUsd: number, percent: number): number {
   const discounted = retailUsd * (1 - percent / 100);
   return Math.max(0.5, Math.ceil(discounted * 100) / 100);
 }
+
+// Full usability check: signature AND the persistent ledger (revocation +
+// usage limits). This is what validate + orders/create must call.
+export async function checkCouponUsable(code: string): Promise<DiscountCheck> {
+  const sig = verifyDiscountCode(code);
+  if (!sig.valid) return sig;
+
+  const { getCouponState } = await import("@/lib/ledger");
+  const state = await getCouponState(code.trim().toUpperCase());
+  if (state.revoked) {
+    return { valid: false, percent: 0, label: sig.label, reason: "Code has been deactivated" };
+  }
+  if (state.maxUses > 0 && state.uses >= state.maxUses) {
+    return { valid: false, percent: 0, label: sig.label, reason: "Code usage limit reached" };
+  }
+  return sig;
+}

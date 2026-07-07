@@ -27,6 +27,7 @@ interface PaymentModalProps {
   paymentUrl: string;
   expiresAt: string;
   anonpayUrl?: string;
+  invoiceToken?: string;
 }
 
 export default function PaymentModal({
@@ -43,6 +44,7 @@ export default function PaymentModal({
   paymentUrl,
   expiresAt,
   anonpayUrl,
+  invoiceToken,
 }: PaymentModalProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(timeUntil(expiresAt));
@@ -110,9 +112,7 @@ export default function PaymentModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           txHash: txHash.trim(),
-          packageCode,
-          cryptoType,
-          amountCrypto,
+          invoiceToken,
         }),
       });
       const data = await res.json();

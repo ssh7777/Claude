@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyDiscountCode } from "@/lib/discounts";
+import { checkCouponUsable } from "@/lib/discounts";
 import { rateLimit } from "@/lib/rateLimit";
 
 // Public validation for the checkout promo field. Tightly rate-limited so
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const check = verifyDiscountCode(code);
+  const check = await checkCouponUsable(code);
   if (!check.valid) {
     return NextResponse.json({ valid: false, reason: check.reason }, { status: 200 });
   }

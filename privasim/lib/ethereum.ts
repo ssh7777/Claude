@@ -29,7 +29,9 @@ export async function generateEthereumPaymentInfo(
 
   const paymentUrl = `ethereum:${address}@1?value=${amountWei}`;
 
-  const qrCode = await QRCode.toDataURL(paymentUrl, {
+  // QR encodes the PLAIN address only. EIP-681 URIs confuse several wallets
+  // and generic scanners, which append the URI parts to the address.
+  const qrCode = await QRCode.toDataURL(address, {
     errorCorrectionLevel: "M",
     width: 256,
     margin: 2,
@@ -67,7 +69,9 @@ export async function generateUsdtPaymentInfo(amountUsd: number): Promise<UsdtPa
   // EIP-681 token transfer URL — wallets prefill the USDT send screen
   const paymentUrl = `ethereum:${USDT_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
 
-  const qrCode = await QRCode.toDataURL(paymentUrl, {
+  // QR encodes OUR plain address only — never the token contract, which
+  // scanners would otherwise present as the destination address.
+  const qrCode = await QRCode.toDataURL(address, {
     errorCorrectionLevel: "M",
     width: 256,
     margin: 2,

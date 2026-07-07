@@ -21,10 +21,7 @@ export async function POST(
 
   let body: {
     txHash?: string;
-    packageCode?: string;
-    cryptoType?: string;
-    amountCrypto?: number;
-    topupIccid?: string;
+    invoiceToken?: string;
   };
   try {
     body = await req.json();
@@ -32,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { txHash, packageCode: clientPackageCode, cryptoType: clientCryptoType, amountCrypto: clientAmount, topupIccid: clientTopupIccid } = body;
+  const { txHash, invoiceToken } = body;
 
   if (!txHash?.trim()) {
     return NextResponse.json({ error: "Transaction hash is required" }, { status: 400 });
@@ -49,6 +46,14 @@ export async function POST(
 
   // Load from in-memory store — may be absent after a cold start
   const invoice = await getInvoiceById(params.orderId);
+
+  // Cold-start fallback: a SIGNED token issued by orders/create. Client
+  // fields are never trusted — the token is tamper-proof (HMAC).
+  const { verifyInvoiceToken } = await import("@/lib/invoiceToken");
+  const tokenPayload = invoiceToken ? verifyInvoiceToken(invoiceToken) : null;
+  if (tokenPayload && tokenPayload.invoiceId !== params.orderId) {
+    return NextResponse.json({ error: "Invoice token does not match this order" }, { status: 400 });
+  }
 
   // Already confirmed with eSIM stored — return existing codes
   if (invoice?.status === "confirmed" && invoice.iccid_encrypted && invoice.activation_code_encrypted) {
@@ -69,14 +74,14 @@ export async function POST(
     }
   }
 
-  // Use server data when available; fall back to client-provided data (from localStorage)
-  const cryptoType = invoice?.crypto_type ?? clientCryptoType ?? "ethereum";
-  const packageCode = invoice?.package_code ?? clientPackageCode;
-  const expectedAmount = invoice?.amount_crypto ?? clientAmount;
+  // Server-memory invoice first; signed token second; NEVER raw client data.
+  const cryptoType = invoice?.crypto_type ?? tokenPayload?.cryptoType;
+  const packageCode = invoice?.package_code ?? tokenPayload?.packageCode;
+  const expectedAmount = invoice?.amount_crypto ?? tokenPayload?.amountCrypto;
 
-  if (!packageCode) {
+  if (!packageCode || !cryptoType || !expectedAmount) {
     return NextResponse.json(
-      { error: "Package code missing. Please refresh the orders page and try again." },
+      { error: "Order details unavailable. Open this order from the My Orders page (it holds your signed invoice) and try again." },
       { status: 400 }
     );
   }
@@ -145,13 +150,11 @@ export async function POST(
         return NextResponse.json({ error: `Amount too low: ${sentEth} ETH sent.` }, { status: 400 });
       }
 
-      if (expectedAmount && expectedAmount > 0) {
-        const diff = Math.abs(sentEth - expectedAmount) / expectedAmount;
-        if (diff > 0.30) {
-          return NextResponse.json({
-            error: `Amount mismatch: sent ${sentEth.toFixed(6)} ETH but order requires ~${expectedAmount.toFixed(6)} ETH (±30%). Please send the exact amount shown on your invoice.`,
-          }, { status: 400 });
-        }
+      // Underpayment rejected (5% grace for gas rounding); overpayment accepted.
+      if (expectedAmount && expectedAmount > 0 && sentEth < expectedAmount * 0.95) {
+        return NextResponse.json({
+          error: `Amount too low: sent ${sentEth.toFixed(6)} ETH but the order requires ${expectedAmount.toFixed(6)} ETH. Please send the remaining balance in a new transaction and verify with that hash.`,
+        }, { status: 400 });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -186,11 +189,29 @@ export async function POST(
     }
   }
 
-  // ── Payment verified — mark TX as used ────────────────────────────────────
+  // ── Payment verified — claim TX in the PERSISTENT ledger ──────────────────
+  // One transaction = one eSIM, across all serverless instances. This is what
+  // prevents a retry (or a malicious replay) from purchasing twice.
   usedTxHashes.add(normalizedTx);
+  const { claimTxHash } = await import("@/lib/ledger");
+  const claimedBy = await claimTxHash(normalizedTx, params.orderId);
+  if (claimedBy) {
+    return NextResponse.json(
+      { error: "This transaction has already been used to claim an eSIM. Check My Orders for your activation code." },
+      { status: 400 }
+    );
+  }
+
+  // Record coupon redemption (once per claimed TX — retries don't double-count)
+  const usedCoupon = tokenPayload?.discountCode;
+  if (usedCoupon) {
+    const { getCouponState, setCouponState } = await import("@/lib/ledger");
+    const st = await getCouponState(usedCoupon);
+    await setCouponState(usedCoupon, { ...st, uses: st.uses + 1 });
+  }
 
   // ── Top-up orders: refill the existing eSIM instead of buying a new one ──
-  const topupIccid = invoice?.topup_iccid ?? clientTopupIccid;
+  const topupIccid = invoice?.topup_iccid ?? tokenPayload?.topupIccid;
   if (topupIccid) {
     try {
       const { topupEsim } = await import("@/lib/pikasim");
