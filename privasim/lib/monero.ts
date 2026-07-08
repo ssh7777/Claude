@@ -3,12 +3,7 @@
 import QRCode from "qrcode";
 import { usdToXmr } from "@/lib/prices";
 import { generateSecureId } from "@/lib/crypto-utils";
-
-function getPrimaryAddress(): string {
-  const addr = process.env.MONERO_WALLET_PRIMARY;
-  if (!addr) throw new Error("MONERO_WALLET_PRIMARY is not configured");
-  return addr;
-}
+import { getMoneroAddress } from "@/lib/settings";
 
 export interface MoneroPaymentInfo {
   address: string;
@@ -22,7 +17,7 @@ export interface MoneroPaymentInfo {
 export async function generateMoneroPaymentInfo(
   amountUsd: number
 ): Promise<MoneroPaymentInfo> {
-  const address = getPrimaryAddress();
+  const address = await getMoneroAddress();
   const amountXmr = await usdToXmr(amountUsd);
   const invoiceId = generateSecureId();
 

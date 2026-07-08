@@ -30,11 +30,21 @@ export async function POST(req: NextRequest) {
     cryptoType?: string;
     topupIccid?: string;
     discountCode?: string;
+    captcha?: unknown;
   };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Proof-of-work CAPTCHA — blocks automated invoice spam / abuse.
+  const { verifySolution } = await import("@/lib/captcha");
+  if (!verifySolution(body.captcha as Record<string, unknown>)) {
+    return NextResponse.json(
+      { error: "Verification failed or expired. Please retry." },
+      { status: 400 }
+    );
   }
 
   const { packageCode, cryptoType = "monero", topupIccid, discountCode } = body;

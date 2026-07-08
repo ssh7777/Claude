@@ -62,6 +62,24 @@ export async function ledgerSet(key: string, value: unknown): Promise<boolean> {
   }
 }
 
+export async function ledgerDelete(key: string): Promise<boolean> {
+  memory.delete(key);
+  const cfg = readConfig();
+  const token = apiToken();
+  if (!cfg || !token) return false;
+  try {
+    const res = await fetch(`https://api.vercel.com/v1/edge-config/${cfg.id}/items`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ operation: "delete", key }] }),
+      signal: AbortSignal.timeout(6000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function ledgerList(prefix: string): Promise<Record<string, unknown>> {
   const cfg = readConfig();
   const token = apiToken();

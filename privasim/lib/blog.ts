@@ -5,6 +5,7 @@
 // the live catalog every day and pushes, which redeploys the site.
 
 import dealsData from "@/data/daily-deals.json";
+import autoArticles from "@/data/auto-articles.json";
 import { retailPrice } from "@/lib/prices";
 import { countryName } from "@/lib/countries";
 
@@ -413,7 +414,9 @@ ${rows}
 }
 
 function allPosts(): BlogPost[] {
-  return [dailyDealsPost(), ...BLOG_POSTS];
+  // Auto-generated daily articles + the deals post + hand-written evergreen posts.
+  const auto = (autoArticles as BlogPost[]).filter((a) => a && a.slug && a.content);
+  return [dailyDealsPost(), ...auto, ...BLOG_POSTS];
 }
 
 export function getBlogPosts(limit = 20, offset = 0): BlogPost[] {

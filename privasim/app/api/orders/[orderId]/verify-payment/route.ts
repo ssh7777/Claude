@@ -22,6 +22,7 @@ export async function POST(
   let body: {
     txHash?: string;
     invoiceToken?: string;
+    source?: string;
   };
   try {
     body = await req.json();
@@ -86,9 +87,11 @@ export async function POST(
     );
   }
 
+  const { getEthereumAddress } = await import("@/lib/settings");
+
   // ── USDT (ERC-20) verification ────────────────────────────────────────────
   if (cryptoType === "usdt_eth") {
-    const expectedAddress = process.env.ETHEREUM_WALLET_ADDRESS ?? "";
+    const expectedAddress = await getEthereumAddress().catch(() => "");
     const { verifyUsdtPayment } = await import("@/lib/ethereum");
     const result = await verifyUsdtPayment(txHash.trim(), expectedAmount ?? 0, expectedAddress);
     if (!result.ok) {
@@ -127,7 +130,7 @@ export async function POST(
         }, { status: 400 });
       }
 
-      const expectedAddress = process.env.ETHEREUM_WALLET_ADDRESS;
+      const expectedAddress = await getEthereumAddress().catch(() => "");
       if (expectedAddress && tx.to?.toLowerCase() !== expectedAddress.toLowerCase()) {
         return NextResponse.json({
           error: "This transaction was not sent to the PRIVASIM wallet address.",
@@ -209,6 +212,13 @@ export async function POST(
     const st = await getCouponState(usedCoupon);
     await setCouponState(usedCoupon, { ...st, uses: st.uses + 1 });
   }
+
+  // Attribute the sale to its traffic source (once per claimed TX)
+  try {
+    const { recordEvent } = await import("@/lib/analytics");
+    const saleUsd = invoice?.amount_usd ?? tokenPayload?.amountUsd ?? 0;
+    await recordEvent(body.source || "direct", "sale", saleUsd);
+  } catch { /* analytics never blocks a sale */ }
 
   // ── Top-up orders: refill the existing eSIM instead of buying a new one ──
   const topupIccid = invoice?.topup_iccid ?? tokenPayload?.topupIccid;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createDiscountCode, MAX_PERCENT } from "@/lib/discounts";
-import { getCouponState, setCouponState, ledgerList, ledgerPersistent } from "@/lib/ledger";
+import { getCouponState, setCouponState, ledgerList, ledgerDelete, ledgerPersistent } from "@/lib/ledger";
 
 // Owner-only coupon management: create (with usage limits), revoke,
 // reactivate, and list. Gated by the reseller API key.
@@ -61,6 +61,15 @@ export async function PATCH(req: NextRequest) {
   };
   const persisted = await setCouponState(body.code, next);
   return NextResponse.json({ code: body.code.toUpperCase(), ...next, persistent: persisted });
+}
+
+// Permanently delete a code
+export async function DELETE(req: NextRequest) {
+  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const code = new URL(req.url).searchParams.get("code");
+  if (!code) return NextResponse.json({ error: "code is required" }, { status: 400 });
+  await ledgerDelete(`cpn_${code.toUpperCase()}`);
+  return NextResponse.json({ deleted: code.toUpperCase() });
 }
 
 // List all codes with usage

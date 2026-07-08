@@ -113,6 +113,7 @@ export default function PaymentModal({
         body: JSON.stringify({
           txHash: txHash.trim(),
           invoiceToken,
+          source: (typeof localStorage !== "undefined" && localStorage.getItem("ps_source")) || "direct",
         }),
       });
       const data = await res.json();

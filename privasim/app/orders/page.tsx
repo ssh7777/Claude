@@ -147,6 +147,7 @@ function OrderRow({
         body: JSON.stringify({
           txHash: txHash.trim(),
           invoiceToken: order.invoiceToken,
+          source: (typeof localStorage !== "undefined" && localStorage.getItem("ps_source")) || "direct",
         }),
       });
       const data = await res.json();

@@ -1,4 +1,4 @@
-name: Daily blog deals refresh
+name: Daily content automation (deals + auto-article + SEO ping)
 
 on:
   schedule:
@@ -58,14 +58,28 @@ jobs:
           print(f"wrote {len(deals)} deals for {out['date']}")
           EOF
 
+      - name: Generate today's auto-article from live catalog
+        run: node privasim/scripts/generate-article.mjs
+
       - name: Commit and push if changed
         run: |
           git config user.name "Claude"
           git config user.email "noreply@anthropic.com"
-          if git diff --quiet privasim/data/daily-deals.json; then
+          git add privasim/data/daily-deals.json privasim/data/auto-articles.json
+          if git diff --cached --quiet; then
             echo "No changes — skipping commit"
             exit 0
           fi
-          git add privasim/data/daily-deals.json
-          git commit -m "Daily deals refresh: $(date -u +%F)"
+          git commit -m "Daily content: deals + auto-article $(date -u +%F)"
           git push origin main
+
+      - name: Ping IndexNow (Bing, Yandex, Seznam, Naver) for instant crawl
+        continue-on-error: true
+        run: |
+          # IndexNow key is hosted at /<key>.txt on the site (public/ file).
+          KEY="a7f3c1e community 9b2d4e6f8a0c2e4b6d8f0a1c3e5b7d9f"
+          KEY="a7f3c1e9b2d4e6f8a0c2e4b6d8f0a1c3"
+          BASE="https://privasim-two.vercel.app"
+          for url in "$BASE/" "$BASE/blog" "$BASE/blog/best-esim-deals-today" "$BASE/shop" "$BASE/shop/global"; do
+            curl -sS "https://api.indexnow.org/indexnow?url=${url}&key=${KEY}" -o /dev/null -w "IndexNow %{http_code} ${url}\n" || true
+          done

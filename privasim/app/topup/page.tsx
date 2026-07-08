@@ -80,6 +80,9 @@ function TopupInner() {
     setLoading(true);
     setError("");
     try {
+      const { getSolvedCaptcha } = await import("@/lib/pow");
+      const captcha = await getSolvedCaptcha();
+
       const res = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,6 +90,7 @@ function TopupInner() {
           packageCode: selected.packageCode,
           cryptoType: crypto,
           topupIccid: iccid.trim(),
+          captcha,
         }),
       });
       const j = await res.json();

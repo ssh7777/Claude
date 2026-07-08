@@ -3,12 +3,7 @@
 import QRCode from "qrcode";
 import { usdToEth } from "@/lib/prices";
 import { generateSecureId } from "@/lib/crypto-utils";
-
-function getEthAddress(): string {
-  const addr = process.env.ETHEREUM_WALLET_ADDRESS;
-  if (!addr) throw new Error("ETHEREUM_WALLET_ADDRESS is not configured");
-  return addr;
-}
+import { getEthereumAddress } from "@/lib/settings";
 
 export interface EthereumPaymentInfo {
   address: string;
@@ -22,7 +17,7 @@ export interface EthereumPaymentInfo {
 export async function generateEthereumPaymentInfo(
   amountUsd: number
 ): Promise<EthereumPaymentInfo> {
-  const address = getEthAddress();
+  const address = await getEthereumAddress();
   const amountEth = await usdToEth(amountUsd);
   const invoiceId = generateSecureId();
   const amountWei = BigInt(Math.floor(amountEth * 1e18)).toString(10);
@@ -61,7 +56,7 @@ export interface UsdtPaymentInfo {
 }
 
 export async function generateUsdtPaymentInfo(amountUsd: number): Promise<UsdtPaymentInfo> {
-  const address = getEthAddress();
+  const address = await getEthereumAddress();
   const amountUsdt = Math.ceil(amountUsd * 100) / 100;
   const invoiceId = generateSecureId();
   const units = BigInt(Math.round(amountUsdt * 1e6)).toString(10);

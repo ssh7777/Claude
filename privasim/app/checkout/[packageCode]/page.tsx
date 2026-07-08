@@ -119,6 +119,9 @@ export default function CheckoutPage() {
     if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
     try {
+      const { getSolvedCaptcha } = await import("@/lib/pow");
+      const captcha = await getSolvedCaptcha();
+
       const res = await fetch("/api/orders/create", {
         method: "POST",
         headers,
@@ -126,6 +129,7 @@ export default function CheckoutPage() {
           packageCode,
           cryptoType,
           discountCode: promo ? promoInput.trim() : undefined,
+          captcha,
         }),
       });
 
