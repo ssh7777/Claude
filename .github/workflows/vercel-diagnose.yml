@@ -1,0 +1,45 @@
+name: Vercel diagnose — deployment states and account block reason
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect account + latest deployments
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "===== Account (plan + soft-block state) ====="
+          curl -sS "https://api.vercel.com/v2/user" -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          u = json.load(sys.stdin).get('user', {})
+          print('username:', u.get('username'))
+          print('plan    :', u.get('billing', {}).get('plan') if isinstance(u.get('billing'), dict) else u.get('billing'))
+          print('softBlock:', json.dumps(u.get('softBlock'), indent=1))
+          print('limited :', u.get('limited'))
+          "
+
+          echo "===== Latest 10 deployments (state + substate + error) ====="
+          curl -sS "https://api.vercel.com/v6/deployments?projectId=prj_mZDjly89xeorzPIjydENfXaOGNA2&limit=10" \
+            -H "Authorization: Bearer $VT" \
+            | python3 -c "
+          import sys, json
+          for d in json.load(sys.stdin).get('deployments', []):
+            print(d.get('uid'), d.get('state'), d.get('readySubstate'), d.get('created'), (d.get('meta') or {}).get('githubCommitSha', '')[:7])
+          "
+
+          echo "===== Newest deployment full detail ====="
+          UID=$(curl -sS "https://api.vercel.com/v6/deployments?projectId=prj_mZDjly89xeorzPIjydENfXaOGNA2&limit=1" \
+            -H "Authorization: Bearer $VT" | python3 -c "import sys,json; d=json.load(sys.stdin)['deployments']; print(d[0]['uid'] if d else '')")
+          if [ -n "$UID" ]; then
+            curl -sS "https://api.vercel.com/v13/deployments/$UID" -H "Authorization: Bearer $VT" \
+              | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for k in ('id','readyState','readySubstate','errorCode','errorMessage','errorStep'):
+            print(k, ':', d.get(k))
+          "
+          fi
