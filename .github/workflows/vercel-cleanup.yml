@@ -7,7 +7,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete all projects except "privasim" (keeps privasim-two.vercel.app)
+      - name: Delete all projects except "privasim" (keeps privasim.app)
         env:
           VT: ${{ secrets.VERCEL_TOKEN }}
         run: |

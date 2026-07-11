@@ -64,7 +64,7 @@ jobs:
 
       - name: Smoke-test live site routes
         run: |
-          BASE="https://privasim-two.vercel.app"
+          BASE="https://privasim.app"
           for path in / /shop /shop/JP /blog /orders /privacy /guide /topup /sitemap.xml; do
             code=$(curl -s -o /tmp/body -w "%{http_code}" "$BASE$path")
             bytes=$(wc -c </tmp/body)

@@ -53,7 +53,7 @@ jobs:
           set_env "MONERO_WALLET_PRIMARY" "$VAL"
           export VAL="0x87176027Cc61d260926dAAe68551e246260dc30E"
           set_env "ETHEREUM_WALLET_ADDRESS" "$VAL"
-          export VAL="https://privasim-two.vercel.app"
+          export VAL="https://privasim.app"
           set_env "NEXT_PUBLIC_APP_URL" "$VAL"
 
           echo "===== Final project env keys ====="

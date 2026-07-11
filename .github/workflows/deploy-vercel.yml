@@ -4,9 +4,16 @@ on:
   push:
     branches: [main]
 
+# Only the newest deploy runs; older in-flight deploys are cancelled so the
+# build queue never backs up (this is what caused the 6-hour hang).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -14,23 +21,25 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Pull Vercel project settings + env
+        run: |
+          cd privasim
+          vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps --prefix privasim
 
-      - name: Deploy to Vercel
+      # Build ON the runner (fast, ~2 min, fully under our control) instead of
+      # waiting on Vercel's remote build queue — eliminates the deploy hang.
+      - name: Build (prebuilt)
         run: |
           cd privasim
-          npx vercel deploy --prod \
-            --token "${{ secrets.VERCEL_TOKEN }}" \
-            --env PIKASIM_API_KEY="${{ secrets.PIKASIM_API_KEY }}" \
-            --env JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --env DB_ENCRYPTION_KEY="${{ secrets.DB_ENCRYPTION_KEY }}" \
-            --env MONERO_WEBHOOK_SECRET="${{ secrets.MONERO_WEBHOOK_SECRET }}" \
-            --env ETHEREUM_WEBHOOK_SECRET="${{ secrets.ETHEREUM_WEBHOOK_SECRET }}" \
-            --env PIKASIM_WEBHOOK_SECRET="${{ secrets.PIKASIM_WEBHOOK_SECRET }}" \
-            --env MONERO_WALLET_PRIMARY="85oa4tGVEpRLAhQijJtD5LaPtQQAQhr5XBS2gXtqeYSohGkXvUDxfZKU3oSmFWcJ215h7eSoiU3xrfL8keUJnGSjHqEWVNr" \
-            --env ETHEREUM_WALLET_ADDRESS="0x87176027Cc61d260926dAAe68551e246260dc30E" \
-            --env NEXT_PUBLIC_APP_URL="https://privasim-two.vercel.app" \
-            --yes
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy prebuilt output to production
+        run: |
+          cd privasim
+          vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

@@ -5,7 +5,7 @@ import { ArrowLeft, Clock, Tag } from "lucide-react";
 import { getBlogPostBySlug, getAllBlogSlugs } from "@/lib/blog";
 import { Button } from "@/components/ui/button";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 interface PageProps {
   params: { slug: string };

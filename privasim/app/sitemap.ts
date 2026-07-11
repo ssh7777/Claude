@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getBlogPosts } from "@/lib/blog";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 const COUNTRY_CODES = [
   "JP", "US", "GB", "DE", "FR", "IT", "ES", "NL", "CH", "AT",

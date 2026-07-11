@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const revalidate = 300;
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 export const metadata: Metadata = {
   title: "Global eSIM Plans — 120+ Countries, One eSIM | Data + Calls + SMS",

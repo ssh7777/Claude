@@ -6,12 +6,12 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Chatbot from "@/components/Chatbot";
 import TrackVisit from "@/components/TrackVisit";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim-two.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 export const viewport: Viewport = {
   width: "device-width",

@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Smoke-test all routes
         run: |
-          BASE="https://privasim-two.vercel.app"
+          BASE="https://privasim.app"
           FAIL=0
           for path in / /shop /shop/global /shop/JP /blog /blog/best-esim-deals-today \
                       /guide /topup /orders /privacy /admin /sitemap.xml /robots.txt /llms.txt; do
@@ -31,7 +31,7 @@ jobs:
           KEY: ${{ secrets.PIKASIM_API_KEY }}
         run: |
           echo "===== admin discounts (should report persistent:true) ====="
-          curl -sS "https://privasim-two.vercel.app/api/admin/discounts" -H "x-admin-key: $KEY" | head -c 500
+          curl -sS "https://privasim.app/api/admin/discounts" -H "x-admin-key: $KEY" | head -c 500
           echo
 
       - name: Diagnostic — env + MCP connectivity + wallet balance
@@ -39,14 +39,14 @@ jobs:
           KEY: ${{ secrets.PIKASIM_API_KEY }}
         run: |
           echo "===== /api/test/pikasim (env, MCP, balance) ====="
-          curl -sS "https://privasim-two.vercel.app/api/test/pikasim?key=$KEY" \
+          curl -sS "https://privasim.app/api/test/pikasim?key=$KEY" \
             | sed 's/<[^>]*>//g' | grep -vE '^\s*$' | head -60
 
       - name: Discount code lifecycle (create → validate → revoke → reject)
         env:
           KEY: ${{ secrets.PIKASIM_API_KEY }}
         run: |
-          B="https://privasim-two.vercel.app"
+          B="https://privasim.app"
           echo "1) create maxUses=3"
           CODE=$(curl -sS -X POST "$B/api/admin/discounts" -H "x-admin-key: $KEY" -H "Content-Type: application/json" \
             -d '{"label":"E2ETEST","percent":15,"validDays":1,"maxUses":3}' | python3 -c "import sys,json;print(json.load(sys.stdin)['code'])")
@@ -64,7 +64,7 @@ jobs:
         env:
           KEY: ${{ secrets.PIKASIM_API_KEY }}
         run: |
-          B="https://privasim-two.vercel.app"
+          B="https://privasim.app"
           C="${{ github.event.inputs.country }}"
           echo "Finding cheapest $C data package…"
           CODE=$(curl -sS "$B/api/test/buy?key=$KEY&country=$C" | grep -oE 'package=[^"&]+' | head -1 | cut -d= -f2)

@@ -77,9 +77,8 @@ jobs:
         continue-on-error: true
         run: |
           # IndexNow key is hosted at /<key>.txt on the site (public/ file).
-          KEY="a7f3c1e community 9b2d4e6f8a0c2e4b6d8f0a1c3e5b7d9f"
           KEY="a7f3c1e9b2d4e6f8a0c2e4b6d8f0a1c3"
-          BASE="https://privasim-two.vercel.app"
+          BASE="https://privasim.app"
           for url in "$BASE/" "$BASE/blog" "$BASE/blog/best-esim-deals-today" "$BASE/shop" "$BASE/shop/global"; do
             curl -sS "https://api.indexnow.org/indexnow?url=${url}&key=${KEY}" -o /dev/null -w "IndexNow %{http_code} ${url}\n" || true
           done

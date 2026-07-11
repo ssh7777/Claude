@@ -51,7 +51,7 @@ jobs:
 
           Privacy-first eSIM store for 190+ countries. Crypto-only payments (Monero + Ethereum), no accounts, no KYC.
 
-          - **Live**: https://privasim-two.vercel.app
+          - **Live**: https://privasim.app
           - **Stack**: Next.js 14, React 19, TypeScript. Stateless (no database).
           - **Deploys**: every push to `main` auto-deploys via GitHub Actions → Vercel.
           - **Daily content**: `data/daily-deals.json` refreshes automatically each day.

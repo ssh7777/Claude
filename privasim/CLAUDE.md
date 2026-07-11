@@ -63,7 +63,7 @@ PikaSim API (`pikasim.com`) is **blocked by the cloud sandbox egress proxy**. AP
 
 ## Deployment Status
 - Code: complete, builds clean, all 22 routes
-- Deployed: YES — https://privasim-two.vercel.app
+- Deployed: YES — https://privasim.app
 - Auto-deploys via GitHub Actions on push to main (.github/workflows/deploy-vercel.yml)
 
 ## PikaSim MCP — Verified Facts (from live tools/list probe)
