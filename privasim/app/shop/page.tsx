@@ -4,6 +4,7 @@ import { Globe, Phone } from "lucide-react";
 import CountrySearch from "@/components/CountrySearch";
 import EsimCard from "@/components/EsimCard";
 import { searchEsimPackages } from "@/lib/pikasim";
+import { getRetailMargin } from "@/lib/settings";
 import Flag from "@/components/Flag";
 
 export const metadata: Metadata = {
@@ -16,10 +17,11 @@ export const revalidate = 3600;
 async function FeaturedPackages() {
   try {
     // Show a mix of popular country packages as featured
-    const [jpPackages, usPackages, thPackages] = await Promise.all([
+    const [jpPackages, usPackages, thPackages, margin] = await Promise.all([
       searchEsimPackages("JP", "data"),
       searchEsimPackages("US", "data"),
       searchEsimPackages("TH", "data"),
+      getRetailMargin(),
     ]);
 
     const featured = [
@@ -35,7 +37,7 @@ async function FeaturedPackages() {
         <h2 className="text-xl font-bold text-white mb-4">Popular Plans</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {featured.map((pkg) => (
-            <EsimCard key={pkg.code} pkg={pkg} />
+            <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
           ))}
         </div>
       </div>

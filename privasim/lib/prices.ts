@@ -1,12 +1,14 @@
 import type { CryptoPrices } from "@/types";
 
 // ── Retail margin ───────────────────────────────────────────────────────────
-// Single source of truth for the markup applied to every wholesale PikaSim
-// price before it is shown to users or invoiced. Change it here only.
-export const RETAIL_MARGIN = 1.7; // 70% margin
+// RETAIL_MARGIN is the compile-time DEFAULT. The live margin is owner-set in
+// the admin dashboard and stored in the ledger — server code reads it via
+// getRetailMargin() in lib/settings.ts and passes it in explicitly. This file
+// stays ledger-free so client components can import retailPrice safely.
+export const RETAIL_MARGIN = 1.7; // 70% default margin
 
-export function retailPrice(wholesaleUsd: number): number {
-  return Math.ceil(wholesaleUsd * RETAIL_MARGIN * 100) / 100;
+export function retailPrice(wholesaleUsd: number, margin: number = RETAIL_MARGIN): number {
+  return Math.ceil(wholesaleUsd * margin * 100) / 100;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes

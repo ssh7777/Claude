@@ -3,14 +3,15 @@ import { rateLimit } from "@/lib/rateLimit";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { detectCountry, countryName } from "@/lib/countries";
 import { retailPrice } from "@/lib/prices";
+import { getRetailMargin } from "@/lib/settings";
 
 // ARIA — keyless assistant. Intent-matched answers grounded in live package
 // data from PikaSim. No external AI API required, so it always works.
 
 const CHAT_RATE_LIMIT = { windowMs: 60_000, max: 20 };
 
-function usd(n: number): string {
-  return `$${retailPrice(n).toFixed(2)}`;
+function usd(n: number, margin?: number): string {
+  return `$${retailPrice(n, margin).toFixed(2)}`;
 }
 
 async function answerCountryQuery(code: string, wantsPhone: boolean): Promise<string> {
@@ -22,8 +23,9 @@ async function answerCountryQuery(code: string, wantsPhone: boolean): Promise<st
     }
     const sorted = [...packages].sort((a, b) => a.priceUsd - b.priceUsd);
     const top = sorted.slice(0, 3);
+    const margin = await getRetailMargin();
     const lines = top.map(
-      (p) => `• **${p.dataAmount}** for ${p.durationDays} days — ${usd(p.priceUsd)}`
+      (p) => `• **${p.dataAmount}** for ${p.durationDays} days — ${usd(p.priceUsd, margin)}`
     );
     return [
       `Here are the cheapest ${wantsPhone ? "phone" : "data"} plans for **${name}** right now:`,

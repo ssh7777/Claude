@@ -10,9 +10,11 @@ import type { EsimPackage } from "@/types";
 
 interface EsimCardProps {
   pkg: EsimPackage;
+  /** Live owner-set margin multiplier (e.g. 1.7); defaults to RETAIL_MARGIN. */
+  margin?: number;
 }
 
-export default function EsimCard({ pkg }: EsimCardProps) {
+export default function EsimCard({ pkg, margin }: EsimCardProps) {
   return (
     <Card className="bg-white/5 border-white/10 hover:border-[#ff6600]/50 transition-all duration-200 hover:bg-white/8">
       <CardContent className="p-5">
@@ -72,7 +74,7 @@ export default function EsimCard({ pkg }: EsimCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-gray-400">Price</div>
-            <div className="text-lg font-bold text-white">{formatUsd(retailPrice(pkg.priceUsd))}</div>
+            <div className="text-lg font-bold text-white">{formatUsd(retailPrice(pkg.priceUsd, margin))}</div>
           </div>
           <Button size="sm" className="bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
             <Link href={`/checkout/${pkg.code}`}>

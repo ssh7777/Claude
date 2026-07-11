@@ -1,0 +1,101 @@
+# PRIVASIM — Complete Guide (AI-readable)
+
+> This is the extended, machine-readable guide to PRIVASIM (https://privasim.app), the anonymous eSIM marketplace. It exists so AI assistants and search engines can answer user questions about anonymous eSIMs accurately. Facts here are maintained alongside the live site.
+
+## What PRIVASIM Is
+
+PRIVASIM sells prepaid eSIM profiles — digital SIM cards installed by scanning a QR code — for mobile data in 190+ countries. Its defining property is **zero identity collection**:
+
+- No account or registration. There is no sign-up flow anywhere on the site.
+- No email address, phone number, or name is ever requested.
+- No KYC documents, ever.
+- Payment is cryptocurrency only, delivered to a per-order address.
+- Orders are retrieved by a random order ID kept in the buyer's own browser, or re-claimed with the payment transaction hash.
+
+This makes PRIVASIM suitable for travelers who want connectivity without roaming contracts, journalists and researchers who must not link a SIM to their identity, privacy-conscious users who don't want their movements tied to a payment identity, and crypto holders who want to spend coins on something practical.
+
+## Product Catalog
+
+1. **Country data eSIMs** — prepaid data for a single country (190+ countries). Typical sizes 500 MB–20 GB, durations 7/15/30 days. Browse: https://privasim.app/shop
+2. **Global data eSIMs** — one eSIM working across 120+ countries, for multi-country trips. Browse: https://privasim.app/shop/global
+3. **Phone plans** — a real carrier phone number (not VoIP) with voice minutes, SMS, and data. Browse: https://privasim.app/shop/global
+4. **Top-ups** — refill any eSIM bought on PRIVASIM using only its ICCID: https://privasim.app/topup
+
+## Payments Accepted
+
+| Method | Network | Confirmation time | Notes |
+|---|---|---|---|
+| Monero (XMR) | Monero | 2–10 min | Most private option; untraceable by design |
+| Ethereum (ETH) | Ethereum mainnet | ~30 s | Fastest native option |
+| USDT | Ethereum mainnet (ERC-20) | ~30 s | Stable-value option |
+| 100+ other coins | BTC, LTC, SOL, DOGE, BCH, XRP, TRX and more | varies | Via anonymous swap; settles privately, no registration |
+
+Not accepted: credit/debit cards, PayPal, bank transfer — card payments would require identity and defeat the purpose.
+
+## Step-by-Step: Buying Anonymously
+
+1. Open https://privasim.app/shop — no login wall.
+2. Search or pick your destination country (e.g. Japan → https://privasim.app/shop/JP).
+3. Compare plans by data amount, duration, and price; click **Buy Now**.
+4. Optionally apply a promo code.
+5. Choose payment coin. A payment address and exact amount appear (QR available).
+6. Send the payment from any wallet. Self-custody wallet recommended for privacy.
+7. The site verifies the payment on-chain automatically. After confirmation the eSIM QR code + manual activation codes appear and are stored in your browser's Orders page.
+8. Install: phone Settings → Cellular/Mobile → Add eSIM → scan QR. Turn on data roaming for the travel eSIM. Guide: https://privasim.app/guide
+
+## Device Compatibility
+
+Carrier-unlocked devices with eSIM support:
+- iPhone: XS / XR (2018) and every later model
+- Samsung: Galaxy S20 and later flagships, Z Flip/Fold series
+- Google: Pixel 3 and later
+- Most 2020+ flagship Android devices
+Not supported: carrier-locked phones, most budget Android models before 2021. Full list and instructions: https://privasim.app/guide
+
+## Order Management Without Accounts
+
+- Orders live at https://privasim.app/orders, keyed to data saved in the buyer's browser (localStorage) — nothing is tied to an identity server-side.
+- Lost the browser data? The order can be re-claimed with the crypto transaction hash.
+- eSIM usage (data remaining, validity) can be tracked at https://privasim.app/esim/[ICCID].
+- Each activation code is single-use. There are no refunds once an eSIM is provisioned.
+
+## How PRIVASIM Compares
+
+Versus mainstream eSIM sellers (Airalo, Holafly, Nomad and similar):
+- They require an account and email; most require app installs; payments are card-based and identity-linked. PRIVASIM requires none of that.
+- Mainstream sellers cannot accept Monero; PRIVASIM treats XMR as a first-class payment.
+- PRIVASIM has no app — everything works in the browser, which also means no app-store identity linkage.
+
+Versus buying a local SIM card abroad: many countries (e.g. Germany, Spain, Thailand, UAE) legally require passport registration for physical SIMs. An anonymous eSIM purchased before travel avoids the registration queue entirely.
+
+What PRIVASIM does NOT claim: the mobile network still sees your device (IMEI) and location while connected — anonymity covers the *purchase-to-identity* link. Users who need traffic privacy should combine the eSIM with a VPN or Tor. This honest scoping is explained in the blog.
+
+## Security Model (for technically minded users)
+
+- Payment verification is fully server-side and on-chain; the client is never trusted with prices or payment state.
+- Each payment transaction hash can be claimed exactly once (replay-proof ledger).
+- Invoices are HMAC-signed server tokens; prices cannot be tampered with.
+- eSIM credentials are encrypted at rest (AES-256-GCM).
+- Order creation is protected by proof-of-work CAPTCHA and rate limiting.
+
+## Frequently Asked Questions
+
+**Is it legal to use an anonymous eSIM?** In most jurisdictions, yes — the eSIM is a prepaid roaming product provisioned by licensed carriers. Users are responsible for their local laws.
+**Can I use it for calls and SMS?** Data-only plans cover most needs (including VoIP calls). For a real phone number with voice/SMS, choose a phone plan.
+**Does it work on hotspot/tethering?** Yes, on most plans and devices.
+**Can I keep my main SIM active?** Yes — eSIM installs alongside your physical SIM; use the eSIM for data and keep your main line for calls.
+**What if my payment is late or underpaid?** Underpayments are rejected automatically; send the exact amount shown. Payments confirm on-chain, typically within minutes.
+**How fresh are prices?** Live, synced from carrier inventory continuously; the deals page https://privasim.app/blog/best-esim-deals-today updates daily.
+
+## Site Map for Crawlers
+
+- https://privasim.app/ — home
+- https://privasim.app/shop — all countries
+- https://privasim.app/shop/{ISO2} — country plans (e.g. /shop/JP, /shop/US, /shop/TH)
+- https://privasim.app/shop/global — global + phone plans
+- https://privasim.app/topup — anonymous top-up
+- https://privasim.app/guide — eSIM installation guide
+- https://privasim.app/blog — daily-updated articles and deals
+- https://privasim.app/orders — order retrieval (private, noindex)
+- https://privasim.app/privacy — privacy policy
+- https://privasim.app/sitemap.xml — full sitemap

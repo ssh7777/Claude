@@ -27,7 +27,7 @@ export default function AdminPage() {
   const [overview, setOverview] = useState<{ balanceUsd: number; summary: string | null } | null>(null);
   const [analytics, setAnalytics] = useState<{ sources: any[]; totals: any } | null>(null);
   const [coupons, setCoupons] = useState<{ code: string; uses: number; maxUses: number; revoked: boolean }[]>([]);
-  const [wallets, setWallets] = useState<{ monero: string; ethereum: string; moneroSource: string; ethereumSource: string } | null>(null);
+  const [wallets, setWallets] = useState<{ monero: string; ethereum: string; moneroSource: string; ethereumSource: string; marginPercent?: number; marginSource?: string } | null>(null);
 
   const H = () => ({ "x-admin-key": key.trim(), "Content-Type": "application/json" });
 
@@ -77,20 +77,26 @@ export default function AdminPage() {
     loadAll();
   };
 
-  // wallets form
+  // wallets + pricing form
   const [xmr, setXmr] = useState("");
   const [eth, setEth] = useState("");
+  const [marginInput, setMarginInput] = useState("");
   const [walletMsg, setWalletMsg] = useState("");
   const saveWallets = async () => {
     setWalletMsg(""); setBusy(true);
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST", headers: H(),
-        body: JSON.stringify({ monero: xmr.trim() || undefined, ethereum: eth.trim() || undefined }),
+        body: JSON.stringify({
+          monero: xmr.trim() || undefined,
+          ethereum: eth.trim() || undefined,
+          marginPercent: marginInput.trim() === "" ? undefined : Number(marginInput),
+        }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Failed");
-      setWallets(j.settings); setXmr(""); setEth(""); setWalletMsg("✓ Wallet addresses updated");
+      setWallets(j.settings); setXmr(""); setEth(""); setMarginInput("");
+      setWalletMsg("✓ Settings updated");
     } catch (e) { setWalletMsg(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(false); }
   };
@@ -120,7 +126,7 @@ export default function AdminPage() {
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "coupons", label: "Coupons", icon: Ticket },
-    { id: "wallets", label: "Wallets", icon: Wallet },
+    { id: "wallets", label: "Pricing & Wallets", icon: Wallet },
   ];
 
   return (
@@ -250,28 +256,55 @@ export default function AdminPage() {
       )}
 
       {tab === "wallets" && (
-        <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
-          <div>
-            <h2 className="font-bold text-white mb-1">Receiving wallets</h2>
-            <p className="text-xs text-gray-400">Update the addresses customer payments go to. Validated and effective immediately — no redeploy.</p>
-          </div>
-          {wallets && (
-            <div className="text-xs text-gray-400 space-y-1">
-              <div>Monero (<span className={wallets.moneroSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.moneroSource}</span>): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
-              <div>Ethereum (<span className={wallets.ethereumSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.ethereumSource}</span>): <code className="text-gray-300 break-all">{wallets.ethereum}</code></div>
+        <div className="space-y-4">
+          <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
+            <div>
+              <h2 className="font-bold text-white mb-1">Profit margin</h2>
+              <p className="text-xs text-gray-400">
+                Markup applied to every wholesale price, store-wide. 70 = 70% (a $10 plan sells for $17).
+                Effective within a minute on all plans, checkout, top-ups and the chatbot — no redeploy.
+              </p>
             </div>
-          )}
-          <div className="space-y-2">
-            <Input value={xmr} onChange={e => setXmr(e.target.value)} placeholder="New Monero address (4… or 8…)" className="bg-white/10 border-white/20 text-white text-sm" />
-            <Input value={eth} onChange={e => setEth(e.target.value)} placeholder="New Ethereum address (0x…)" className="bg-white/10 border-white/20 text-white text-sm" />
+            {wallets?.marginPercent !== undefined && (
+              <div className="text-xs text-gray-400">
+                Current margin (<span className={wallets.marginSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.marginSource}</span>):{" "}
+                <span className="text-white font-bold">{wallets.marginPercent}%</span>
+              </div>
+            )}
+            <div className="flex gap-2 items-center">
+              <Input value={marginInput} onChange={e => setMarginInput(e.target.value)}
+                type="number" min={0} max={300} step={1}
+                placeholder="New margin % (0–300)" className="bg-white/10 border-white/20 text-white text-sm max-w-[220px]" />
+              <Button onClick={saveWallets} disabled={busy || marginInput.trim() === ""} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
+                <Save className="h-4 w-4 mr-2" /> Save margin
+              </Button>
+            </div>
           </div>
-          <Button onClick={saveWallets} disabled={busy || (!xmr.trim() && !eth.trim())} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
-            <Save className="h-4 w-4 mr-2" /> Save wallets
-          </Button>
+
+          <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
+            <div>
+              <h2 className="font-bold text-white mb-1">Receiving wallets</h2>
+              <p className="text-xs text-gray-400">Update the addresses customer payments go to. Validated and effective immediately — no redeploy.</p>
+            </div>
+            {wallets && (
+              <div className="text-xs text-gray-400 space-y-1">
+                <div>Monero (<span className={wallets.moneroSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.moneroSource}</span>): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
+                <div>Ethereum (<span className={wallets.ethereumSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.ethereumSource}</span>): <code className="text-gray-300 break-all">{wallets.ethereum}</code></div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Input value={xmr} onChange={e => setXmr(e.target.value)} placeholder="New Monero address (4… or 8…)" className="bg-white/10 border-white/20 text-white text-sm" />
+              <Input value={eth} onChange={e => setEth(e.target.value)} placeholder="New Ethereum address (0x…)" className="bg-white/10 border-white/20 text-white text-sm" />
+            </div>
+            <Button onClick={saveWallets} disabled={busy || (!xmr.trim() && !eth.trim())} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
+              <Save className="h-4 w-4 mr-2" /> Save wallets
+            </Button>
+            <div className="text-xs text-yellow-300/80 bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
+              ⚠ Double-check every character. Funds sent to a wrong address are unrecoverable.
+            </div>
+          </div>
+
           {walletMsg && <p className={`text-xs ${walletMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{walletMsg}</p>}
-          <div className="text-xs text-yellow-300/80 bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
-            ⚠ Double-check every character. Funds sent to a wrong address are unrecoverable.
-          </div>
         </div>
       )}
     </div>

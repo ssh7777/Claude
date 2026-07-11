@@ -16,6 +16,9 @@ export interface EsimPackage {
   dataAmount: string;
   durationDays: number;
   priceUsd: number;
+  /** Server-computed display price using the live owner-set margin.
+   *  Present on API responses; display-only (invoice price is authoritative). */
+  retailUsd?: number;
   type: ProductType;
   networks: string[];
   smsSupported?: boolean;

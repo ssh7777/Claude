@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { topupEsim, getTopupOptions } from "@/lib/pikasim";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
+import { retailPrice } from "@/lib/prices";
+import { getRetailMargin } from "@/lib/settings";
 
 // GET /api/esim/topup?iccid=… — list valid top-up packages for an eSIM.
 // Top-up package codes differ from new-purchase codes (PikaSim requirement).
@@ -14,7 +16,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await getTopupOptions(iccid);
-    return NextResponse.json(result);
+    // Attach server-computed retail prices (live owner-set margin) so the
+    // client never has to price anything itself.
+    const margin = await getRetailMargin();
+    return NextResponse.json({
+      ...result,
+      options: result.options.map((o) => ({
+        ...o,
+        retailUsd: o.priceUsd != null ? retailPrice(o.priceUsd, margin) : undefined,
+      })),
+    });
   } catch (err) {
     console.error("Top-up options error:", err);
     return NextResponse.json({ error: "Failed to fetch top-up options" }, { status: 500 });

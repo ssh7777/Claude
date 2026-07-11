@@ -186,7 +186,9 @@ export default function CheckoutPage() {
 
   if (!pkg) return null;
 
-  const displayPrice = retailPrice(pkg.priceUsd);
+  // Prefer the server-computed price (live owner-set margin); the local
+  // retailPrice() fallback only covers cached/older API responses.
+  const displayPrice = pkg.retailUsd ?? retailPrice(pkg.priceUsd);
   const finalPrice = promo
     ? Math.max(0.5, Math.ceil(displayPrice * (1 - promo.percent / 100) * 100) / 100)
     : displayPrice;

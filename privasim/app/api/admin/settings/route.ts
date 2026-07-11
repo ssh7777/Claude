@@ -3,11 +3,12 @@ import {
   getWalletSettings,
   setMoneroAddress,
   setEthereumAddress,
+  setMarginPercent,
 } from "@/lib/settings";
 
-// Owner-only wallet management. Update the receiving crypto addresses from
-// the dashboard — validated, persisted to the ledger, effective immediately
-// (no redeploy). Gated by the reseller API key.
+// Owner-only settings. Update receiving crypto addresses AND the retail
+// profit margin from the dashboard — validated, persisted to the ledger,
+// effective immediately (no redeploy). Gated by the reseller API key.
 
 function authorized(req: NextRequest): boolean {
   const apiKey = process.env.PIKASIM_API_KEY ?? "";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let body: { monero?: string; ethereum?: string };
+  let body: { monero?: string; ethereum?: string; marginPercent?: number };
   try {
     body = await req.json();
   } catch {
@@ -38,6 +39,10 @@ export async function POST(req: NextRequest) {
     if (body.ethereum) {
       await setEthereumAddress(body.ethereum);
       results.ethereum = "updated";
+    }
+    if (body.marginPercent !== undefined) {
+      await setMarginPercent(Number(body.marginPercent));
+      results.marginPercent = "updated";
     }
   } catch (err) {
     return NextResponse.json(

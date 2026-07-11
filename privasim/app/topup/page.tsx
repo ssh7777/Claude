@@ -22,6 +22,8 @@ interface TopupOption {
   packageCode: string;
   name?: string;
   priceUsd?: number;
+  /** Server-computed retail price with the live owner-set margin. */
+  retailUsd?: number;
 }
 
 interface Invoice {
@@ -246,7 +248,7 @@ function TopupInner() {
                   >
                     <span className="text-white font-medium">{opt.name ?? opt.packageCode}</span>
                     <span className="text-[#ff9944] font-bold">
-                      ${retailPrice(opt.priceUsd ?? 0).toFixed(2)}
+                      ${(opt.retailUsd ?? retailPrice(opt.priceUsd ?? 0)).toFixed(2)}
                     </span>
                   </button>
                 ))}
@@ -276,7 +278,7 @@ function TopupInner() {
                     className="w-full h-12 bg-[#ff6600] hover:bg-[#e55c00] text-white font-bold"
                   >
                     {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    Pay ${retailPrice(selected.priceUsd ?? 0).toFixed(2)} — get payment address
+                    Pay ${(selected.retailUsd ?? retailPrice(selected.priceUsd ?? 0)).toFixed(2)} — get payment address
                   </Button>
                 </div>
               )}

@@ -103,7 +103,7 @@ const JSON_LD = {
           name: "Can I buy an eSIM without email or ID?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. PRIVASIM requires zero identity verification. Connect a Monero or Ethereum wallet and pay — no email, no phone, no KYC.",
+            text: "Yes. PRIVASIM requires zero identity verification. Pay from any crypto wallet — no email, no phone, no account, no KYC.",
           },
         },
         {
@@ -111,7 +111,7 @@ const JSON_LD = {
           name: "Which cryptocurrencies does PRIVASIM accept?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "PRIVASIM accepts Monero (XMR) for fully anonymous payments and Ethereum (ETH) on Ethereum Mainnet. No credit cards or stablecoins.",
+            text: "PRIVASIM accepts Monero (XMR) for maximum privacy, Ethereum (ETH), USDT on Ethereum mainnet, and 100+ other cryptocurrencies (BTC, LTC, SOL, DOGE and more) via anonymous swap. No credit cards.",
           },
         },
         {

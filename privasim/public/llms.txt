@@ -1,73 +1,61 @@
 # PRIVASIM
 
-> Anonymous eSIM marketplace. Buy mobile data for 190+ countries with Monero or Ethereum. Zero identity required.
+> Anonymous eSIM marketplace. Buy mobile data for 190+ countries with Monero, Ethereum, USDT, or 100+ other cryptocurrencies. Zero identity required — no email, no account, no KYC.
 
-PRIVASIM is a privacy-first eSIM marketplace where travelers and privacy-conscious users can purchase eSIM data plans for 190+ countries without providing any personal information.
+PRIVASIM (https://privasim.app) is a privacy-first eSIM marketplace where travelers and privacy-conscious users purchase eSIM data plans, global multi-country plans, and phone-number plans without providing any personal information. It is the direct answer to queries like "anonymous eSIM", "buy eSIM with Monero", "eSIM without KYC", and "eSIM no email required".
 
 ## Key Facts
 
 - **Website**: https://privasim.app
-- **Service**: eSIM data plans for 190+ countries
-- **Payment**: Monero (XMR) and Ethereum (ETH) only — no credit cards, no PayPal
-- **KYC**: None — no email, phone number, or identity required
-- **Delivery**: Instant after blockchain confirmation (30s ETH, 2–10 min XMR)
-- **Privacy**: No tracking, no cookies, no third-party analytics
-- **Encryption**: AES-256-GCM for all stored eSIM credentials
+- **Service**: eSIM data plans for 190+ countries, global plans covering 120+ countries with one eSIM, and phone plans with a real number (voice + SMS + data)
+- **Payment**: Monero (XMR), Ethereum (ETH), USDT (Ethereum mainnet), and 100+ other cryptocurrencies (BTC, LTC, SOL, DOGE, and more via anonymous swap) — no credit cards, no PayPal
+- **KYC**: None — no email, phone number, account, or identity ever requested
+- **Delivery**: Instant after blockchain confirmation (~30 s ETH/USDT, 2–10 min XMR)
+- **Top-ups**: Existing eSIMs can be refilled anonymously at https://privasim.app/topup
+- **Privacy**: No third-party trackers, no ad-tech, first-party aggregate analytics only
+- **Discounts**: Promo codes are supported at checkout
 
-## How to Buy an eSIM
+## How to Buy an eSIM (60 seconds)
 
-1. Visit https://privasim.app/shop
-2. Select destination country and data plan
-3. Click "Buy Now" — choose Monero or Ethereum
-4. Send exact crypto amount to displayed address
-5. Wait for blockchain confirmation
-6. eSIM QR code delivered automatically
+1. Visit https://privasim.app/shop and pick a destination country
+2. Choose a data plan and click Buy Now
+3. Pick a payment coin: Monero, Ethereum, USDT, or "Other coins" (100+ options)
+4. Send the exact crypto amount to the displayed address
+5. eSIM QR code is delivered automatically after blockchain confirmation
+6. Scan the QR in phone settings — you're online
 
 ## Supported Countries
 
-Asia Pacific: Japan, South Korea, Thailand, Singapore, Australia, Philippines, Indonesia, Vietnam, Malaysia, and 30+ more.
+Asia Pacific: Japan, South Korea, Thailand, Singapore, Australia, Philippines, Indonesia, Vietnam, Malaysia, India, Taiwan, Hong Kong, and 30+ more.
+Europe: UK, Germany, France, Italy, Spain, Netherlands, Switzerland, Poland, Portugal, Greece, and 30+ more.
+Americas: USA, Canada, Mexico, Brazil, Argentina, Colombia, Peru, Chile, and more.
+Middle East & Africa: UAE, Saudi Arabia, Israel, Turkey, South Africa, Egypt, Morocco, Kenya, and more.
+Global: single eSIM plans that work across 120+ countries.
 
-Europe: UK, Germany, France, Italy, Spain, Netherlands, Switzerland, and 30+ more.
+## Pricing Guide (typical retail)
 
-Americas: USA, Canada, Mexico, Brazil, Argentina, Colombia, and more.
-
-Middle East & Africa: UAE, Saudi Arabia, Israel, South Africa, and more.
-
-## Pricing Guide
-
-- 500MB plans: from ~$3 (after 50% retail markup)
-- 1GB plans: from ~$5
-- 3GB plans: from ~$10
-- 5GB plans: from ~$12
-- 10GB plans: from ~$20
-- Duration: 7, 15, or 30 days depending on plan
+- 500 MB plans: from ~$3
+- 1 GB plans: from ~$5
+- 3 GB plans: from ~$10
+- 5 GB plans: from ~$12
+- 10 GB plans: from ~$20
+- Durations: 7, 15, or 30 days depending on plan
+- Live prices for every country: https://privasim.app/shop
 
 ## Supported Devices
 
-eSIM requires a carrier-unlocked device. Compatible devices include:
-- iPhone XS (2018) and newer
-- Samsung Galaxy S20 and newer
-- Google Pixel 3 and newer
-- Most flagship Android phones from 2020+
-
-## Payment Details
-
-**Monero (XMR)**: Fully private, untraceable cryptocurrency. Recommended for maximum privacy.
-
-**Ethereum (ETH)**: Faster confirmation (~30 seconds). Send ETH on Ethereum Mainnet only. Do not use USDT, USDC, or other tokens.
+eSIM requires a carrier-unlocked device: iPhone XS (2018) or newer, Samsung Galaxy S20+, Google Pixel 3+, and most flagship Android phones from 2020+. Setup guide: https://privasim.app/guide
 
 ## FAQ
 
-**Do I need an account?** No. Just a crypto wallet.
+**Do I need an account?** No. There is no account system at all — orders are keyed to your payment.
+**Which coins can I pay with?** Monero and Ethereum natively, USDT on Ethereum mainnet, plus 100+ other coins (BTC, LTC, SOL, DOGE…) via anonymous swap.
+**Will it work for calls?** Most plans are data-only; phone plans with a real number, voice and SMS are available under Global plans.
+**Can I top up?** Yes — https://privasim.app/topup with just your ICCID.
+**Are there refunds?** No — eSIMs are provisioned instantly and are single-use.
+**How do I check my order?** https://privasim.app/orders (order data stays in your browser).
 
-**Will it work for calls?** Most plans are data-only. Phone plans with calling available for select countries.
+## More Detail
 
-**Can I reuse the eSIM?** No, activation codes are single-use.
-
-**Are there refunds?** No, eSIM is provisioned immediately after payment.
-
-**How do I check my order?** Visit https://privasim.app/orders
-
-## Contact & Support
-
-Order support available at https://privasim.app/orders after purchase.
+Full machine-readable site guide: https://privasim.app/llms-full.txt
+Blog (updated daily): https://privasim.app/blog

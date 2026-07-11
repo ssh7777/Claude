@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Globe, Phone, Wifi, MessageSquare, Clock } from "lucide-react";
 import { getGlobalPackages, getPhonePlans } from "@/lib/pikasim";
 import { retailPrice } from "@/lib/prices";
+import { getRetailMargin } from "@/lib/settings";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +46,7 @@ export default async function GlobalShopPage() {
   }
 
   dataPlans.sort((a, b) => a.priceUsd - b.priceUsd);
+  const margin = await getRetailMargin();
 
   return (
     <div className="container py-12">
@@ -88,7 +90,7 @@ export default async function GlobalShopPage() {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {dataPlans.map((pkg) => (
-                  <EsimCard key={pkg.code} pkg={pkg} />
+                  <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
                 ))}
               </div>
             </section>
@@ -113,7 +115,7 @@ export default async function GlobalShopPage() {
                       <div className="flex items-start justify-between mb-4">
                         <Badge variant="ethereum">Real number</Badge>
                         <div className="text-lg font-bold text-white">
-                          ${retailPrice(plan.priceUsd).toFixed(2)}
+                          ${retailPrice(plan.priceUsd, margin).toFixed(2)}
                         </div>
                       </div>
                       <div className="space-y-2 text-sm text-gray-300 mb-4">

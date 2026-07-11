@@ -1,34 +1,102 @@
+# PRIVASIM — https://privasim.app
+# All content pages are open to every search engine AND every AI crawler.
+# Only transactional/private routes are excluded.
+
 User-agent: *
 Allow: /
-Allow: /shop
-Allow: /shop/*
-Allow: /blog
-Allow: /blog/*
 Disallow: /api/
 Disallow: /orders
 Disallow: /checkout/
 Disallow: /admin
 Disallow: /_next/
 
-# AI crawlers
+# ── Search engine crawlers ───────────────────────────────
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /orders
+Disallow: /checkout/
+Disallow: /admin
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /orders
+Disallow: /checkout/
+Disallow: /admin
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# ── AI / LLM crawlers (training + live answers) ──────────
 User-agent: GPTBot
 Allow: /
 Disallow: /api/
 Disallow: /orders
 Disallow: /checkout/
 
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
 User-agent: Claude-Web
 Allow: /
-Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
 
 User-agent: PerplexityBot
 Allow: /
-Disallow: /api/
 
-User-agent: Googlebot
+User-agent: Perplexity-User
 Allow: /
-Disallow: /api/
-Disallow: /orders
-Disallow: /checkout/
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
 
 Sitemap: https://privasim.app/sitemap.xml
+
+# AI-readable site summaries
+# https://privasim.app/llms.txt
+# https://privasim.app/llms-full.txt

@@ -5,6 +5,7 @@ import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { countryName } from "@/lib/countries";
 import { retailPrice } from "@/lib/prices";
+import { getRetailMargin } from "@/lib/settings";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
@@ -52,10 +53,21 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
     fetchError = true;
     packages = [];
   }
+  const margin = await getRetailMargin();
 
   const dataPackages = packages.filter((p) => p.type === "data");
   const phonePackages = packages.filter((p) => p.type === "phone");
   const displayName = packages[0]?.country || countryName(countryCode);
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: APP_URL },
+      { "@type": "ListItem", position: 2, name: "Shop", item: `${APP_URL}/shop` },
+      { "@type": "ListItem", position: 3, name: `${displayName} eSIM`, item: `${APP_URL}/shop/${countryCode}` },
+    ],
+  };
 
   const jsonLd = packages.length > 0 && {
     "@context": "https://schema.org",
@@ -71,7 +83,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
         description: `${p.dataAmount} eSIM data plan for ${displayName}, valid ${p.durationDays} days. Anonymous purchase with Monero or Ethereum.`,
         offers: {
           "@type": "Offer",
-          price: retailPrice(p.priceUsd).toFixed(2),
+          price: retailPrice(p.priceUsd, margin).toFixed(2),
           priceCurrency: "USD",
           availability: "https://schema.org/InStock",
           url: `${APP_URL}/checkout/${p.code}`,
@@ -82,6 +94,10 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
 
   return (
     <div className="container py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
       {jsonLd && (
         <script
           type="application/ld+json"
@@ -160,7 +176,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {dataPackages.map((pkg) => (
-                  <EsimCard key={pkg.code} pkg={pkg} />
+                  <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
                 ))}
               </div>
             </section>
@@ -174,7 +190,7 @@ export default async function CountryShopPage({ params, searchParams }: PageProp
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {phonePackages.map((pkg) => (
-                  <EsimCard key={pkg.code} pkg={pkg} />
+                  <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
                 ))}
               </div>
             </section>

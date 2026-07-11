@@ -6,6 +6,7 @@ import { generateEthereumPaymentInfo, generateUsdtPaymentInfo } from "@/lib/ethe
 import { createInvoiceRecord } from "@/lib/db";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { retailPrice } from "@/lib/prices";
+import { getRetailMargin } from "@/lib/settings";
 import type { CryptoType } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -95,7 +96,9 @@ export async function POST(req: NextRequest) {
 
     // Discount codes: verified and applied SERVER-SIDE only — the client
     // never controls the price. Forged/expired codes are simply ignored.
-    let priceUsd = retailPrice(pkg.priceUsd);
+    // Margin is the owner-set live value from the ledger (falls back to the
+    // compile-time default) — this is the authoritative charge amount.
+    let priceUsd = retailPrice(pkg.priceUsd, await getRetailMargin());
     let appliedDiscount: { label: string; percent: number } | null = null;
     if (discountCode) {
       const { checkCouponUsable, applyDiscount } = await import("@/lib/discounts");
