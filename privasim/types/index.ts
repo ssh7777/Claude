@@ -131,8 +131,9 @@ export interface PikaSimPackage {
   duration?: number;
   validityDays?: number;
   durationUnit?: string;
-  // Type
-  dataType?: string;
+  // Type — REST returns NUMERIC dataType (1 = data eSIM); older/MCP shapes
+  // use the strings "data"/"phone".
+  dataType?: string | number;
   type?: string;
   // Price
   priceUSD?: number;

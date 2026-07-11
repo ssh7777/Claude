@@ -66,9 +66,20 @@ jobs:
         run: |
           B="https://privasim.app"
           C="${{ github.event.inputs.country }}"
-          echo "Finding cheapest $C data package…"
-          CODE=$(curl -sS "$B/api/test/buy?key=$KEY&country=$C" | grep -oE 'package=[^"&]+' | head -1 | cut -d= -f2)
+          # PikaSim listing can fail transiently on a cold serverless
+          # instance — retry a few times and dump the raw response when no
+          # package link is found, so failures are diagnosable from the log.
+          CODE=""
+          for attempt in 1 2 3; do
+            echo "Finding cheapest $C data package (attempt $attempt)…"
+            RESP=$(curl -sS "$B/api/test/buy?key=$KEY&country=$C")
+            CODE=$(echo "$RESP" | grep -oE 'package=[^"&]+' | head -1 | cut -d= -f2)
+            [ -n "$CODE" ] && break
+            echo "--- no package link; response body (tags stripped): ---"
+            echo "$RESP" | sed 's/<[^>]*>//g' | grep -vE '^\s*$' | head -20
+            sleep 10
+          done
           echo "Cheapest package: $CODE"
-          [ -z "$CODE" ] && { echo "No package found"; exit 1; }
+          [ -z "$CODE" ] && { echo "No package found after 3 attempts"; exit 1; }
           echo "===== Purchasing $CODE (spends wallet) ====="
           curl -sS "$B/api/test/buy?key=$KEY&package=$CODE" | sed 's/<[^>]*>//g' | grep -vE '^\s*$' | head -40
