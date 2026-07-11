@@ -27,10 +27,17 @@ Privacy-first eSIM marketplace. Crypto-only payments (Monero XMR + Ethereum ETH)
 | `components/EsimCard.tsx` | Product card (50% markup applied here) |
 | `app/checkout/[packageCode]/page.tsx` | Checkout page (50% markup applied here) |
 
-## 70% Margin — Single Source of Truth
-- `lib/prices.ts` — `RETAIL_MARGIN = 1.7` and `retailPrice(wholesaleUsd)`
-- Consumers: EsimCard, checkout page, orders/create (invoice), chat bot,
-  country-page JSON-LD, top-up flow. NEVER hardcode a multiplier elsewhere.
+## Margin — Owner-Adjustable (default 70%)
+- LIVE value: ledger key `set_margin_pct` (percent), set from Admin →
+  Pricing & Wallets, read via `getRetailMargin()` in `lib/settings.ts`
+  (60 s server cache). `lib/prices.ts` keeps `RETAIL_MARGIN = 1.7` as the
+  compile-time DEFAULT only and stays ledger-free (client-importable).
+- `retailPrice(wholesaleUsd, margin?)` — server code passes the live margin;
+  client components consume server-computed `retailUsd` from API responses.
+- Authoritative charge: orders/create. Display: shop pages (EsimCard margin
+  prop), checkout/topup (`retailUsd` from API), chatbot, country JSON-LD.
+- Blog daily-deals table renders at the DEFAULT margin (editorial/indicative).
+- NEVER hardcode a multiplier anywhere else.
 
 ## API Key Security
 - PikaSim API key ONLY in `process.env.PIKASIM_API_KEY`
