@@ -180,7 +180,8 @@ function normalizePikaPackage(pkg: PikaSimPackage): EsimPackage {
   const country     = pkg.location     ?? pkg.destination     ?? "";
   const countryCode = pkg.locationCode ?? pkg.destinationCode ?? "";
   const durationDays = pkg.duration ?? pkg.validityDays ?? 0;
-  const type: ProductType = (pkg.dataType ?? pkg.type) === "phone" ? "phone" : "data";
+  const rawType = pkg.dataType ?? pkg.type;
+  const type: ProductType = rawType === "phone" || rawType === 2 ? "phone" : "data";
 
   return {
     code: pkg.packageCode,
@@ -219,7 +220,14 @@ export async function searchEsimPackages(
       );
     }
     if (type !== "all") {
-      packages = packages.filter((p) => (p.dataType ?? p.type) === type);
+      // REST encodes dataType numerically (1 = data eSIM); phone plans are
+      // never served by this endpoint, only by the MCP search. Treat any
+      // non-"phone" value as data so numeric shapes aren't filtered to zero.
+      packages = packages.filter((p) => {
+        const t = p.dataType ?? p.type;
+        const isPhone = t === "phone" || t === 2;
+        return type === "phone" ? isPhone : !isPhone;
+      });
     }
 
     return packages.map(normalizePikaPackage);
