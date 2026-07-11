@@ -61,8 +61,11 @@ jobs:
 
       - name: Deploy prebuilt output
         working-directory: privasim
+        # --yes is REQUIRED: without it the CLI can stop at an interactive
+        # prompt and hang forever in CI. </dev/null belt-and-braces so any
+        # unexpected prompt EOFs instead of blocking.
         run: |
-          URL=$(npx vercel deploy --prebuilt --prod --archive=tgz --token "$VERCEL_TOKEN")
+          URL=$(npx vercel deploy --prebuilt --prod --archive=tgz --yes --token "$VERCEL_TOKEN" </dev/null)
           echo "Deployed: $URL"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
