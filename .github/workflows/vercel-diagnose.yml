@@ -32,10 +32,11 @@ jobs:
           "
 
           echo "===== Newest deployment full detail ====="
-          UID=$(curl -sS "https://api.vercel.com/v6/deployments?projectId=prj_mZDjly89xeorzPIjydENfXaOGNA2&limit=1" \
+          # note: UID is a readonly bash builtin — use DEP_ID
+          DEP_ID=$(curl -sS "https://api.vercel.com/v6/deployments?projectId=prj_mZDjly89xeorzPIjydENfXaOGNA2&limit=1" \
             -H "Authorization: Bearer $VT" | python3 -c "import sys,json; d=json.load(sys.stdin)['deployments']; print(d[0]['uid'] if d else '')")
-          if [ -n "$UID" ]; then
-            curl -sS "https://api.vercel.com/v13/deployments/$UID" -H "Authorization: Bearer $VT" \
+          if [ -n "$DEP_ID" ]; then
+            curl -sS "https://api.vercel.com/v13/deployments/$DEP_ID" -H "Authorization: Bearer $VT" \
               | python3 -c "
           import sys, json
           d = json.load(sys.stdin)
