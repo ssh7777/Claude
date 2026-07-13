@@ -1,5 +1,5 @@
 {
- "date": "2026-07-12",
+ "date": "2026-07-13",
  "deals": [
   {
    "countryCode": "TH",
@@ -76,7 +76,7 @@
   {
    "countryCode": "JP",
    "country": "JP",
-   "name": "Japan 50GB 30Days",
+   "name": "Japan 50GB 30Days (IIJ)",
    "dataAmount": "50 GB",
    "days": 30,
    "wholesaleUsd": 46.99
