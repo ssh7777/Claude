@@ -7,10 +7,8 @@ import { rateLimit } from "@/lib/rateLimit";
 // Prevent TX hash replay within this function instance lifetime
 const usedTxHashes = new Set<string>();
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ orderId: string }> }) {
+  const params = await props.params;
   const { allowed } = rateLimit(`verify:${params.orderId}`, { windowMs: 60_000, max: 5 });
   if (!allowed) {
     return NextResponse.json(

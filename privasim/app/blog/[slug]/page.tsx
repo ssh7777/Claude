@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 interface PageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 // Pre-render every post at build time — no 404s, no cold fetches.
@@ -16,7 +16,8 @@ export function generateStaticParams() {
   return getAllBlogSlugs().map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params;
   const post = getBlogPostBySlug(params.slug);
   if (!post) return { title: "Post not found" };
   return {
@@ -46,7 +47,8 @@ function readingTime(html: string): number {
   return Math.max(1, Math.round(words / 220));
 }
 
-export default function BlogPostPage({ params }: PageProps) {
+export default async function BlogPostPage(props: PageProps) {
+  const params = await props.params;
   const post = getBlogPostBySlug(params.slug);
   if (!post) notFound();
 

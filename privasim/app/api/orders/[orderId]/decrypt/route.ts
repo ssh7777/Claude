@@ -4,10 +4,8 @@ import { decryptField } from "@/lib/crypto-utils";
 
 // Returns decrypted eSIM credentials for a given invoice.
 // No JWT required — invoice ID is the shared secret.
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ orderId: string }> }) {
+  const params = await props.params;
   const invoice = await getInvoiceById(params.orderId);
   if (!invoice) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });

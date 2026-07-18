@@ -3,10 +3,8 @@ import { getBlogPostBySlug, getBlogPosts } from "@/lib/db";
 
 export const revalidate = 3600;
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const post = await getBlogPostBySlug(params.slug);
   if (!post) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });

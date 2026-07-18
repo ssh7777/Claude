@@ -30,7 +30,7 @@ async function visitorId(ip: string, ua: string): Promise<string> {
 // Paths that must never be indexed by search engines
 const NOINDEX_PREFIXES = ["/api", "/orders", "/checkout", "/admin", "/esim"];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
   const pathname = req.nextUrl.pathname;
 
