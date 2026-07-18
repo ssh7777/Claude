@@ -58,7 +58,7 @@ jobs:
           print(f"wrote {len(deals)} deals for {out['date']}")
           EOF
 
-      - name: Generate today's auto-article from live catalog
+      - name: Generate today's 3 auto-articles from live catalog
         run: node privasim/scripts/generate-article.mjs
 
       - name: Commit and push if changed
@@ -70,8 +70,13 @@ jobs:
             echo "No changes — skipping commit"
             exit 0
           fi
-          git commit -m "Daily content: deals + auto-article $(date -u +%F)"
+          git commit -m "Daily content: deals + 3 auto-articles $(date -u +%F)"
           git push origin main
+
+      # Give Vercel's Git integration time to build + promote the new pages
+      # before asking search engines to crawl them.
+      - name: Wait for deploy to promote
+        run: sleep 240
 
       - name: Ping IndexNow (Bing, Yandex, Seznam, Naver) for instant crawl
         continue-on-error: true
@@ -79,6 +84,13 @@ jobs:
           # IndexNow key is hosted at /<key>.txt on the site (public/ file).
           KEY="a7f3c1e9b2d4e6f8a0c2e4b6d8f0a1c3"
           BASE="https://privasim.app"
-          for url in "$BASE/" "$BASE/blog" "$BASE/blog/best-esim-deals-today" "$BASE/shop" "$BASE/shop/global"; do
+          URLS="$BASE/ $BASE/blog $BASE/blog/best-esim-deals-today $BASE/shop $BASE/shop/global $BASE/sitemap.xml"
+          # Today's freshly generated articles (written by the generator)
+          if [ -f privasim/data/new-slugs.txt ]; then
+            while read -r slug; do
+              [ -n "$slug" ] && URLS="$URLS $BASE/blog/$slug"
+            done < privasim/data/new-slugs.txt
+          fi
+          for url in $URLS; do
             curl -sS "https://api.indexnow.org/indexnow?url=${url}&key=${KEY}" -o /dev/null -w "IndexNow %{http_code} ${url}\n" || true
           done
