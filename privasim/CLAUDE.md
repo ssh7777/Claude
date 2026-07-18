@@ -4,7 +4,7 @@
 Privacy-first eSIM marketplace. Crypto-only payments (Monero XMR + Ethereum ETH). No email, no KYC, no database. Sources eSIMs from PikaSim reseller API.
 
 ## Stack
-- Next.js 14 App Router + React 19 + TypeScript
+- Next.js 16 App Router + React 19 + TypeScript (params/searchParams are Promises; proxy.ts replaces middleware.ts)
 - No database (fully stateless, in-memory invoice store)
 - PikaSim MCP API (JSON-RPC 2.0 at `https://pikasim.com/mcp`)
 - Monero + Ethereum direct wallet payments
@@ -71,7 +71,7 @@ PikaSim API (`pikasim.com`) is **blocked by the cloud sandbox egress proxy**. AP
 ## Deployment Status
 - Code: complete, builds clean, all 22 routes
 - Deployed: YES — https://privasim.app
-- Auto-deploys via GitHub Actions on push to main (.github/workflows/deploy-vercel.yml)
+- Auto-deploys via Vercel Git integration on every push to main; .github/workflows/deploy-vercel.yml is a MANUAL fallback only (two deploy systems racing caused the queue jams)
 
 ## PikaSim MCP — Verified Facts (from live tools/list probe)
 - 15 tools; our pk_live_ reseller key works as an agent-wallet key

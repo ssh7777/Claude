@@ -15,11 +15,12 @@ export const revalidate = 300;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
 
 interface PageProps {
-  params: { country: string };
-  searchParams: { type?: string };
+  params: Promise<{ country: string }>;
+  searchParams: Promise<{ type?: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params;
   const countryCode = params.country.toUpperCase();
   const name = countryName(countryCode);
   return {
@@ -39,7 +40,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function CountryShopPage({ params, searchParams }: PageProps) {
+export default async function CountryShopPage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const countryCode = params.country.toUpperCase();
   if (!countryCode || countryCode.length !== 2) notFound();
 
