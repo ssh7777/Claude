@@ -61,6 +61,10 @@ jobs:
       - name: Generate today's 3 auto-articles from live catalog
         run: node privasim/scripts/generate-article.mjs
 
+      - name: Generate daily privacy-news roundup from public RSS feeds
+        continue-on-error: true
+        run: node privasim/scripts/generate-roundup.mjs
+
       - name: Commit and push if changed
         run: |
           git config user.name "Claude"
