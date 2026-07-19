@@ -1,0 +1,39 @@
+name: Create discount coupon on production
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "Coupon label (A-Z0-9, shown in the code)"
+        default: "TODAY20"
+      percent:
+        description: "Discount percent (1-50)"
+        default: "20"
+      validDays:
+        description: "Days until expiry"
+        default: "3"
+      maxUses:
+        description: "Maximum redemptions"
+        default: "25"
+
+jobs:
+  coupon:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create coupon via admin API
+        env:
+          KEY: ${{ secrets.PIKASIM_API_KEY }}
+        run: |
+          RESP=$(curl -sS -X POST "https://privasim.app/api/admin/discounts" \
+            -H "x-admin-key: $KEY" -H "Content-Type: application/json" \
+            -d "{\"label\":\"${{ inputs.label }}\",\"percent\":${{ inputs.percent }},\"validDays\":${{ inputs.validDays }},\"maxUses\":${{ inputs.maxUses }}}")
+          echo "Response: $RESP"
+          CODE=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('code',''))")
+          [ -z "$CODE" ] && { echo "Coupon creation failed"; exit 1; }
+          echo "=============================================="
+          echo "COUPON CODE: $CODE"
+          echo "=============================================="
+          echo "Verifying it validates..."
+          curl -sS -X POST "https://privasim.app/api/discount/validate" \
+            -H "Content-Type: application/json" -d "{\"code\":\"$CODE\"}"
+          echo
