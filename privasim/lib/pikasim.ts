@@ -125,7 +125,11 @@ async function apiGet<T>(path: string, params?: Record<string, string>): Promise
   const headers: Record<string, string> = { Accept: "application/json" };
   if (key) headers["X-API-Key"] = key;
 
-  const response = await fetch(url.toString(), { method: "GET", headers, cache: "no-store" });
+  // Catalog reads are cached for 5 min in Next's data cache and shared by
+  // every page — without this, EVERY render re-downloaded the ~900 KB
+  // all-countries catalog (the main cause of slow page loads). Purchases
+  // and other MCP calls stay strictly no-store.
+  const response = await fetch(url.toString(), { method: "GET", headers, next: { revalidate: 300 } });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

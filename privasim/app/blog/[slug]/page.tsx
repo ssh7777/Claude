@@ -77,6 +77,10 @@ export default async function BlogPostPage(props: PageProps) {
     ],
   };
 
+  // Deterministic hue per post so every article gets its own hero colour.
+  const heroHue =
+    Array.from(post.slug).reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7) | 0;
+
   return (
     <div className="container py-12 max-w-3xl">
       <script
@@ -93,6 +97,28 @@ export default async function BlogPostPage(props: PageProps) {
 
       <article>
         <header className="mb-8">
+          {/* CSS-only hero art — deterministic per post, no external images
+              so nothing can ever 404 or render broken. */}
+          <div
+            aria-hidden
+            className="relative h-40 sm:h-52 rounded-2xl mb-6 overflow-hidden border border-white/10"
+            style={{
+              background: `linear-gradient(135deg, hsl(${heroHue} 85% 12%), hsl(${(heroHue + 40) % 360} 90% 22%) 55%, hsl(24 100% 45%))`,
+            }}
+          >
+            <div
+              className="absolute inset-0 opacity-25"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.35) 0, transparent 30%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.25) 0, transparent 35%), radial-gradient(circle at 60% 20%, rgba(255,153,68,0.5) 0, transparent 25%)",
+              }}
+            />
+            <div className="absolute inset-0 flex items-end p-5">
+              <span className="text-xs font-semibold uppercase tracking-widest text-white/80 bg-black/30 rounded-full px-3 py-1">
+                {post.tags[0] ?? "PRIVASIM"}
+              </span>
+            </div>
+          </div>
           <h1 className="text-3xl font-black text-white mb-3">{post.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1">
@@ -120,7 +146,9 @@ export default async function BlogPostPage(props: PageProps) {
             prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/10
             prose-table:border prose-table:border-white/10 prose-th:p-2 prose-td:p-2
             prose-th:border prose-th:border-white/10 prose-td:border prose-td:border-white/10
-            prose-li:my-1 prose-p:leading-relaxed"
+            prose-li:my-1 prose-p:leading-relaxed
+            [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:rounded-lg
+            [&_th]:bg-white/5 [&_th]:text-white [&_a]:break-words"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>
