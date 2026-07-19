@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "flag-icons/css/flag-icons.min.css";
 import Header from "@/components/Header";
+import PromoBanner from "@/components/PromoBanner";
 import Footer from "@/components/Footer";
 import Chatbot from "@/components/Chatbot";
 import TrackVisit from "@/components/TrackVisit";
@@ -154,6 +155,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${inter.className} min-h-screen bg-[#0a0a1a] antialiased`}>
+        <PromoBanner />
         <Header />
         <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         <Footer />
