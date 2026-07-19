@@ -469,6 +469,68 @@ export const BLOG_POSTS: BlogPost[] = [
 <p><a href="/shop">Get a data plan with zero registration →</a></p>
 `,
   },
+  {
+    id: "14",
+    slug: "airalo-alternative",
+    title: "Airalo Alternative Without an Account: What to Use in 2026",
+    published_at: "2026-07-19T00:00:00Z",
+    featured: true,
+    tags: ["comparison", "airalo", "esim"],
+    excerpt:
+      "Airalo works — but it requires an account, an email, and a card, and prices crept up. Here's the alternative for people who want the same coverage with zero identity.",
+    content: `
+<p>Airalo popularised the travel eSIM, and credit where due: huge coverage, polished app. But plenty of travellers end up searching for an alternative, usually for one of three reasons: the <strong>mandatory account and app</strong>, <strong>card-only payments</strong> tied to your identity, or plans that quietly got more expensive. Here's what actually differs when you switch.</p>
+<h2>Airalo vs PRIVASIM at a glance</h2>
+<table>
+<tr><th></th><th>Airalo</th><th>PRIVASIM</th></tr>
+<tr><td>Account required</td><td>Yes (email + password)</td><td><strong>No — none exists</strong></td></tr>
+<tr><td>App required</td><td>Strongly pushed</td><td><strong>No — browser only</strong></td></tr>
+<tr><td>Payment</td><td>Card / PayPal (identity-linked)</td><td><strong>XMR, ETH, USDT, 100+ coins</strong></td></tr>
+<tr><td>KYC / ID</td><td>For some regions & features</td><td><strong>Never</strong></td></tr>
+<tr><td>Coverage</td><td>200+ countries</td><td>190+ countries + global multi-country plans</td></tr>
+<tr><td>Delivery</td><td>Instant</td><td>Instant after crypto confirmation</td></tr>
+</table>
+<h2>What you give up, honestly</h2>
+<ul>
+<li><strong>Card checkout convenience.</strong> You need cryptocurrency. If you have none, an exchange onboarding takes longer than an Airalo signup.</li>
+<li><strong>A big-brand support team.</strong> We're deliberately lean — orders are self-serve with on-chain verification.</li>
+</ul>
+<h2>What you gain</h2>
+<ul>
+<li><strong>No data trail.</strong> No account database means your travel history isn't stored under your email, can't be breached, sold, or subpoenaed.</li>
+<li><strong>Real anonymity.</strong> Pay in Monero and the purchase is private end-to-end — impossible with any card-based seller.</li>
+<li><strong>No app-store linkage.</strong> Nothing installed, nothing tied to your Apple/Google identity.</li>
+</ul>
+<p>Compare live prices for your destination — no signup wall in the way: <a href="/shop">browse 190+ countries →</a>. More detail in our <a href="/blog/best-anonymous-esim">full anonymous-eSIM comparison</a>.</p>
+`,
+  },
+  {
+    id: "15",
+    slug: "holafly-alternative",
+    title: "Holafly Alternative: Unlimited-Style Data Without the Identity Tax",
+    published_at: "2026-07-19T00:00:00Z",
+    featured: false,
+    tags: ["comparison", "holafly", "esim"],
+    excerpt:
+      "Holafly sells convenience: unlimited plans, card checkout, your identity on file. If the last part bothers you, here's the alternative that asks for nothing.",
+    content: `
+<p>Holafly's pitch is unlimited data with zero thinking. The trade: an account, your email, your card — and for EU customers, invoicing details that tie every trip to your name. If you're hunting for a Holafly alternative, it's usually either the <strong>price</strong> (unlimited plans cost a premium) or the <strong>identity requirement</strong>. Here's the privacy-first answer to both.</p>
+<h2>The comparison that matters</h2>
+<table>
+<tr><th></th><th>Holafly</th><th>PRIVASIM</th></tr>
+<tr><td>Account / email</td><td>Required</td><td><strong>None</strong></td></tr>
+<tr><td>Payment</td><td>Card / PayPal</td><td><strong>Monero, ETH, USDT, 100+ coins</strong></td></tr>
+<tr><td>Plan style</td><td>Unlimited (throttled FUP)</td><td>Fixed-GB plans + unlimited-style daily plans on global eSIMs</td></tr>
+<tr><td>Typical 10-day trip cost</td><td>$35–55 unlimited</td><td>From ~$10–20 for 5–10 GB</td></tr>
+<tr><td>Identity stored</td><td>Yes, permanently</td><td><strong>Nothing to store</strong></td></tr>
+</table>
+<h2>Do you actually need unlimited?</h2>
+<p>Most travellers use 1–2 GB per week outside the hotel Wi-Fi. Maps, messaging, translation and social browsing fit comfortably in a 5 GB plan that costs a third of an unlimited pass. Our <a href="/blog">destination guides</a> break down realistic usage per traveller type — and if you genuinely burn data, global 1–2 GB/day plans are available too.</p>
+<h2>The privacy difference</h2>
+<p>Every Holafly purchase is a permanent record: identity, payment, destination, dates. PRIVASIM keeps no such record because it never collects it — no account system exists. Pay in Monero and even the payment is private by design. <a href="/blog/burner-esim-without-registration">How registration-free eSIMs work →</a></p>
+<p><a href="/shop">See live prices for your destination →</a></p>
+`,
+  },
 ];
 
 // Auto-generated daily post built from the live-refreshed deals data.

@@ -55,9 +55,21 @@ function parseFeed(xml) {
     const title = strip((b.match(/<title[^>]*>([\s\S]*?)<\/title>/) || [])[1] || "");
     let link = strip((b.match(/<link[^>]*>([\s\S]*?)<\/link>/) || [])[1] || "");
     if (!link) link = (b.match(/<link[^>]*href="([^"]+)"/) || [])[1] || "";
-    const desc = strip(
+    let desc = strip(
       (b.match(/<description[^>]*>([\s\S]*?)<\/description>/) || b.match(/<summary[^>]*>([\s\S]*?)<\/summary>/) || b.match(/<content[^>]*>([\s\S]*?)<\/content>/) || [])[1] || ""
     );
+    // HN feeds ship boilerplate ("Article URL: … Comments URL: … Points: …")
+    // instead of a summary — strip it, and drop any URL-heavy leftovers so
+    // the roundup never shows raw links as "excerpts".
+    desc = desc
+      .replace(/Article URL:\s*\S+/gi, "")
+      .replace(/Comments URL:\s*\S+/gi, "")
+      .replace(/Points:\s*\d+/gi, "")
+      .replace(/#\s*Comments:\s*\d+/gi, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (desc.length < 40) desc = ""; // too little left to be useful
     if (title && link && /^https?:\/\//.test(link)) {
       items.push({ title, link, excerpt: desc.slice(0, 220) });
     }
