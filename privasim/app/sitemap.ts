@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: APP_URL, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
+    { url: `${APP_URL}/anonymous-esim`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${APP_URL}/shop`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${APP_URL}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${APP_URL}/privacy`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },

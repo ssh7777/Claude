@@ -1,0 +1,14 @@
+name: Analytics report from production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch first-party analytics (sources, visits, checkouts, sales)
+        env:
+          KEY: ${{ secrets.PIKASIM_API_KEY }}
+        run: |
+          curl -sS "https://privasim.app/api/admin/analytics" -H "x-admin-key: $KEY" | python3 -m json.tool | head -80

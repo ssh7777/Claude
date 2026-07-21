@@ -57,6 +57,10 @@ export default function Footer() {
               <li><Link href="/shop/global" className="hover:text-white transition-colors">Global Plans</Link></li>
               <li><Link href="/blog/how-to-buy-esim-with-monero" className="hover:text-white transition-colors">Monero Payment Guide</Link></li>
               <li><Link href="/blog/best-esim-deals-today" className="hover:text-white transition-colors">Today&apos;s Deals</Link></li>
+              <li><Link href="/anonymous-esim" className="hover:text-white transition-colors">Anonymous eSIM</Link></li>
+              <li><Link href="/blog/best-anonymous-esim" className="hover:text-white transition-colors">Provider Comparison</Link></li>
+              <li><Link href="/blog/airalo-alternative" className="hover:text-white transition-colors">Airalo Alternative</Link></li>
+              <li><Link href="/blog/holafly-alternative" className="hover:text-white transition-colors">Holafly Alternative</Link></li>
             </ul>
           </div>
         </div>

@@ -67,6 +67,12 @@ export const metadata: Metadata = {
     canonical: APP_URL,
   },
   category: "technology",
+  // Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION in Vercel env to verify the
+  // domain in Google Search Console (required for Google sitemap submission
+  // and indexing reports). Renders nothing until the env var is set.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 const JSON_LD = {
