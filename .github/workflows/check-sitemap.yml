@@ -1,0 +1,19 @@
+name: Check live sitemap domain correctness
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify sitemap URLs use privasim.app only
+        run: |
+          curl -sS https://privasim.app/sitemap.xml -o /tmp/sm.xml
+          TOTAL=$(grep -c "<loc>" /tmp/sm.xml || true)
+          BAD=$(grep -c "privasim-two" /tmp/sm.xml || true)
+          GOOD=$(grep -c "https://privasim.app" /tmp/sm.xml || true)
+          echo "total URLs: $TOTAL | privasim.app: $GOOD | privasim-two (BAD): $BAD"
+          head -c 600 /tmp/sm.xml
+          echo
+          [ "$BAD" = "0" ] && echo "SITEMAP OK" || { echo "STILL BROKEN"; exit 1; }
