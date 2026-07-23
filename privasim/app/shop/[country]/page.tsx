@@ -12,7 +12,7 @@ import Flag from "@/components/Flag";
 
 export const revalidate = 300;
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
+const APP_URL = "https://privasim.app";
 
 interface PageProps {
   params: Promise<{ country: string }>;

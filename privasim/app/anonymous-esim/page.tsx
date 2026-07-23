@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 // content-rich, heavily interlinked. Every internal link from the footer,
 // blog posts and homepage concentrates ranking signals here.
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privasim.app";
+const APP_URL = "https://privasim.app";
 
 export const metadata: Metadata = {
   title: "Anonymous eSIM — Buy Mobile Data with No ID, No Email, No KYC",
