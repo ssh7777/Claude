@@ -1,5 +1,5 @@
 {
- "date": "2026-08-02",
+ "date": "2026-08-03",
  "deals": [
   {
    "countryCode": "TH",
@@ -66,17 +66,17 @@
    "wholesaleUsd": 46.99
   },
   {
-   "countryCode": "SG",
-   "country": "SG",
-   "name": "Singapore 50GB 30Days",
+   "countryCode": "JP",
+   "country": "JP",
+   "name": "Japan 50GB 30Days (IIJ)",
    "dataAmount": "50 GB",
    "days": 30,
    "wholesaleUsd": 46.99
   },
   {
-   "countryCode": "JP",
-   "country": "JP",
-   "name": "Japan 50GB 30Days (IIJ)",
+   "countryCode": "KR",
+   "country": "KR",
+   "name": "South Korea 50GB 30Days",
    "dataAmount": "50 GB",
    "days": 30,
    "wholesaleUsd": 46.99
