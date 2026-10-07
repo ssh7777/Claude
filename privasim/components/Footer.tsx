@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Shield, Lock, Eye, Zap } from "lucide-react";
+import { Shield, Lock, Eye, Zap, Rss } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -25,6 +25,12 @@ export default function Footer() {
                 <Eye className="h-3 w-3" />
                 No cookies
               </div>
+            </div>
+            <div className="mt-4">
+              <Link href="/blog/feed.xml" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#ff6600]">
+                <Rss className="h-3 w-3" />
+                RSS Feed
+              </Link>
             </div>
           </div>
 
@@ -52,6 +58,7 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+              <li><Link href="/blog/feed.xml" className="hover:text-white transition-colors flex items-center gap-1"><Rss className="h-3 w-3" /> Blog RSS feed</Link></li>
               <li><Link href="/guide" className="hover:text-white transition-colors">Install Guide</Link></li>
               <li><Link href="/topup" className="hover:text-white transition-colors">Top Up eSIM</Link></li>
               <li><Link href="/shop/global" className="hover:text-white transition-colors">Global Plans</Link></li>

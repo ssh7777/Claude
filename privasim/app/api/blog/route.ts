@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBlogPosts } from "@/lib/db";
+import { getBlogPosts, getBlogPostsCount, getAllBlogPosts } from "@/lib/blog";
 
 export const revalidate = 3600;
 
@@ -9,9 +9,12 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
   const offset = (page - 1) * limit;
 
-  const posts = await getBlogPosts(limit, offset);
+  const posts = getBlogPosts(limit, offset);
+  const total = getBlogPostsCount();
+  const all = getAllBlogPosts();
+
   return NextResponse.json(
-    { posts, total: posts.length, page },
+    { posts, total, page, totalPages: Math.ceil(total / limit), allCount: all.length },
     { headers: { "Cache-Control": "public, s-maxage=3600" } }
   );
 }

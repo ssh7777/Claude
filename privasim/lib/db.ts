@@ -163,4 +163,11 @@ export async function getOrderById(orderId: string) {
 }
 
 // Blog content lives in lib/blog.ts (static, git-versioned).
-export { getBlogPosts, getBlogPostBySlug, getAllBlogSlugs } from "@/lib/blog";
+export {
+  getBlogPosts,
+  getBlogPostBySlug,
+  getAllBlogSlugs,
+  getAllBlogPosts,
+  getBlogPostsCount,
+  getRelatedPosts,
+} from "@/lib/blog";

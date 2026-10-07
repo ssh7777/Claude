@@ -19,6 +19,7 @@ export interface BlogPost {
   tags: string[];
   excerpt: string;
   content: string;
+  faq?: { q: string; a: string }[];
 }
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -130,10 +131,18 @@ export const BLOG_POSTS: BlogPost[] = [
     slug: "how-to-buy-esim-with-monero",
     title: "How to Buy an eSIM with Monero (Step-by-Step Guide)",
     published_at: "2026-06-20T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
     featured: true,
-    tags: ["monero", "guide", "esim"],
+    tags: ["monero", "guide", "esim", "privacy"],
     excerpt:
       "A complete walkthrough: getting XMR, choosing a plan, paying from Cake Wallet or Feather, and installing your eSIM — with zero identity exposed.",
+    faq: [
+      { q: "Do I need an account to buy with Monero?", a: "No. There is no account, email, or phone number required. Orders are tracked by a random ID in your browser." },
+      { q: "Which Monero wallets work?", a: "Cake Wallet (iOS/Android), Feather Wallet (desktop), Monerujo (Android), and any wallet that can send XMR." },
+      { q: "How long does Monero confirmation take?", a: "Typically 2-10 minutes for 10 confirmations. Keep the order page open or retrieve it later at /orders." },
+      { q: "Is Monero more private than Bitcoin for eSIM purchases?", a: "Yes. Monero hides sender, receiver, and amount by default using ring signatures, stealth addresses, and RingCT. Bitcoin's ledger is public." },
+      { q: "What if my Monero payment expires?", a: "Your funds are safe. Open your order at /orders and submit the transaction hash to claim delivery even after expiry." },
+    ],
     content: `
 <p>This guide takes you from "I have no Monero" to "my phone has anonymous data in another country" in about 15 minutes.</p>
 <h2>Step 1 — Get Monero</h2>
@@ -160,6 +169,12 @@ export const BLOG_POSTS: BlogPost[] = [
 <li><strong>Sent slightly wrong amount?</strong> Small differences are tolerated; large ones aren't. Send the exact figure shown.</li>
 <li><strong>Invoice expired mid-payment?</strong> Your funds are safe — open your order at <a href="/orders">/orders</a> and submit the transaction hash to claim delivery.</li>
 </ul>
+<h2>Frequently asked questions</h2>
+<p><strong>Do I need an account to buy with Monero?</strong><br/>No. There is no account, email, or phone number required. Orders are tracked by a random ID in your browser.</p>
+<p><strong>Which Monero wallets work?</strong><br/>Cake Wallet (iOS/Android), Feather Wallet (desktop), Monerujo (Android), and any wallet that can send XMR.</p>
+<p><strong>How long does Monero confirmation take?</strong><br/>Typically 2-10 minutes for 10 confirmations. Keep the order page open or retrieve it later at /orders.</p>
+<p><strong>Is Monero more private than Bitcoin for eSIM purchases?</strong><br/>Yes. Monero hides sender, receiver, and amount by default using ring signatures, stealth addresses, and RingCT. Bitcoin's ledger is public.</p>
+<p><strong>What if my Monero payment expires?</strong><br/>Your funds are safe. Open your order at /orders and submit the transaction hash to claim delivery even after expiry.</p>
 <p><a href="/shop">Start with a plan →</a></p>
 `,
   },
@@ -573,10 +588,20 @@ function allPosts(): BlogPost[] {
   return [dailyDealsPost(), ...auto, ...BLOG_POSTS];
 }
 
+function sortedPosts(): BlogPost[] {
+  return allPosts().sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+}
+
 export function getBlogPosts(limit = 20, offset = 0): BlogPost[] {
-  return allPosts()
-    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
-    .slice(offset, offset + limit);
+  return sortedPosts().slice(offset, offset + limit);
+}
+
+export function getAllBlogPosts(): BlogPost[] {
+  return sortedPosts();
+}
+
+export function getBlogPostsCount(): number {
+  return allPosts().length;
 }
 
 export function getBlogPostBySlug(slug: string): BlogPost | null {
@@ -585,4 +610,13 @@ export function getBlogPostBySlug(slug: string): BlogPost | null {
 
 export function getAllBlogSlugs(): string[] {
   return allPosts().map((p) => p.slug);
+}
+
+export function getRelatedPosts(slug: string, limit = 4): BlogPost[] {
+  const current = getBlogPostBySlug(slug);
+  if (!current) return [];
+  const tags = new Set(current.tags);
+  return sortedPosts()
+    .filter((p) => p.slug !== slug && p.tags.some((t) => tags.has(t)))
+    .slice(0, limit);
 }

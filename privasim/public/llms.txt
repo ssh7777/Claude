@@ -55,7 +55,27 @@ eSIM requires a carrier-unlocked device: iPhone XS (2018) or newer, Samsung Gala
 **Are there refunds?** No — eSIMs are provisioned instantly and are single-use.
 **How do I check my order?** https://privasim.app/orders (order data stays in your browser).
 
+## Blog & Guides
+
+PRIVASIM maintains a daily-updated blog with privacy guides, eSIM tutorials, and destination-specific buying guides:
+
+- **All posts**: https://privasim.app/blog
+- **RSS feed**: https://privasim.app/blog/feed.xml
+- **Popular guides**:
+  - How to Buy an eSIM with Monero: https://privasim.app/blog/how-to-buy-esim-with-monero
+  - No-KYC eSIMs Complete Guide: https://privasim.app/blog/no-kyc-esim-complete-guide
+  - eSIM Installation Guide: https://privasim.app/blog/esim-installation-guide
+  - Why Privacy Matters: https://privasim.app/blog/why-privacy-matters-esim
+  - Best eSIM Deals Today (daily): https://privasim.app/blog/best-esim-deals-today
+  - Airalo Alternative: https://privasim.app/blog/airalo-alternative
+  - Holafly Alternative: https://privasim.app/blog/holafly-alternative
+- **Archive pages**: https://privasim.app/blog/page/2, /blog/page/3, /blog/page/4
+- **Topics**: privacy, Monero payments, travel eSIMs, no-KYC connectivity, burner eSIMs, journalist safety
+
+New articles are published automatically every day from live catalog prices and privacy news RSS feeds.
+
 ## More Detail
 
 Full machine-readable site guide: https://privasim.app/llms-full.txt
 Blog (updated daily): https://privasim.app/blog
+RSS: https://privasim.app/blog/feed.xml

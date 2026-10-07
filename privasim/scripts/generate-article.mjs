@@ -23,17 +23,30 @@ function get(url) {
   });
 }
 
+// Full 99 countries from lib/countries.ts — ensures sitemap has 99 /shop/XX URLs including CN
 const COUNTRY_NAMES = {
-  JP: "Japan", US: "United States", GB: "United Kingdom", DE: "Germany", FR: "France",
-  IT: "Italy", ES: "Spain", NL: "Netherlands", CH: "Switzerland", AT: "Austria",
-  TH: "Thailand", SG: "Singapore", AU: "Australia", KR: "South Korea", PH: "Philippines",
-  ID: "Indonesia", VN: "Vietnam", MY: "Malaysia", IN: "India", HK: "Hong Kong",
-  CA: "Canada", MX: "Mexico", BR: "Brazil", AR: "Argentina", CO: "Colombia",
-  AE: "United Arab Emirates", SA: "Saudi Arabia", IL: "Israel", ZA: "South Africa", TR: "Turkey",
-  PL: "Poland", CZ: "Czechia", HU: "Hungary", PT: "Portugal", GR: "Greece",
-  SE: "Sweden", NO: "Norway", DK: "Denmark", FI: "Finland", BE: "Belgium",
-  TW: "Taiwan", NZ: "New Zealand", IE: "Ireland", EG: "Egypt", MA: "Morocco",
-  KE: "Kenya", PE: "Peru", CL: "Chile", IS: "Iceland", HR: "Croatia",
+  AD: "Andorra", AE: "United Arab Emirates", AL: "Albania", AM: "Armenia",
+  AR: "Argentina", AT: "Austria", AU: "Australia", AZ: "Azerbaijan",
+  BA: "Bosnia and Herzegovina", BD: "Bangladesh", BE: "Belgium", BG: "Bulgaria",
+  BH: "Bahrain", BR: "Brazil", CA: "Canada", CH: "Switzerland", CL: "Chile",
+  CN: "China", CO: "Colombia", CR: "Costa Rica", CY: "Cyprus", CZ: "Czech Republic",
+  DE: "Germany", DK: "Denmark", DO: "Dominican Republic", DZ: "Algeria",
+  EC: "Ecuador", EE: "Estonia", EG: "Egypt", ES: "Spain", FI: "Finland",
+  FR: "France", GB: "United Kingdom", GE: "Georgia", GR: "Greece",
+  GT: "Guatemala", HK: "Hong Kong", HR: "Croatia", HU: "Hungary",
+  ID: "Indonesia", IE: "Ireland", IL: "Israel", IN: "India", IS: "Iceland",
+  IT: "Italy", JO: "Jordan", JP: "Japan", KE: "Kenya", KH: "Cambodia",
+  KR: "South Korea", KW: "Kuwait", KZ: "Kazakhstan", LA: "Laos", LK: "Sri Lanka",
+  LT: "Lithuania", LU: "Luxembourg", LV: "Latvia", MA: "Morocco", MC: "Monaco",
+  MD: "Moldova", ME: "Montenegro", MK: "North Macedonia", MM: "Myanmar",
+  MN: "Mongolia", MO: "Macau", MT: "Malta", MX: "Mexico", MY: "Malaysia",
+  NG: "Nigeria", NL: "Netherlands", NO: "Norway", NP: "Nepal", NZ: "New Zealand",
+  OM: "Oman", PA: "Panama", PE: "Peru", PH: "Philippines", PK: "Pakistan",
+  PL: "Poland", PT: "Portugal", QA: "Qatar", RO: "Romania", RS: "Serbia",
+  SA: "Saudi Arabia", SE: "Sweden", SG: "Singapore", SI: "Slovenia",
+  SK: "Slovakia", TH: "Thailand", TN: "Tunisia", TR: "Turkey", TW: "Taiwan",
+  TZ: "Tanzania", UA: "Ukraine", US: "United States", UY: "Uruguay",
+  UZ: "Uzbekistan", VN: "Vietnam", ZA: "South Africa",
 };
 
 const CODES = Object.keys(COUNTRY_NAMES);

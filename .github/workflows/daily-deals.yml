@@ -19,12 +19,16 @@ jobs:
           python3 - <<'EOF'
           import json, urllib.request, datetime
 
-          POPULAR = ["JP","US","GB","DE","FR","TH","SG","AU","KR","IT","ES","TR","AE","SE","NL"]
+          POPULAR = ["JP","US","GB","DE","FR","TH","SG","AU","KR","IT","ES","TR","AE","SE","NL","CN","BR","MX","CA","IN"]
 
           req = urllib.request.Request(
               "https://pikasim.com/api/packages/all-countries",
               headers={"Accept": "application/json", "User-Agent": "privasim-deals-bot"})
-          data = json.load(urllib.request.urlopen(req, timeout=30))
+          try:
+              data = json.load(urllib.request.urlopen(req, timeout=30))
+          except Exception as e:
+              print(f"catalog fetch failed: {e} — writing empty deals")
+              data = {"packages": []}
           pkgs = data.get("packages", [])
 
           best = {}
@@ -88,7 +92,7 @@ jobs:
           # IndexNow key is hosted at /<key>.txt on the site (public/ file).
           KEY="a7f3c1e9b2d4e6f8a0c2e4b6d8f0a1c3"
           BASE="https://privasim.app"
-          URLS="$BASE/ $BASE/blog $BASE/blog/best-esim-deals-today $BASE/shop $BASE/shop/global $BASE/sitemap.xml"
+          URLS="$BASE/ $BASE/blog $BASE/blog/best-esim-deals-today $BASE/blog/feed.xml $BASE/shop $BASE/shop/global $BASE/sitemap.xml $BASE/robots.txt $BASE/llms.txt"
           # Today's freshly generated articles (written by the generator)
           if [ -f privasim/data/new-slugs.txt ]; then
             while read -r slug; do
@@ -98,3 +102,4 @@ jobs:
           for url in $URLS; do
             curl -sS "https://api.indexnow.org/indexnow?url=${url}&key=${KEY}" -o /dev/null -w "IndexNow %{http_code} ${url}\n" || true
           done
+          echo "IndexNow ping complete for ${URLS}"

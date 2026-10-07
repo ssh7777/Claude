@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, Tag } from "lucide-react";
-import { getBlogPostBySlug, getAllBlogSlugs } from "@/lib/blog";
+import { ArrowLeft, Clock, Tag, BookOpen } from "lucide-react";
+import { getBlogPostBySlug, getAllBlogSlugs, getRelatedPosts } from "@/lib/blog";
 import { Button } from "@/components/ui/button";
 
 const APP_URL = "https://privasim.app";
@@ -33,11 +33,20 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       publishedTime: post.published_at,
       modifiedTime: post.updated_at ?? post.published_at,
       siteName: "PRIVASIM",
+      images: [
+        {
+          url: `${APP_URL}/blog/${post.slug}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.excerpt,
+      images: [`${APP_URL}/blog/${post.slug}/opengraph-image`],
     },
   };
 }
@@ -52,6 +61,19 @@ export default async function BlogPostPage(props: PageProps) {
   const post = getBlogPostBySlug(params.slug);
   if (!post) notFound();
 
+  const related = getRelatedPosts(post.slug, 4);
+
+  const faqSchema = post.faq && post.faq.length > 0
+    ? {
+        "@type": "FAQPage",
+        mainEntity: post.faq.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      }
+    : null;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -65,6 +87,7 @@ export default async function BlogPostPage(props: PageProps) {
         publisher: { "@type": "Organization", name: "PRIVASIM", url: APP_URL },
         mainEntityOfPage: `${APP_URL}/blog/${post.slug}`,
         keywords: post.tags.join(", "),
+        image: `${APP_URL}/blog/${post.slug}/opengraph-image`,
       },
       {
         "@type": "BreadcrumbList",
@@ -74,6 +97,7 @@ export default async function BlogPostPage(props: PageProps) {
           { "@type": "ListItem", position: 3, name: post.title, item: `${APP_URL}/blog/${post.slug}` },
         ],
       },
+      ...(faqSchema ? [faqSchema] : []),
     ],
   };
 
@@ -152,6 +176,41 @@ export default async function BlogPostPage(props: PageProps) {
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>
+
+      {post.faq && post.faq.length > 0 && (
+        <div className="mt-12 p-6 bg-white/3 border border-white/8 rounded-xl">
+          <h2 className="text-xl font-bold text-white mb-4">Frequently asked questions</h2>
+          <div className="space-y-4">
+            {post.faq.map((f, i) => (
+              <div key={i} className="border-b border-white/5 pb-4 last:border-0 last:pb-0">
+                <h3 className="text-sm font-semibold text-white mb-1">{f.q}</h3>
+                <p className="text-sm text-gray-400">{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {related.length > 0 && (
+        <div className="mt-12">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-white mb-4">
+            <BookOpen className="h-5 w-5 text-[#ff6600]" />
+            Related guides
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {related.map((r) => (
+              <Link
+                key={r.slug}
+                href={`/blog/${r.slug}`}
+                className="block p-4 bg-white/4 border border-white/8 rounded-xl hover:border-[#ff6600]/30 hover:bg-white/6 transition-all"
+              >
+                <h3 className="text-sm font-bold text-white mb-1 line-clamp-2">{r.title}</h3>
+                <p className="text-xs text-gray-400 line-clamp-2">{r.excerpt}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-12 p-6 bg-white/4 border border-[#ff6600]/20 rounded-xl text-center">
         <h2 className="text-lg font-bold text-white mb-2">Ready for anonymous connectivity?</h2>
