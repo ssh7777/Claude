@@ -6,6 +6,7 @@
 
 import dealsData from "@/data/daily-deals.json";
 import autoArticles from "@/data/auto-articles.json";
+import sanitizeHtml from "sanitize-html";
 import { retailPrice } from "@/lib/prices";
 import { countryName } from "@/lib/countries";
 
@@ -43,15 +44,15 @@ export const BLOG_POSTS: BlogPost[] = [
 </ul>
 <h2>Why this data is dangerous, not just annoying</h2>
 <p>Telecom purchase records have been subpoenaed, leaked, and sold. Data brokers buy travel-intent data. A breached eSIM vendor exposes not just emails but passports paired with movement history. For journalists, activists, executives, and anyone crossing borders, that linkage is a genuine safety problem — and for everyone else it's surveillance nobody asked for.</p>
-<h2>The PRIVASIM approach: collect nothing</h2>
-<p>We designed the purchase flow so there is nothing to leak:</p>
+<h2>The PRIVASIM approach: minimize identity data</h2>
+<p>Checkout does not require personal identity fields. A minimal order record is retained temporarily to verify payment and deliver the eSIM:</p>
 <ul>
 <li><strong>No account, no email, no phone number.</strong> There is no sign-up form anywhere on the site.</li>
-<li><strong>Crypto-only payments.</strong> Monero (untraceable by design) or Ethereum — never a card with your name on it.</li>
-<li><strong>Encrypted credentials.</strong> Your eSIM activation code is stored encrypted with AES-256-GCM and shown only to your browser.</li>
+<li><strong>Crypto payments.</strong> Monero offers stronger on-chain privacy; Ethereum and USDT are publicly traceable. No card details are collected.</li>
+<li><strong>Encrypted credentials.</strong> ICCID and activation credentials are encrypted at rest with AES-256-GCM. The service can decrypt them to deliver them through your random order token.</li>
 <li><strong>No trackers.</strong> No advertising pixels, no fingerprinting, no third-party analytics scripts.</li>
 </ul>
-<p>The result: you get connectivity in 190+ countries, and the only party who knows you bought it is you.</p>
+<p>The result is less direct identity data at checkout, not zero data: order metadata is kept for up to 30 days and service providers may process technical and provisioning information. Read the <a href="/privacy">privacy policy</a>.</p>
 <p><a href="/shop">Browse anonymous eSIM plans →</a></p>
 `,
   },
@@ -64,31 +65,31 @@ export const BLOG_POSTS: BlogPost[] = [
     featured: false,
     tags: ["monero", "ethereum", "payments", "privacy"],
     excerpt:
-      "Both cryptocurrencies beat credit cards for privacy, but they are not equal. A practical comparison of XMR and ETH for anonymous purchases.",
+      "Monero and Ethereum have different on-chain privacy properties. Compare their trade-offs before choosing a payment method.",
     content: `
-<p>PRIVASIM accepts two cryptocurrencies, and people regularly ask which one to use. The short answer: <strong>Monero if privacy is your priority, Ethereum if speed and convenience matter more.</strong> Here's the long answer.</p>
+<p>PRIVASIM accepts Monero (XMR), Ethereum (ETH), and USDT on Ethereum mainnet directly, with additional assets available through a separate swap provider. Their privacy properties differ. Here is a practical comparison.</p>
 <h2>Monero (XMR): private by default</h2>
 <p>Monero was engineered so that every transaction hides its sender, receiver, and amount:</p>
 <ul>
 <li><strong>Ring signatures</strong> mix your transaction with decoys, so an observer cannot tell which input is really yours.</li>
-<li><strong>Stealth addresses</strong> generate a one-time destination for every payment — nothing on-chain links back to a public address.</li>
+<li><strong>Stealth addresses</strong> create one-time destinations on-chain and help obscure the recipient address in public transaction data.</li>
 <li><strong>RingCT</strong> hides the amount transferred.</li>
 </ul>
-<p>There is no "transparent mode." Privacy is not optional, which means even a careless user gets strong guarantees. The trade-off: confirmations take 2–10 minutes, and fewer exchanges list XMR.</p>
+<p>Monero obscures key transaction details on its public chain, but wallet software, network connections, service providers, and user behavior can still create metadata. It is not a guarantee of anonymity. This invoice requires 10 confirmations; timing varies.</p>
 <h2>Ethereum (ETH): fast, public, but card-free</h2>
 <p>Ethereum's ledger is fully transparent — anyone can see that address A sent 0.01 ETH to address B. What it still gives you over a credit card:</p>
 <ul>
 <li><strong>No identity attached at purchase.</strong> We see a wallet address, not a name or billing address.</li>
-<li><strong>~30-second confirmations</strong> — your eSIM arrives almost instantly.</li>
+<li><strong>12 confirmations required</strong> — Ethereum confirmation time varies, and supplier fulfillment may take longer.</li>
 <li><strong>Universal availability</strong> — every exchange and wallet supports ETH.</li>
 </ul>
 <p>If you use a fresh wallet funded without KYC, ETH payments are reasonably private. If your wallet is linked to a KYC exchange account, the purchase is traceable to you by anyone with subpoena power.</p>
 <h2>Practical recommendation</h2>
 <table>
 <tr><th></th><th>Monero</th><th>Ethereum</th></tr>
-<tr><td>Privacy</td><td>Untraceable by design</td><td>Public ledger, pseudonymous</td></tr>
-<tr><td>Speed</td><td>2–10 min</td><td>~30 sec</td></tr>
-<tr><td>Best for</td><td>Maximum anonymity</td><td>Speed and convenience</td></tr>
+<tr><td>Privacy</td><td>Public-chain details are obscured; not an anonymity guarantee</td><td>Public ledger, pseudonymous</td></tr>
+<tr><td>Confirmation threshold</td><td>10 confirmations</td><td>12 confirmations</td></tr>
+<tr><td>Consider if</td><td>Reducing public payment details matters</td><td>Public transaction visibility is acceptable</td></tr>
 </table>
 <p>Either way, you never create an account and never show ID. <a href="/shop">Pick a plan and choose your payment at checkout →</a></p>
 `,
@@ -119,9 +120,9 @@ export const BLOG_POSTS: BlogPost[] = [
 <ul>
 <li>Payment arrives from a crypto wallet, not a named card.</li>
 <li>No account or email joins your purchase to an identity.</li>
-<li>We store your ICCID and activation code <strong>encrypted (AES-256-GCM)</strong>, keyed to a random order ID that lives in your browser.</li>
+<li>We temporarily store order metadata on the server; ICCID and activation credentials are encrypted at rest. A random invoice token in your browser grants access to your order.</li>
 </ul>
-<p>So while the network sees "a device with profile X connected in Tokyo," neither the carrier nor anyone else can resolve profile X to a name. That's the practical meaning of an anonymous eSIM.</p>
+<p>The mobile network and provisioning providers can process profile and device data. Avoid treating a no-account checkout as a guarantee that profile activity cannot be linked to a person.</p>
 <p><a href="/blog/esim-installation-guide">Next: how to install your eSIM →</a></p>
 `,
   },
@@ -133,7 +134,7 @@ export const BLOG_POSTS: BlogPost[] = [
     featured: true,
     tags: ["monero", "guide", "esim"],
     excerpt:
-      "A complete walkthrough: getting XMR, choosing a plan, paying from Cake Wallet or Feather, and installing your eSIM — with zero identity exposed.",
+      "A walkthrough of choosing a plan, paying with XMR, and installing an eSIM, with notes about payment and privacy trade-offs.",
     content: `
 <p>This guide takes you from "I have no Monero" to "my phone has anonymous data in another country" in about 15 minutes.</p>
 <h2>Step 1 — Get Monero</h2>
@@ -179,8 +180,8 @@ export const BLOG_POSTS: BlogPost[] = [
 <h2>What "no-KYC" actually means here</h2>
 <ul>
 <li><strong>No identity documents</strong> — we never ask for ID, and there's nowhere to upload one.</li>
-<li><strong>No account</strong> — orders are tracked by a random ID in your browser, not a login.</li>
-<li><strong>No payment identity</strong> — crypto only; a card number is itself a KYC document.</li>
+<li><strong>No customer account</strong> — a random invoice token is saved in your browser, and the minimum order record remains on the server for up to 30 days.</li>
+<li><strong>No card details at checkout</strong> — direct crypto payments or the separate swap provider are used instead.</li>
 </ul>
 <h2>Legitimate reasons people choose no-KYC connectivity</h2>
 <ul>
@@ -190,7 +191,7 @@ export const BLOG_POSTS: BlogPost[] = [
 <li>Ordinary people who simply object to handing a passport to a phone company.</li>
 </ul>
 <h2>Limits to understand</h2>
-<p>An anonymous eSIM anonymizes the <strong>purchase</strong>, not physics: cell networks still see a device and its location while connected, and your traffic should still ride a VPN if content privacy matters. Combine an anonymous eSIM + VPN + sensible OPSEC for the full stack.</p>
+<p>A no-account eSIM purchase does not anonymize mobile-network activity: networks still process device and location data while connected. A VPN can change what the local network sees, but it is not a complete anonymity guarantee.</p>
 <p><a href="/shop">Get a no-KYC eSIM →</a></p>
 `,
   },
@@ -264,8 +265,8 @@ export const BLOG_POSTS: BlogPost[] = [
 <h2>4. "I paid but got no eSIM"</h2>
 <ol>
 <li>Open <a href="/orders">/orders</a> — your order lives in the browser you bought with.</li>
-<li>Status <strong>pending</strong>? Blockchain confirmation takes ~30s (ETH) to 2–10 min (XMR).</li>
-<li>Past that? Use <strong>"I've sent the payment"</strong> on the order and paste your transaction hash — verification runs against the blockchain and releases your eSIM immediately.</li>
+<li>Status <strong>pending</strong>? Wait for the invoice threshold: 12 Ethereum confirmations or 10 Monero confirmations. Actual times vary.</li>
+<li>If it remains pending, use <strong>"I've sent the payment"</strong> on the original order page and enter the transaction hash. The page still requires its saved invoice token; supplier fulfillment may take additional time.</li>
 </ol>
 <h2>5. "Slow data"</h2>
 <ul>
@@ -301,7 +302,7 @@ export const BLOG_POSTS: BlogPost[] = [
 <p>Local tourist SIMs require passport registration by law. A travel eSIM avoids the registration requirement entirely — and buying it with Monero or Ethereum on PRIVASIM means the purchase isn't linked to your identity either. No airport kiosk queue, no passport photocopy in a shop's filing cabinet.</p>
 <h2>Setup for Japan in 3 steps</h2>
 <ol>
-<li>Buy a Japan plan at <a href="/shop/JP">/shop/JP</a> — pay with XMR or ETH, get your QR instantly.</li>
+<li>Buy a Japan plan at <a href="/shop/JP">/shop/JP</a> — choose an available payment method and retrieve delivery after confirmation and supplier fulfillment.</li>
 <li>Install on hotel/home Wi-Fi before departure (<a href="/blog/esim-installation-guide">guide</a>), keep the line off.</li>
 <li>Land at Narita/Haneda/KIX → enable the eSIM + data roaming → online before you clear customs.</li>
 </ol>
@@ -331,7 +332,7 @@ export const BLOG_POSTS: BlogPost[] = [
 <li>Hotel and cafe Wi-Fi are ubiquitous in Western Europe, so cellular is mostly for the street.</li>
 </ul>
 <h2>Registration and privacy in Europe</h2>
-<p>Several European countries (Germany, Spain, Italy, Greece among them) legally require ID to buy a local SIM. Travel eSIMs sidestep the requirement — and buying with crypto on PRIVASIM keeps the transaction itself anonymous too. No account, no email, no card statement listing your telecom purchases.</p>
+<p>Telecom identity and registration requirements vary across Europe and can change. Check the rules that apply where you plan to use the service. PRIVASIM does not require an identity account or email at checkout, but a temporary order record and supplier provisioning data are still processed; cryptocurrency does not guarantee an anonymous transaction.</p>
 <h2>Practical tips</h2>
 <ul>
 <li>Install before departure on Wi-Fi; activate on landing.</li>
@@ -360,21 +361,21 @@ export const BLOG_POSTS: BlogPost[] = [
 </ul>
 <h2>Layered approach</h2>
 <ol>
-<li><strong>Anonymous procurement.</strong> Buy the eSIM with Monero from a provider that holds no identity (that's this site: no account, no email, crypto only, credentials encrypted at rest).</li>
+<li><strong>Reduced identity collection.</strong> PRIVASIM checkout does not require an identity account or email, but the service and its suppliers process temporary order and provisioning data.</li>
 <li><strong>Anonymous funding.</strong> XMR acquired P2P or swapped non-KYC. Avoid paying from a KYC-exchange wallet if linkage matters.</li>
-<li><strong>Traffic protection.</strong> The eSIM anonymizes the purchase; a VPN or Tor protects content and destination metadata from the local network.</li>
+<li><strong>Traffic protection.</strong> A VPN or Tor may reduce what a local network can observe, but neither removes all provider, device, or account metadata.</li>
 <li><strong>Device hygiene.</strong> Consider a dedicated travel device; your IMEI is visible to networks and links profiles installed on the same hardware.</li>
 <li><strong>Compartmentalization.</strong> Don't install the anonymous profile on the phone logged into your public identity if the two must never meet.</li>
 </ol>
 <h2>What an anonymous eSIM does NOT do</h2>
-<p>Be precise about guarantees: the network still observes the device's location while connected, and traffic is only as private as its encryption. Anonymous eSIM breaks the <em>purchase-to-identity</em> link — combine it with the layers above for the rest.</p>
+<p>Be precise about guarantees: the network still observes device activity and location while connected. A no-account checkout reduces one source of direct identity data, but it does not guarantee that a purchase or subsequent use cannot be linked to you.</p>
 <h2>Practical notes</h2>
 <ul>
-<li>Orders here are retrievable by a random ID stored in your browser — export/save your activation details securely once delivered.</li>
+<li>Orders are retrieved with a random invoice token saved in your browser. Keep it private; loss of the token can prevent access to the temporary server-side order record.</li>
 <li>Activation codes are single-use; treat them like one-time pads.</li>
 <li>Test the full setup at home before it matters in the field.</li>
 </ul>
-<p><a href="/shop">Procure anonymously →</a></p>
+<p><a href="/shop">Browse plans without creating an identity account →</a></p>
 `,
   },
   {
@@ -385,9 +386,9 @@ export const BLOG_POSTS: BlogPost[] = [
     featured: true,
     tags: ["comparison", "privacy", "esim"],
     excerpt:
-      "Every major eSIM seller requires an account, an email, and a card. Here's an honest comparison of what each provider collects — and the one that collects nothing.",
+      "Compare provider account requirements, payment methods, and privacy trade-offs for travel eSIMs, including PRIVASIM's no-identity-account checkout.",
     content: `
-<p>Search "best travel eSIM" and you'll find the same names: Airalo, Holafly, Nomad, Saily. All of them work. All of them also require an account, an email address, and a credit card — three permanent links between your identity and your movements. If the question is "best <em>anonymous</em> eSIM", the comparison looks very different.</p>
+<p>Travel eSIM providers differ in the account details, payment options, and technical data they process. Their requirements change, so check each provider's current terms. This comparison focuses on how PRIVASIM's no-identity-account checkout differs; it is not a guarantee of anonymous use.</p>
 <h2>What each provider requires</h2>
 <table>
 <tr><th>Provider</th><th>Account</th><th>Email</th><th>Payment</th><th>App required</th></tr>
@@ -396,15 +397,15 @@ export const BLOG_POSTS: BlogPost[] = [
 <tr><td>Nomad</td><td>Yes</td><td>Yes</td><td>Card</td><td>Yes</td></tr>
 <tr><td><strong>PRIVASIM</strong></td><td><strong>None</strong></td><td><strong>None</strong></td><td><strong>XMR / ETH / USDT / 100+ coins</strong></td><td><strong>No — browser only</strong></td></tr>
 </table>
-<p>This isn't a knock on the mainstream sellers — they're built for convenience, and card payments legally require identity. It's a structural difference: a service that never asks for your identity cannot leak it, sell it, or be compelled to hand it over.</p>
+<p>Providers differ in the identity details they request and the records they retain; verify each provider's current requirements and policies. PRIVASIM does not ask for an identity account at checkout, but temporary order and supplier records still exist and can be exposed or subject to lawful process.</p>
 <h2>What "anonymous" actually gets you</h2>
 <ul>
-<li><strong>No account database.</strong> There is no login on PRIVASIM at all — orders are keyed to your payment, retrievable from your own browser.</li>
-<li><strong>No payment identity.</strong> Monero payments are private by design; even ETH/USDT payments carry no name, address, or card BIN.</li>
+<li><strong>No identity account is required.</strong> Orders have a temporary server-side record for payment verification and fulfillment; a random invoice token is saved in your browser.</li>
+<li><strong>No card identity is requested.</strong> Monero provides stronger payment privacy; Ethereum and USDT transfers are publicly visible and may be linkable.</li>
 <li><strong>No app-store trail.</strong> Everything runs in the browser, so there's no install linked to your Apple/Google account.</li>
 </ul>
 <h2>Where mainstream sellers still win</h2>
-<p>Honesty matters: if you don't care about privacy, a card checkout is faster than acquiring crypto, and big sellers have larger support teams. The anonymous option exists for the growing group of people for whom the trade is obviously worth it — travelers to surveillance-heavy countries, journalists, crypto holders, and anyone tired of every purchase becoming a marketing profile.</p>
+<p>Honesty matters: a card checkout may be faster for people who already have a payment method on file, and larger providers may offer broader support. A no-identity-account checkout can suit people who want to avoid entering direct identity details; the service and its providers still process the data needed to fulfill an order.</p>
 <h2>Pricing reality check</h2>
 <p>Anonymous doesn't mean expensive: PRIVASIM plans start around $3–5 for 1&nbsp;GB in popular destinations, in line with mainstream pricing. See <a href="/blog/best-esim-deals-today">today's live deals</a> — the list refreshes daily from carrier inventory.</p>
 <p><a href="/shop">Browse 190+ countries — no signup →</a></p>
@@ -425,20 +426,20 @@ export const BLOG_POSTS: BlogPost[] = [
 <ol>
 <li>Open <a href="/shop">the shop</a> and pick your destination and plan.</li>
 <li>At checkout, choose <strong>"Other coins"</strong> as the payment method.</li>
-<li>Pick BTC (or your coin) from the list — the amount is converted at the live rate through an anonymous swap that settles privately. No registration on any side.</li>
+<li>If the external Trocador swap flow is available, select an offered asset and review its separate fees, privacy terms, and transaction requirements before continuing.</li>
 <li>Send the exact amount shown to the displayed address.</li>
 <li>After confirmation your eSIM QR code appears — scan it in phone settings and you're online.</li>
 </ol>
 <h2>Bitcoin vs Monero for this purchase</h2>
-<p>Worth knowing: Bitcoin's ledger is public forever. Paying from a KYC-exchange wallet links the purchase to your exchange identity. If that matters to you, either pay from a self-custody wallet you've held for a while, or use <strong>Monero</strong> directly — it's PRIVASIM's native payment and private by design. <a href="/blog/how-to-buy-esim-with-monero">Full Monero guide here</a>.</p>
+<p>Bitcoin and Ethereum ledgers are public. Funding sources and transaction patterns can create links, especially when funds pass through identity-verified services. Monero obscures more public-chain details but does not guarantee anonymity. <a href="/blog/how-to-buy-esim-with-monero">Read the Monero guide here</a>.</p>
 <h2>Fees and timing</h2>
 <ul>
 <li>BTC on-chain: expect ~10–30 min for confirmation depending on network load.</li>
 <li>Faster coins (SOL, LTC) confirm in seconds to minutes.</li>
-<li>ETH and USDT are accepted natively (no swap) and confirm in ~30 seconds.</li>
+<li>ETH and USDT are accepted on Ethereum mainnet and require 12 confirmations; network and supplier delays may extend delivery.</li>
 </ul>
 <h2>No account means you keep the receipt</h2>
-<p>Because there's no login, your order lives in your browser's <a href="/orders">Orders page</a> and can be re-claimed with your transaction hash. Save your activation details once delivered — codes are single-use.</p>
+<p>There is no identity login. Your browser saves a random invoice token used to retrieve the server-side order record. The transaction hash can be used to verify payment only while accessing that original invoice; it is not a replacement for a lost token. Save your activation details securely once delivered.</p>
 <p><a href="/shop">Spend your sats on something useful →</a></p>
 `,
   },
@@ -452,20 +453,20 @@ export const BLOG_POSTS: BlogPost[] = [
     excerpt:
       "Prepaid burner SIMs are disappearing — most countries now require passport registration at purchase. The anonymous eSIM is what replaced them.",
     content: `
-<p>The classic burner phone play — walk into a shop, pay cash for a prepaid SIM, walk out — is dying. Over 150 countries now mandate identity registration for SIM purchases: passport scans in Germany, Spain, Thailand, the UAE, fingerprints in some markets. The cash-bought anonymous SIM is nearly extinct.</p>
+<p>Rules for prepaid SIM registration differ across countries and change over time. Check current local requirements before purchase and activation; this article is not legal advice.</p>
 <h2>What replaced it</h2>
 <p>An anonymous eSIM bought online with cryptocurrency does what the burner SIM used to do, better:</p>
 <ul>
-<li><strong>No counter, no camera.</strong> Registration laws bind the <em>seller at point of sale</em>. A privacy-first marketplace that never collects identity has nothing to register you with.</li>
+<li><strong>Online checkout.</strong> It avoids an in-person registration desk, but local rules, carrier requirements, and supplier checks may still apply. Check current requirements for your destination.</li>
 <li><strong>No cash logistics.</strong> Monero replaces the envelope of cash — private, exact, remote.</li>
 <li><strong>Provisioned before you land.</strong> Install at home, activate on arrival — no airport kiosk with your passport open.</li>
 </ul>
 <h2>The honest limits</h2>
 <p>A "burner" is only as clean as its usage. The network still sees your device's IMEI and location while connected; if you install the profile on your daily phone, the hardware links it to your other SIMs. For real compartmentalization, use a dedicated device — the <a href="/blog/anonymous-esim-for-journalists-activists">high-risk user guide</a> covers this in depth.</p>
 <h2>Legality</h2>
-<p>Using a legitimately provisioned roaming eSIM is legal in virtually all jurisdictions — these are real carrier plans, sold for travel, and the roaming model is exactly how any foreign visitor's phone works. What differs is only that the reseller never asked who you are.</p>
+<p>Telecommunications rules vary by country and intended use. Check local requirements before buying or activating an eSIM; this guide is not legal advice. PRIVASIM does not ask for an identity account at checkout, but suppliers and carriers may process provisioning data.</p>
 <h2>Cost of a digital burner</h2>
-<p>From about $3 for 500&nbsp;MB to ~$20 for 10&nbsp;GB depending on country. Top-ups are anonymous too — just the ICCID at <a href="/topup">/topup</a>, no identity ever.</p>
+<p>Prices vary by destination and plan. Top-up checkout uses an ICCID and a temporary order record; the ICCID is encrypted at rest and shared with the supplier to apply the refill. See current options at <a href="/topup">/topup</a>.</p>
 <p><a href="/shop">Get a data plan with zero registration →</a></p>
 `,
   },
@@ -477,7 +478,7 @@ export const BLOG_POSTS: BlogPost[] = [
     featured: true,
     tags: ["comparison", "airalo", "esim"],
     excerpt:
-      "Airalo works — but it requires an account, an email, and a card, and prices crept up. Here's the alternative for people who want the same coverage with zero identity.",
+      "Compare travel eSIM account requirements, payment options, plan coverage, and privacy considerations before choosing a provider.",
     content: `
 <p>Airalo popularised the travel eSIM, and credit where due: huge coverage, polished app. But plenty of travellers end up searching for an alternative, usually for one of three reasons: the <strong>mandatory account and app</strong>, <strong>card-only payments</strong> tied to your identity, or plans that quietly got more expensive. Here's what actually differs when you switch.</p>
 <h2>Airalo vs PRIVASIM at a glance</h2>
@@ -497,8 +498,8 @@ export const BLOG_POSTS: BlogPost[] = [
 </ul>
 <h2>What you gain</h2>
 <ul>
-<li><strong>No data trail.</strong> No account database means your travel history isn't stored under your email, can't be breached, sold, or subpoenaed.</li>
-<li><strong>Real anonymity.</strong> Pay in Monero and the purchase is private end-to-end — impossible with any card-based seller.</li>
+<li><strong>Reduced identity linkage.</strong> We do not require an email or name, but temporary order records can still be exposed if the service or its providers are compromised.</li>
+<li><strong>Fewer identity fields.</strong> No identity account is required, though temporary order and provider records remain and Monero is not an anonymity guarantee.</li>
 <li><strong>No app-store linkage.</strong> Nothing installed, nothing tied to your Apple/Google identity.</li>
 </ul>
 <p>Compare live prices for your destination — no signup wall in the way: <a href="/shop">browse 190+ countries →</a>. More detail in our <a href="/blog/best-anonymous-esim">full anonymous-eSIM comparison</a>.</p>
@@ -522,12 +523,12 @@ export const BLOG_POSTS: BlogPost[] = [
 <tr><td>Payment</td><td>Card / PayPal</td><td><strong>Monero, ETH, USDT, 100+ coins</strong></td></tr>
 <tr><td>Plan style</td><td>Unlimited (throttled FUP)</td><td>Fixed-GB plans + unlimited-style daily plans on global eSIMs</td></tr>
 <tr><td>Typical 10-day trip cost</td><td>$35–55 unlimited</td><td>From ~$10–20 for 5–10 GB</td></tr>
-<tr><td>Identity stored</td><td>Yes, permanently</td><td><strong>Nothing to store</strong></td></tr>
+<tr><td>Identity fields requested</td><td>Provider-dependent</td><td><strong>No account, email, or ID required at checkout</strong></td></tr>
 </table>
 <h2>Do you actually need unlimited?</h2>
 <p>Most travellers use 1–2 GB per week outside the hotel Wi-Fi. Maps, messaging, translation and social browsing fit comfortably in a 5 GB plan that costs a third of an unlimited pass. Our <a href="/blog">destination guides</a> break down realistic usage per traveller type — and if you genuinely burn data, global 1–2 GB/day plans are available too.</p>
 <h2>The privacy difference</h2>
-<p>Every Holafly purchase is a permanent record: identity, payment, destination, dates. PRIVASIM keeps no such record because it never collects it — no account system exists. Pay in Monero and even the payment is private by design. <a href="/blog/burner-esim-without-registration">How registration-free eSIMs work →</a></p>
+<p>Card-based providers may associate orders with account details. PRIVASIM does not require an identity account, but it keeps minimal order records for up to 30 days and relies on external hosting, database, supplier, and payment-verification providers. Monero may reduce public payment traceability; it does not remove all metadata. <a href="/privacy">Read our privacy policy →</a></p>
 <p><a href="/shop">See live prices for your destination →</a></p>
 `,
   },
@@ -562,15 +563,35 @@ function dailyDealsPost(): BlogPost {
 <tr><th>Destination</th><th>Data</th><th>Validity</th><th>Price</th><th></th></tr>
 ${rows}
 </table>
-<p><em>Last refreshed: ${date}.</em> Prices update automatically from carrier rates. Every plan delivers instantly after blockchain confirmation — see <a href="/blog/how-to-buy-esim-with-monero">how buying works</a> or <a href="/shop">browse all 190+ countries</a>.</p>
+<p><em>Last refreshed: ${date}.</em> Prices update automatically from carrier rates. Delivery follows payment confirmation and supplier fulfillment — see <a href="/blog/how-to-buy-esim-with-monero">how buying works</a> or <a href="/shop">browse all 190+ countries</a>.</p>
 `,
   };
 }
 
+const BLOG_SANITIZER_OPTIONS = {
+  allowedTags: [
+    "address", "article", "aside", "blockquote", "br", "caption", "code", "dd", "del", "div",
+    "dl", "dt", "em", "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr",
+    "i", "li", "ol", "p", "pre", "s", "section", "small", "span", "strong", "sub", "sup",
+    "table", "tbody", "td", "th", "thead", "tr", "u", "ul",
+  ],
+  allowedAttributes: {
+    a: ["href", "name"],
+    td: ["colspan", "rowspan"],
+    th: ["colspan", "rowspan"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  allowProtocolRelative: false,
+};
+
+function sanitizePost(post: BlogPost): BlogPost {
+  return { ...post, content: sanitizeHtml(post.content, BLOG_SANITIZER_OPTIONS) };
+}
+
 function allPosts(): BlogPost[] {
-  // Auto-generated daily articles + the deals post + hand-written evergreen posts.
+  // Auto-generated material and static editorial copy are treated as untrusted HTML.
   const auto = (autoArticles as BlogPost[]).filter((a) => a && a.slug && a.content);
-  return [dailyDealsPost(), ...auto, ...BLOG_POSTS];
+  return [dailyDealsPost(), ...auto, ...BLOG_POSTS].map(sanitizePost);
 }
 
 export function getBlogPosts(limit = 20, offset = 0): BlogPost[] {

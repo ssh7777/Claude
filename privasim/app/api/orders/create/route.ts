@@ -3,101 +3,139 @@ import { verifyJWT } from "@/lib/auth";
 import { getPackageDetails } from "@/lib/pikasim";
 import { generateMoneroPaymentInfo } from "@/lib/monero";
 import { generateEthereumPaymentInfo, generateUsdtPaymentInfo } from "@/lib/ethereum";
-import { createInvoiceRecord } from "@/lib/db";
+import { CouponUnavailableError, createInvoiceRecord } from "@/lib/db";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { retailPrice } from "@/lib/prices";
 import { getRetailMargin } from "@/lib/settings";
-import type { CryptoType } from "@/types";
+import { encryptField, generateSecureId } from "@/lib/crypto-utils";
+import { createInvoiceToken } from "@/lib/invoiceToken";
+
+
+const PACKAGE_CODE = /^[A-Za-z0-9._-]{1,128}$/;
+const ICCID = /^\d{18,22}$/;
+const MAX_BODY_BYTES = 16 * 1024;
+
+async function readJsonBody(req: NextRequest): Promise<Record<string, unknown> | null> {
+  const reader = req.body?.getReader();
+  if (!reader) return null;
+  const decoder = new TextDecoder();
+  let raw = "";
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_BODY_BYTES) {
+        await reader.cancel();
+        throw new Error("Request body too large");
+      }
+      raw += decoder.decode(value, { stream: true });
+    }
+    raw += decoder.decode();
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+  }
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const authorization = req.headers.get("authorization");
+  let walletHash: string;
 
-  // JWT is optional — associate with wallet if provided, otherwise anonymous
-  let walletHash: string = crypto.randomUUID().replace(/-/g, "");
-  try {
-    const jwt = await verifyJWT(req.headers.get("authorization"));
-    walletHash = jwt.walletHash;
-  } catch {
-    // Anonymous purchase — rate limit by IP
+  if (authorization) {
+    try {
+      walletHash = (await verifyJWT(authorization)).walletHash;
+    } catch {
+      return NextResponse.json({ error: "Invalid wallet session" }, { status: 401 });
+    }
+  } else {
+    // A stable per-invoice pseudonymous identifier; throttling remains by IP.
+    walletHash = generateSecureId();
   }
 
-  const { allowed } = rateLimit(`orders:${walletHash || ip}`, RATE_LIMITS.orders);
-  if (!allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
+  const { allowed } = await rateLimit(
+    `orders:${authorization ? walletHash : ip}`,
+    RATE_LIMITS.orders
+  );
+  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   let body: {
-    packageCode?: string;
-    cryptoType?: string;
-    topupIccid?: string;
-    discountCode?: string;
+    packageCode?: unknown;
+    cryptoType?: unknown;
+    topupIccid?: unknown;
+    discountCode?: unknown;
     captcha?: unknown;
   };
   try {
-    body = await req.json();
-  } catch {
+    const parsedBody = await readJsonBody(req);
+    if (!parsedBody) return NextResponse.json({ error: "Expected a JSON object" }, { status: 400 });
+    body = parsedBody as typeof body;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Request body too large") {
+      return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+    }
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Proof-of-work CAPTCHA — blocks automated invoice spam / abuse.
   const { verifySolution } = await import("@/lib/captcha");
   if (!verifySolution(body.captcha as Record<string, unknown>)) {
-    return NextResponse.json(
-      { error: "Verification failed or expired. Please retry." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Verification failed or expired. Please retry." }, { status: 400 });
   }
 
-  const { packageCode, cryptoType = "monero", topupIccid, discountCode } = body;
+  const packageCode = typeof body.packageCode === "string" ? body.packageCode.trim() : "";
+  const cryptoType = typeof body.cryptoType === "string" ? body.cryptoType : "monero";
+  const topupIccid = typeof body.topupIccid === "string" ? body.topupIccid.trim() : "";
+  const discountCode = typeof body.discountCode === "string" ? body.discountCode.trim() : "";
 
-  if (!packageCode) {
-    return NextResponse.json({ error: "packageCode is required" }, { status: 400 });
+  if (!PACKAGE_CODE.test(packageCode)) {
+    return NextResponse.json({ error: "A valid packageCode is required" }, { status: 400 });
   }
-
-  // "other" = 100+ coins via AnonPay swap → settles as XMR to our wallet
-  if (!["monero", "ethereum", "usdt_eth", "other"].includes(cryptoType)) {
-    return NextResponse.json(
-      { error: "cryptoType must be 'monero', 'ethereum', 'usdt_eth' or 'other'" },
-      { status: 400 }
-    );
+  if (!("monero,ethereum,usdt_eth,other".split(",")).includes(cryptoType)) {
+    return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 });
+  }
+  if (body.topupIccid !== undefined && !ICCID.test(topupIccid)) {
+    return NextResponse.json({ error: "Invalid eSIM ICCID" }, { status: 400 });
+  }
+  if (discountCode.length > 128) {
+    return NextResponse.json({ error: "Invalid discount code" }, { status: 400 });
   }
 
   try {
-    // Top-up invoices: price comes from the eSIM's own top-up options
-    // (top-up codes differ from purchase codes and aren't in the catalog).
     let pkg: Awaited<ReturnType<typeof getPackageDetails>>;
     if (topupIccid) {
       const { getTopupOptions } = await import("@/lib/pikasim");
       const { options } = await getTopupOptions(topupIccid);
-      const opt = options.find((o) => o.packageCode === packageCode);
-      if (!opt || !opt.priceUsd) {
-        return NextResponse.json(
-          { error: "Top-up option not available for this eSIM" },
-          { status: 404 }
-        );
+      const option = options.find((item) => item.packageCode === packageCode);
+      if (!option || !Number.isFinite(option.priceUsd) || !option.priceUsd || option.priceUsd <= 0) {
+        return NextResponse.json({ error: "Top-up option not available for this eSIM" }, { status: 404 });
       }
       pkg = {
-        code: opt.packageCode,
-        name: `Top-up: ${opt.name ?? opt.packageCode}`,
+        code: option.packageCode,
+        name: `Top-up: ${option.name ?? option.packageCode}`,
         country: "Top-up",
         countryCode: "",
-        dataAmount: opt.name?.split("·")[0]?.trim() ?? "",
+        dataAmount: option.name?.split("·")[0]?.trim() ?? "",
         durationDays: 0,
-        priceUsd: opt.priceUsd,
+        priceUsd: option.priceUsd,
         type: "data",
         networks: [],
       };
     } else {
       pkg = await getPackageDetails(packageCode);
     }
-    if (!pkg) {
-      return NextResponse.json({ error: "Package not found" }, { status: 404 });
+    if (!pkg || !Number.isFinite(pkg.priceUsd) || pkg.priceUsd <= 0) {
+      return NextResponse.json({ error: "Package not found or has invalid pricing" }, { status: 404 });
     }
 
-    // Discount codes: verified and applied SERVER-SIDE only — the client
-    // never controls the price. Forged/expired codes are simply ignored.
-    // Margin is the owner-set live value from the ledger (falls back to the
-    // compile-time default) — this is the authoritative charge amount.
     let priceUsd = retailPrice(pkg.priceUsd, await getRetailMargin());
     let appliedDiscount: { label: string; percent: number } | null = null;
     if (discountCode) {
@@ -109,7 +147,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // "other" (100+ coins via AnonPay) settles as XMR → use the Monero invoice
     const paymentInfo =
       cryptoType === "monero" || cryptoType === "other"
         ? await generateMoneroPaymentInfo(priceUsd)
@@ -117,26 +154,19 @@ export async function POST(req: NextRequest) {
           ? await generateUsdtPaymentInfo(priceUsd)
           : await generateEthereumPaymentInfo(priceUsd);
 
-    const expiresAt = new Date(
-      Date.now() + (cryptoType === "other" ? 60 : 15) * 60 * 1000
-    ).toISOString();
+    const amountCrypto = "amountXmr" in paymentInfo
+      ? paymentInfo.amountXmr
+      : "amountUsdt" in paymentInfo
+        ? paymentInfo.amountUsdt
+        : paymentInfo.amountEth;
+    const expiresAt = new Date(Date.now() + (cryptoType === "other" ? 60 : 15) * 60 * 1000).toISOString();
+    const normalizedCryptoType = cryptoType === "other" ? "monero" : cryptoType;
+    const anonpayUrl = cryptoType === "other"
+      ? `https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=${encodeURIComponent(paymentInfo.address)}&amount=${(amountCrypto * 1.02).toFixed(8)}&name=PRIVASIM&description=${paymentInfo.invoiceId}`
+      : undefined;
 
-    const amountCrypto =
-      cryptoType === "monero" || cryptoType === "other"
-        ? (paymentInfo as { amountXmr: number }).amountXmr
-        : cryptoType === "usdt_eth"
-          ? (paymentInfo as { amountUsdt: number }).amountUsdt
-          : (paymentInfo as { amountEth: number }).amountEth;
-
-    // AnonPay checkout link: buyer pays in BTC/LTC/100+ coins, Trocador swaps
-    // and delivers XMR to our wallet. No registration, no API key.
-    const anonpayUrl =
-      cryptoType === "other"
-        ? `https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=${encodeURIComponent(paymentInfo.address)}&amount=${(amountCrypto * 1.02).toFixed(6)}&name=PRIVASIM&description=${paymentInfo.invoiceId}`
-        : undefined;
-
-    // Store invoice with package metadata for orders page display.
-    // Payment address is stored plaintext — it's already shown to the user in the QR code.
+    const invoiceToken = createInvoiceToken(paymentInfo.invoiceId);
+    const topupIccidEncrypted = topupIccid ? await encryptField(topupIccid) : undefined;
     await createInvoiceRecord({
       invoice_id: paymentInfo.invoiceId,
       wallet_id_hash: walletHash,
@@ -148,11 +178,13 @@ export async function POST(req: NextRequest) {
       duration_days: pkg.durationDays,
       amount_usd: priceUsd,
       amount_crypto: amountCrypto,
-      crypto_type: cryptoType === "other" ? "monero" : cryptoType,
+      crypto_type: normalizedCryptoType,
       payment_address: paymentInfo.address,
       expires_at: expiresAt,
-      topup_iccid: topupIccid,
-    });
+      topup_iccid_encrypted: topupIccidEncrypted,
+      monero_subaddress_index: "subaddressIndex" in paymentInfo ? paymentInfo.subaddressIndex : undefined,
+      monero_account_index: "accountIndex" in paymentInfo ? paymentInfo.accountIndex : undefined,
+    }, appliedDiscount ? discountCode : undefined);
 
     return NextResponse.json({
       invoiceId: paymentInfo.invoiceId,
@@ -171,26 +203,19 @@ export async function POST(req: NextRequest) {
       expiresAt,
       anonpayUrl,
       discount: appliedDiscount,
-      // Signed proof of the order parameters — required by verify-payment
-      // after cold starts. Tamper-proof; the client can store but not alter it.
-      invoiceToken: (await import("@/lib/invoiceToken")).createInvoiceToken({
-        invoiceId: paymentInfo.invoiceId,
-        packageCode,
-        cryptoType: cryptoType === "other" ? "monero" : cryptoType,
-        amountCrypto,
-        amountUsd: priceUsd,
-        topupIccid,
-        discountCode: appliedDiscount ? discountCode : undefined,
-      }),
+      invoiceToken,
     });
-  } catch (err) {
-    console.error("Order creation failed:", err);
-    const msg =
-      err instanceof Error
-        ? `${err.name}: ${err.message}`
-        : typeof err === "string"
-          ? err
-          : JSON.stringify(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (error) {
+    if (error instanceof CouponUnavailableError) {
+      return NextResponse.json(
+        { error: "This discount code is no longer available. Please restart checkout without it or choose another code." },
+        { status: 409 }
+      );
+    }
+    console.error("Invoice creation failed:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json(
+      { error: "Checkout is temporarily unavailable. Please try again later." },
+      { status: 503 }
+    );
   }
 }

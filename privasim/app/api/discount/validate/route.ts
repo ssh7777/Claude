@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rateLimit";
 // codes cannot be brute-forced (12-hex HMAC = infeasible anyway).
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`discount:${ip}`, { windowMs: 60_000, max: 10 });
+  const { allowed } = await rateLimit(`discount:${ip}`, { windowMs: 60_000, max: 10 });
   if (!allowed) {
     return NextResponse.json({ error: "Too many attempts — wait a minute" }, { status: 429 });
   }

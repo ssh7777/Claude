@@ -1,9 +1,12 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "npm ci",
   "outputDirectory": ".next",
   "regions": ["iad1"],
+  "crons": [
+    { "path": "/api/cron/retention", "schedule": "0 4 * * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -11,12 +14,6 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/webhooks/:path*",
-      "destination": "/api/webhooks/:path*"
     }
   ]
 }

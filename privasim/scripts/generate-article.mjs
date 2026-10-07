@@ -46,18 +46,18 @@ function retail(w) { return (Math.ceil(w * MARKUP * 100) / 100).toFixed(2); }
 // Buyer-intent templates — each targets a query someone types when they're
 // ready to purchase, not just research.
 const TOPIC_TEMPLATES = [
-  { kind: "guide", title: (n) => `${n} eSIM Guide ${year}: Stay Connected Anonymously`,
-    intro: (n) => `Travelling to ${n}? Here's how to get online the moment you land — with a data eSIM you can buy anonymously, no SIM-registration desk, no passport photocopy, no KYC.` },
+  { kind: "guide", title: (n) => `${n} eSIM Guide ${year}: Stay Connected`,
+    intro: (n) => `Travelling to ${n}? Compare available eSIM plans and payment options before you go. Identity and registration requirements vary by jurisdiction and provider.` },
   { kind: "howmuch", title: (n) => `How Much Data Do You Need in ${n}? (${year} Guide)`,
-    intro: (n) => `Working out how much mobile data you'll use in ${n} saves you money. Here's a realistic breakdown by traveller type, with current anonymous eSIM prices.` },
+    intro: (n) => `Working out how much mobile data you'll use in ${n} saves you money. Here's a realistic breakdown by traveller type, with current eSIM prices.` },
   { kind: "vs", title: (n) => `${n} Travel SIM vs eSIM: Which Is Better for Privacy?`,
-    intro: (n) => `Buying a local tourist SIM in ${n} usually means showing ID. A travel eSIM skips that entirely. Here's the honest comparison.` },
+    intro: (n) => `Local SIM and eSIM identity requirements vary in ${n}. Compare the available options and check current requirements before travel.` },
   { kind: "cheapest", title: (n) => `Cheapest ${n} eSIM in ${year} — Live Prices, No Account Needed`,
-    intro: (n) => `Looking for the cheapest ${n} eSIM today? These are the live lowest prices from carrier inventory — updated daily, purchasable in two minutes with no account, no email, no KYC.` },
-  { kind: "crypto", title: (n) => `Buy a ${n} eSIM with Crypto (Monero, Bitcoin, ETH, USDT)`,
-    intro: (n) => `You can pay for ${n} mobile data entirely in cryptocurrency — Monero and Ethereum natively, USDT, or 100+ other coins including Bitcoin via anonymous swap. No card, no exchange, no identity.` },
-  { kind: "nokyc", title: (n) => `${n} eSIM Without ID or Registration (${year})`,
-    intro: (n) => `Many countries require passport registration for local SIM cards. A prepaid ${n} travel eSIM bought anonymously online skips the registration desk entirely — here's how it works and what it costs.` },
+    intro: (n) => `Looking for an affordable ${n} eSIM? Catalog prices change, so compare the current live plans. Checkout does not require an identity account or email; temporary order data is retained for fulfillment.` },
+  { kind: "crypto", title: (n) => `Buy a ${n} eSIM with Crypto (Monero, ETH, USDT)`,
+    intro: (n) => `You can pay for ${n} mobile data entirely in cryptocurrency — Monero, Ethereum, and USDT on Ethereum mainnet are supported directly; additional assets may be available through the external Trocador swap provider. No identity account or card is required at checkout.` },
+  { kind: "nokyc", title: (n) => `${n} eSIM Without an Identity Account (${year})`,
+    intro: (n) => `Identity and registration requirements for SIM service vary. This guide explains plan choices in ${n}, payment options, and what the no-account checkout does and does not mean for privacy.` },
 ];
 
 function buildArticle(code, tpl, plans) {
@@ -82,23 +82,23 @@ function buildArticle(code, tpl, plans) {
     excerpt: `${tpl.intro(name).replace(/<[^>]+>/g, "").slice(0, 155)}`,
     content: `
 <p>${tpl.intro(name)}</p>
-<p>${priceLine} All plans deliver instantly after crypto payment — pay with Monero, Ethereum, USDT, or 100+ other coins. No account, no email.</p>
+<p>${priceLine} Delivery begins after required chain confirmations and supplier fulfillment. A temporary server-side order record is retained for up to 30 days; checkout does not require an identity account or email.</p>
 <h2>${name} eSIM plans right now</h2>
 ${plans.length ? `<table><tr><th>Data</th><th>Validity</th><th>Price</th><th></th></tr>${rows}</table>` : ""}
-<h2>Why buy your ${name} eSIM anonymously?</h2>
+<h2>Privacy and checkout for a ${name} eSIM</h2>
 <ul>
-<li><strong>No registration desk.</strong> Local tourist SIMs in many countries require passport registration — a travel eSIM skips it.</li>
-<li><strong>No identity at checkout.</strong> Pay with crypto; we never ask for an email, name, or card.</li>
-<li><strong>Instant.</strong> Install the QR code on Wi-Fi before you fly; switch it on when you land.</li>
+<li>Local SIM and eSIM registration requirements vary; check current rules before purchase and activation.</li>
+<li><strong>No identity account is required.</strong> A temporary order record is kept server-side; no email or card is requested at checkout.</li>
+<li><strong>Digital delivery.</strong> Retrieve the QR code after payment confirmation and supplier fulfillment; install it over Wi-Fi before you travel.</li>
 </ul>
 <h2>Frequently asked</h2>
-<p><strong>Do I need an account to buy a ${name} eSIM?</strong> No — there is no signup at all. Pick a plan, pay in crypto, get the QR code.</p>
-<p><strong>Which coins can I pay with?</strong> Monero (most private), Ethereum, USDT, and 100+ others including Bitcoin via anonymous swap.</p>
-<p><strong>How fast is delivery?</strong> Instant after blockchain confirmation — about 30 seconds with ETH/USDT, a few minutes with Monero.</p>
+<p><strong>Do I need an account to buy a ${name} eSIM?</strong> No identity account is required. A random invoice token saved in your browser is needed to access the temporary server-side order record.</p>
+<p><strong>Which coins can I pay with?</strong> Monero, Ethereum, and USDT on Ethereum mainnet are supported directly; other assets may be available through the external Trocador swap provider.</p>
+<p><strong>How fast is delivery?</strong> Delivery follows 12 Ethereum or 10 Monero confirmations, plus supplier fulfillment; timing varies.</p>
 <h2>How to set it up</h2>
 <ol>
 <li>Pick a ${name} plan at <a href="/shop/${code}">/shop/${code}</a> and pay with crypto.</li>
-<li>Your QR code appears instantly on the <a href="/orders">orders page</a>.</li>
+<li>Open the <a href="/orders">orders page</a> in the browser that saved your invoice token after confirmations and supplier fulfillment.</li>
 <li>Install it (<a href="/guide">step-by-step guide</a>) and enable data roaming on arrival.</li>
 </ol>
 <p><em>Prices update automatically every day. Last refreshed ${today}.</em> <a href="/shop/${code}">See all ${name} eSIMs →</a></p>

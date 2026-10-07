@@ -4,12 +4,9 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import type { WalletType } from "@/types";
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`auth:verify:${ip}`, RATE_LIMITS.auth);
-
-  if (!allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = await rateLimit(`auth:verify:${ip}`, RATE_LIMITS.auth);
+  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   let body: {
     walletAddress?: string;
@@ -25,16 +22,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { walletAddress, walletType, signature, challenge, challengeToken } = body;
-
-  if (!walletAddress || !walletType || !signature || !challenge || !challengeToken) {
-    return NextResponse.json(
-      { error: "walletAddress, walletType, signature, challenge, and challengeToken are required" },
-      { status: 400 }
-    );
-  }
-
-  if (!["monero", "ethereum"].includes(walletType)) {
-    return NextResponse.json({ error: "Invalid walletType" }, { status: 400 });
+  if (
+    typeof walletAddress !== "string" || walletAddress.length > 128 ||
+    typeof signature !== "string" || signature.length > 2048 ||
+    typeof challenge !== "string" || challenge.length > 512 ||
+    typeof challengeToken !== "string" || challengeToken.length > 4096 ||
+    !walletAddress || !signature || !challenge || !challengeToken ||
+    (walletType !== "ethereum" && walletType !== "monero")
+  ) {
+    return NextResponse.json({ error: "Invalid wallet verification request" }, { status: 400 });
   }
 
   try {
@@ -45,10 +41,13 @@ export async function POST(req: NextRequest) {
       challenge,
       challengeToken
     );
-
     return NextResponse.json({ jwt, expiresIn: 3600 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Verification failed";
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (/database|postgres|connection|migrations/i.test(message)) {
+      console.error("Wallet verification unavailable:", message);
+      return NextResponse.json({ error: "Wallet verification is temporarily unavailable" }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Wallet verification failed or challenge expired" }, { status: 401 });
   }
 }

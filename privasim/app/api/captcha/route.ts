@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rateLimit";
 // endpoint itself can't be used to farm challenges.
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`captcha:${ip}`, { windowMs: 60_000, max: 30 });
+  const { allowed } = await rateLimit(`captcha:${ip}`, { windowMs: 60_000, max: 30 });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   return NextResponse.json(createChallenge());
 }

@@ -14,16 +14,16 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-sm text-gray-400">
-              Privacy-first eSIM marketplace. No tracking. No emails. Crypto only.
+              Privacy-focused eSIM marketplace. No advertising trackers. No identity account or email is required at checkout.
             </p>
             <div className="flex gap-3 mt-4">
               <div className="flex items-center gap-1 text-xs text-green-400">
                 <Lock className="h-3 w-3" />
-                Zero tracking
+                No ad trackers
               </div>
               <div className="flex items-center gap-1 text-xs text-blue-400">
                 <Eye className="h-3 w-3" />
-                No cookies
+No analytics cookies
               </div>
             </div>
           </div>
@@ -42,15 +42,16 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white mb-4">Privacy</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/privacy#monero" className="hover:text-white transition-colors">Monero Payments</Link></li>
+              <li><Link href="/privacy#payments" className="hover:text-white transition-colors">Monero Payments</Link></li>
               <li><Link href="/privacy#no-tracking" className="hover:text-white transition-colors">No Tracking</Link></li>
-              <li><Link href="/privacy#encryption" className="hover:text-white transition-colors">Data Encryption</Link></li>
+              <li><Link href="/privacy#order-data" className="hover:text-white transition-colors">Order Data & Encryption</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-white mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-gray-400">
+              {process.env.NEXT_PUBLIC_SUPPORT_EMAIL && <li><a href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`} className="hover:text-white transition-colors">Contact support</a></li>}
               <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
               <li><Link href="/guide" className="hover:text-white transition-colors">Install Guide</Link></li>
               <li><Link href="/topup" className="hover:text-white transition-colors">Top Up eSIM</Link></li>
@@ -71,10 +72,10 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Zap className="h-3 w-3 text-[#ff6600]" />
-            Accepts Monero (XMR) and Ethereum (ETH/USDT)
+            Accepts XMR, ETH, USDT & supported swap assets
           </div>
           <p className="text-xs text-gray-500">
-            190+ countries &bull; Instant delivery &bull; No KYC
+            190+ countries &bull; Delivery after confirmation &bull; No identity account required
           </p>
         </div>
       </div>

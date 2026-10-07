@@ -1,0 +1,50 @@
+name: Production smoke check (safe, no purchases)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Optional base URL for a staging deployment"
+        required: false
+        default: "https://privasim.app"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public pages, removed diagnostics, and protected routes
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+
+          for path in / /shop /blog /guide /topup /orders /privacy /admin /sitemap.xml /robots.txt /llms.txt; do
+            code=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 20 "$BASE$path")
+            printf "[%s] %s\n" "$code" "$path"
+            [ "$code" = "200" ] || { echo "Unexpected response for $path" >&2; exit 1; }
+          done
+
+          for path in "/api/test/pikasim" "/api/test/buy" "/api/track"; do
+            code=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 20 "$BASE$path")
+            printf "[%s] %s (expected 404)\n" "$code" "$path"
+            [ "$code" = "404" ] || { echo "Removed endpoint is still exposed: $path" >&2; exit 1; }
+          done
+
+          for path in "/api/admin/orders" "/api/admin/settings" "/api/admin/discounts"; do
+            code=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 20 "$BASE$path")
+            printf "[%s] %s (expected 401)\n" "$code" "$path"
+            [ "$code" = "401" ] || { echo "Admin route is not rejecting anonymous requests: $path" >&2; exit 1; }
+          done
+
+          code=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 20 -X POST "$BASE/api/esim/topup")
+          printf "[%s] POST /api/esim/topup (expected 410)\n" "$code"
+          [ "$code" = "410" ] || { echo "Direct top-up is not disabled" >&2; exit 1; }
+
+          code=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 20 -X POST "$BASE/api/webhooks/pikasim")
+          printf "[%s] unauthenticated PikaSim webhook (expected 401 or 503)\n" "$code"
+          case "$code" in 401|503) ;; *) echo "Webhook did not fail closed" >&2; exit 1 ;; esac

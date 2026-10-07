@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Create coupon via admin API
         env:
-          KEY: ${{ secrets.PIKASIM_API_KEY }}
+          KEY: ${{ secrets.ADMIN_API_KEY }}
         run: |
           RESP=$(curl -sS -X POST "https://privasim.app/api/admin/discounts" \
             -H "x-admin-key: $KEY" -H "Content-Type: application/json" \

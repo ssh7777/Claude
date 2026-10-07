@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   BatteryCharging,
   Loader2,
@@ -17,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { retailPrice } from "@/lib/prices";
+
+const ORDERS_KEY = "privasim_orders";
 
 interface TopupOption {
   packageCode: string;
@@ -35,6 +38,19 @@ interface Invoice {
   invoiceToken?: string;
 }
 
+function saveTopupOrder(order: Record<string, unknown>) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ORDERS_KEY) ?? "[]") as Record<string, unknown>[];
+    const invoiceId = String(order.invoiceId ?? "");
+    localStorage.setItem(ORDERS_KEY, JSON.stringify([
+      order,
+      ...saved.filter((entry) => entry.invoiceId !== invoiceId),
+    ].slice(0, 50)));
+  } catch {
+    // The active invoice remains usable in this page even when browser storage is disabled.
+  }
+}
+
 function TopupInner() {
   const searchParams = useSearchParams();
   const [iccid, setIccid] = useState(searchParams.get("iccid") ?? "");
@@ -47,6 +63,7 @@ function TopupInner() {
   const [txHash, setTxHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [done, setDone] = useState("");
+  const [doneComplete, setDoneComplete] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const loadOptions = useCallback(async (id: string) => {
@@ -97,6 +114,25 @@ function TopupInner() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Could not create invoice");
+      if (typeof j.invoiceToken !== "string") throw new Error("The invoice could not be saved securely.");
+      saveTopupOrder({
+        invoiceId: j.invoiceId,
+        packageCode: j.packageCode,
+        packageName: j.packageName,
+        country: "Top-up",
+        countryCode: "",
+        dataAmount: j.dataAmount ?? "Top-up",
+        durationDays: 0,
+        amountUsd: j.amountUsd,
+        amountCrypto: j.amountCrypto,
+        cryptoType: j.cryptoType,
+        paymentAddress: j.paymentAddress,
+        expiresAt: j.expiresAt,
+        createdAt: new Date().toISOString(),
+        status: "pending",
+        invoiceToken: j.invoiceToken,
+        isTopup: true,
+      });
       setInvoice(j);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create invoice");
@@ -120,7 +156,15 @@ function TopupInner() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Verification failed");
-      setDone(j.message ?? "Top-up applied!");
+      if (j.processing) {
+        setDoneComplete(false);
+        setDone(j.message ?? "Payment verified; top-up fulfillment is processing. Do not send another payment.");
+      } else if (j.topup) {
+        setDoneComplete(true);
+        setDone(j.message ?? "Top-up applied successfully.");
+      } else {
+        throw new Error("Payment was verified, but no top-up completion status was returned.");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Verification failed");
     } finally {
@@ -152,12 +196,19 @@ function TopupInner() {
       </div>
 
       {done ? (
-        <div className="p-6 bg-green-500/10 border border-green-500/30 rounded-xl text-center">
-          <Check className="h-10 w-10 text-green-400 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-white mb-2">Top-up successful!</h2>
+        <div className={`p-6 rounded-xl text-center ${doneComplete ? "bg-green-500/10 border border-green-500/30" : "bg-blue-500/10 border border-blue-500/30"}`}>
+          {doneComplete
+            ? <Check className="h-10 w-10 text-green-400 mx-auto mb-3" />
+            : <AlertCircle className="h-10 w-10 text-blue-300 mx-auto mb-3" />}
+          <h2 className="text-lg font-bold text-white mb-2">{doneComplete ? "Top-up successful!" : "Payment verified"}</h2>
           <p className="text-sm text-gray-300 whitespace-pre-wrap">{done}</p>
-          <Button className="mt-4 bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
-            <a href={`/esim/${encodeURIComponent(iccid.trim())}`}>Check my eSIM status</a>
+          {doneComplete && (
+            <Button className="mt-4 bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
+              <Link href={`/esim/${encodeURIComponent(iccid.trim())}`}>Check my eSIM status</Link>
+            </Button>
+          )}
+          <Button variant="outline" className="mt-4 ml-2 border-white/20 text-white" asChild>
+            <Link href="/orders">View order status</Link>
           </Button>
         </div>
       ) : invoice ? (
@@ -268,7 +319,7 @@ function TopupInner() {
                         }`}
                       >
                         <Coins className="h-4 w-4" />
-                        {c === "ethereum" ? "Ethereum (fast)" : "Monero (private)"}
+                        {c === "ethereum" ? "Ethereum (ETH)" : "Monero (XMR)"}
                       </button>
                     ))}
                   </div>

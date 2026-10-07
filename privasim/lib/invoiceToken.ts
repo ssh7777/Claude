@@ -1,56 +1,61 @@
-// Signed invoice tokens — the tamper-proof source of truth for an order.
-//
-// The in-memory invoice store does not survive across serverless instances,
-// so verify-payment used to fall back to CLIENT-SUPPLIED package/amount data
-// after a cold start. That allowed paying for a cheap package and claiming an
-// expensive one. Now orders/create issues an HMAC-signed token embedding the
-// real order parameters; the client stores and returns it, but cannot alter
-// it. verify-payment only acts on server-memory invoices or valid tokens.
+// Short-lived bearer proof for a customer's invoice. Payment terms and package
+// data are loaded only from PostgreSQL and are never trusted from the browser.
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface InvoicePayload {
   invoiceId: string;
-  packageCode: string;
-  cryptoType: string;
-  amountCrypto: number;
-  amountUsd: number;
-  topupIccid?: string;
-  discountCode?: string;
-  exp: number; // unix seconds
+  purpose: "invoice";
+  version: 2;
+  exp: number;
 }
 
 function secret(): string {
-  const s = process.env.JWT_SECRET;
-  if (!s) throw new Error("JWT_SECRET not configured");
-  return s;
+  const value = process.env.JWT_SECRET;
+  if (!value || value.length < 32) throw new Error("JWT_SECRET must be at least 32 chars");
+  return value;
 }
 
 function sign(data: string): string {
-  return createHmac("sha256", secret()).update(`invoice:${data}`).digest("base64url");
+  return createHmac("sha256", secret()).update(`invoice:v2:${data}`).digest("base64url");
 }
 
-export function createInvoiceToken(payload: Omit<InvoicePayload, "exp">): string {
-  const full: InvoicePayload = { ...payload, exp: Math.floor(Date.now() / 1000) + 24 * 3600 };
-  const data = Buffer.from(JSON.stringify(full)).toString("base64url");
+export function createInvoiceToken(invoiceId: string): string {
+  const payload: InvoicePayload = {
+    invoiceId,
+    purpose: "invoice",
+    version: 2,
+    exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+  };
+  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${data}.${sign(data)}`;
 }
 
 export function verifyInvoiceToken(token: string): InvoicePayload | null {
-  const dot = (token ?? "").lastIndexOf(".");
-  if (dot <= 0) return null;
-  const data = token.slice(0, dot);
-  const sig = token.slice(dot + 1);
-
-  const expected = sign(data);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  if (typeof token !== "string" || token.length > 2048) return null;
+  const separator = token.lastIndexOf(".");
+  if (separator <= 0) return null;
+  const data = token.slice(0, separator);
+  const signature = token.slice(separator + 1);
+  let expected: Buffer;
+  try {
+    expected = Buffer.from(sign(data));
+  } catch {
+    return null;
+  }
+  const provided = Buffer.from(signature);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return null;
 
   try {
-    const payload = JSON.parse(Buffer.from(data, "base64url").toString()) as InvoicePayload;
-    if (!payload.invoiceId || !payload.packageCode) return null;
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf8")) as InvoicePayload;
+    if (
+      typeof payload.invoiceId !== "string" ||
+      !/^[a-f0-9]{32}$/.test(payload.invoiceId) ||
+      payload.purpose !== "invoice" ||
+      payload.version !== 2 ||
+      !Number.isSafeInteger(payload.exp) ||
+      payload.exp <= Math.floor(Date.now() / 1000)
+    ) return null;
     return payload;
   } catch {
     return null;

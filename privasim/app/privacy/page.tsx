@@ -1,9 +1,9 @@
 import { Metadata } from "next";
-import { Shield, Lock, Eye, Database, Trash2, Coins } from "lucide-react";
+import { Shield, Lock, Eye, Database, Trash2, Coins, ExternalLink } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "PRIVASIM collects no personal data. Our privacy policy explains how we protect you.",
+  description: "What PRIVASIM processes to create, verify, and deliver eSIM orders.",
 };
 
 export default function PrivacyPage() {
@@ -15,122 +15,79 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-black text-white">Privacy Policy</h1>
         </div>
         <p className="text-gray-400">
-          Last updated: June 2026. PRIVASIM is built with privacy as the primary design
-          principle, not an afterthought.
+          Last updated: October 7, 2026. This policy describes the information needed to process and deliver an eSIM order.
         </p>
       </div>
 
       <div className="space-y-8">
-        <Section icon={Eye} title="What We Do NOT Collect" id="no-tracking">
-          <ul className="space-y-2 text-gray-300">
-            {[
-              "Email addresses",
-              "Phone numbers",
-              "Real names",
-              "Physical addresses",
-              "IP addresses (not logged)",
-              "Browser fingerprints",
-              "Cookies of any kind",
-              "Analytics or tracking pixels",
-              "Third-party scripts",
-            ].map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                {item}
-              </li>
-            ))}
+        <Section icon={Eye} title="Information we do not ask for" id="no-tracking">
+          <p className="text-sm text-gray-300">
+            Checkout does not require an account, email address, telephone number, real name, or payment-card details. We do not use advertising pixels, browser fingerprinting, third-party analytics scripts, or analytics cookies. An optional wallet connection uses a one-time signed challenge; merely purchasing an eSIM does not require connecting a wallet.
+          </p>
+        </Section>
+
+        <Section icon={Database} title="Information processed for an order" id="order-data">
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li>Random invoice ID, selected plan, quoted price, payment address, expiry, payment status and confirmation count.</li>
+            <li>A keyed HMAC of the blockchain transaction hash is retained to prevent a payment from being claimed twice; the raw transaction hash is checked with the relevant chain/wallet service and is not stored in the invoice record.</li>
+            <li>When you optionally connect an Ethereum wallet, a keyed HMAC of its address is used to associate your session with orders. We do not store the address in the order database.</li>
+            <li>eSIM ICCID and activation credentials are encrypted at rest using AES-256-GCM. PRIVASIM&apos;s server must be able to decrypt them to deliver them to the order holder; they are not decryptable only by the customer and are not protected by the customer&apos;s wallet signature.</li>
+            <li>For a top-up, the ICCID you submit is encrypted at rest and sent to the eSIM supplier to apply the top-up.</li>
           </ul>
         </Section>
 
-        <Section icon={Database} title="What We Store" id="encryption">
+        <Section icon={Lock} title="Browser storage and order access">
+          <p className="text-sm text-gray-300">
+            Your browser stores the random invoice token, basic order details, and—after delivery—the eSIM credentials so you can return to the order page. Anyone with that token can access the corresponding order, so do not share it and clear site data on shared devices. No authentication cookie is required.
+          </p>
+        </Section>
+
+        <Section icon={ExternalLink} title="Service providers and blockchain networks">
           <div className="space-y-3 text-sm text-gray-300">
             <p>
-              We store only what is strictly necessary to provide the service:
-            </p>
-            <ul className="space-y-2">
-              {[
-                "Hashed wallet addresses (SHA-256, irreversible — we cannot reverse this to identify you)",
-                "Encrypted eSIM activation codes (AES-256-GCM — only you can decrypt with your wallet signature)",
-                "Encrypted ICCID numbers (same encryption)",
-                "Order status and expiry dates (no personal identifiers)",
-                "Hashed Monero/Ethereum transaction IDs (for payment verification only)",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <Lock className="h-3.5 w-3.5 text-[#ff6600] shrink-0 mt-0.5" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Section>
-
-        <Section icon={Trash2} title="Auto-Deletion">
-          <div className="text-sm text-gray-300 space-y-2">
-            <p>
-              All order records are automatically deleted 30 days after creation, regardless
-              of status. This is not configurable — it happens automatically at the database level.
+              We send the plan and necessary provisioning identifiers to PikaSim, our eSIM supplier. Ethereum payment verification uses a configured Ethereum RPC provider (or public fallback RPC services); Monero invoices use a dedicated receiving subaddress and are checked against the configured Monero wallet RPC. Those providers process the requests needed to provide their services under their own terms and retention practices.
             </p>
             <p>
-              Payment invoices are deleted upon expiry (15 minutes if unpaid, or immediately
-              after confirmation).
+              If you choose the optional “other coins” payment route, checkout links to Trocador for a crypto swap. Trocador is a separate service and may receive connection and transaction information; review its privacy terms before using it. Public blockchain data, including Ethereum transactions, may be visible to anyone independently of PRIVASIM.
             </p>
-            <p className="text-yellow-400">
-              Important: Save your eSIM activation codes before the 30-day auto-delete window.
-              We cannot recover deleted data.
+            <p>
+              Our hosting, database, and network providers also process technical data to operate and secure the service. Their infrastructure may receive connection metadata, including IP addresses. PRIVASIM does not write raw visitor IP addresses to its application database or application logs; abuse-control counters are keyed by a server-secret HMAC and expire automatically.
             </p>
           </div>
         </Section>
 
-        <Section icon={Coins} title="Monero Payments" id="monero">
-          <div className="text-sm text-gray-300 space-y-2">
+        <Section icon={Trash2} title="Retention and deletion" id="retention">
+          <div className="space-y-2 text-sm text-gray-300">
             <p>
-              Monero (XMR) is our recommended payment method. Monero provides:
+              The application is configured to delete invoice and payment-claim records 30 days after order creation. Temporary authentication challenges and rate-limit buckets are cleaned up automatically. The scheduled deletion requires a configured PostgreSQL database and deployment cron secret; deployment operators must verify that the scheduled job is active.
             </p>
-            <ul className="space-y-1.5">
-              {[
-                "Stealth addresses — each transaction uses a one-time address",
-                "Ring signatures — sender cannot be identified",
-                "Confidential transactions — amounts are hidden",
-                "No blockchain analysis possible",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 mt-1.5" />
-                  {item}
-                </li>
-              ))}
-            </ul>
             <p>
-              Ethereum payments are pseudonymous (not anonymous) — use a fresh wallet or
-              a privacy mixer if you want maximum privacy.
+              Copies in your browser remain until you clear local site storage. Blockchain records, hosting logs, and supplier records are outside PRIVASIM&apos;s deletion controls and may be retained under their operators&apos; policies.
             </p>
           </div>
         </Section>
 
-        <Section icon={Shield} title="Our Commitments">
-          <div className="text-sm text-gray-300 space-y-2">
-            <ul className="space-y-2">
-              {[
-                "We will never sell data (there is no personal data to sell)",
-                "We will never comply with data requests for user identity (we don't have it)",
-                "We will never add analytics, tracking, or advertising",
-                "We will never require email or phone number",
-                "We will never store payment card data",
-                "All source code is designed to minimize data retention",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <Shield className="h-3.5 w-3.5 text-[#ff6600] shrink-0 mt-0.5" />
-                  {item}
-                </li>
-              ))}
-            </ul>
+        <Section icon={Coins} title="Cryptocurrency payments" id="payments">
+          <div className="space-y-2 text-sm text-gray-300">
+            <p>
+              Monero invoices use a fresh subaddress generated by our receiving wallet. Ethereum and USDT payments are pseudonymous rather than anonymous and can be publicly traceable. Payment verification checks the destination, amount, successful execution, and required confirmations before fulfillment.
+            </p>
+            <p>Never send a different token or use a different chain than the invoice specifies.</p>
           </div>
+        </Section>
+
+        <Section icon={Shield} title="Your choices and our commitments">
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li>Use checkout without connecting a wallet; wallet connection is optional.</li>
+            <li>Clear local browser storage at any time (this also removes locally saved order details and credentials).</li>
+            <li>We do not sell order data or use it for advertising, and we do not require contact details to purchase.</li>
+            <li>We limit retained order data to delivery, payment-integrity, fraud-prevention, and operational needs.</li>
+          </ul>
         </Section>
 
         <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-sm text-gray-400">
           <p>
-            PRIVASIM is not a financial institution, does not provide financial services,
-            and does not process payments through traditional payment rails. All transactions
-            are peer-to-peer cryptocurrency payments sent directly to our wallet addresses.
+            This page describes the application design and does not override the independent privacy policies of hosting, database, RPC, supplier, or swap providers. Operators should obtain jurisdiction-specific legal review before production use.
           </p>
         </div>
       </div>
@@ -150,12 +107,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div id={id} className="bg-white/3 border border-white/8 rounded-xl p-6">
+    <section id={id} className="bg-white/3 border border-white/8 rounded-xl p-6">
       <div className="flex items-center gap-2 mb-4">
         <Icon className="h-5 w-5 text-[#ff6600]" />
         <h2 className="text-lg font-bold text-white">{title}</h2>
       </div>
       {children}
-    </div>
+    </section>
   );
 }

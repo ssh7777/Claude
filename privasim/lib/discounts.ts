@@ -1,30 +1,20 @@
-// Discount codes — stateless and forge-proof.
-//
-// A code carries its own signed payload: LABEL-PERCENT-EXPIRYDAY-SIGNATURE
-// (e.g. LAUNCH-20-20643-a1b2c3d4e5f6). The signature is an HMAC-SHA256 over
-// the payload using JWT_SECRET, so codes cannot be created or altered
-// without the server secret. No database needed.
-//
-// Security properties:
-// - Forgery impossible without JWT_SECRET (HMAC, timing-safe compare)
-// - Percent hard-capped at MAX_PERCENT server-side
-// - Expiry enforced (day granularity, UTC)
-// - Validation endpoint is rate-limited; creation is admin-key-gated
-// Limitation (stateless by design): codes are not single-use — treat them
-// as marketing campaign codes with expiry dates, not one-off vouchers.
+// Discount codes carry an HMAC-signed payload: LABEL-PERCENT-EXPIRYDAY-SIGNATURE.
+// The signature prevents forgery; PostgreSQL state controls activation, revocation,
+// and maximum uses. Invoice creation atomically increments the use count with the
+// invoice insert, so failed invoice creation does not consume a use.
 
 import { createHmac, timingSafeEqual } from "crypto";
 
 export const MAX_PERCENT = 50;
 
-function secret(): string {
-  const s = process.env.JWT_SECRET;
-  if (!s) throw new Error("JWT_SECRET not configured");
-  return s;
+function couponSecret(): string {
+  const value = process.env.COUPON_SIGNING_SECRET;
+  if (!value || value.length < 32) throw new Error("COUPON_SIGNING_SECRET must be at least 32 chars");
+  return value;
 }
 
-function sign(payload: string): string {
-  return createHmac("sha256", secret()).update(`discount:${payload}`).digest("hex").slice(0, 12);
+function sign(payload: string, key: string): string {
+  return createHmac("sha256", key).update(`discount:${payload}`).digest("hex").slice(0, 32).toUpperCase();
 }
 
 function todayUtcDay(): number {
@@ -36,7 +26,7 @@ export function createDiscountCode(label: string, percent: number, validDays: nu
   const pct = Math.min(MAX_PERCENT, Math.max(1, Math.round(percent)));
   const expiryDay = todayUtcDay() + Math.min(365, Math.max(1, Math.round(validDays)));
   const payload = `${cleanLabel}-${pct}-${expiryDay}`;
-  return `${payload}-${sign(payload)}`.toUpperCase();
+  return `${payload}-${sign(payload, couponSecret())}`;
 }
 
 export interface DiscountCheck {
@@ -61,10 +51,19 @@ export function verifyDiscountCode(code: string): DiscountCheck {
     return { valid: false, percent: 0, label, reason: "Invalid code" };
   }
 
-  const expected = sign(`${label}-${pct}-${expiryDay}`).toUpperCase();
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  if (!/^(?:[A-F0-9]{12}|[A-F0-9]{32})$/.test(sig)) {
+    return { valid: false, percent: 0, label, reason: "Invalid code" };
+  }
+  const payload = `${label}-${pct}-${expiryDay}`;
+  const keys = sig.length === 32
+    ? [process.env.COUPON_SIGNING_SECRET].filter((key): key is string => Boolean(key && key.length >= 32))
+    : [process.env.JWT_SECRET].filter((key): key is string => Boolean(key && key.length >= 32));
+  const provided = Buffer.from(sig, "hex");
+  const validSignature = keys.some((key) => {
+    const expected = Buffer.from(sign(payload, key).slice(0, sig.length), "hex");
+    return provided.length === expected.length && timingSafeEqual(provided, expected);
+  });
+  if (!validSignature) {
     return { valid: false, percent: 0, label, reason: "Invalid code" };
   }
 
@@ -81,14 +80,17 @@ export function applyDiscount(retailUsd: number, percent: number): number {
   return Math.max(0.5, Math.ceil(discounted * 100) / 100);
 }
 
-// Full usability check: signature AND the persistent ledger (revocation +
-// usage limits). This is what validate + orders/create must call.
+// Full usability check: signature plus PostgreSQL activation, revocation, and
+// usage-limit state. Invoice creation rechecks and consumes the use atomically.
 export async function checkCouponUsable(code: string): Promise<DiscountCheck> {
   const sig = verifyDiscountCode(code);
   if (!sig.valid) return sig;
 
-  const { getCouponState } = await import("@/lib/ledger");
-  const state = await getCouponState(code.trim().toUpperCase());
+  const { getCouponStateRecord } = await import("@/lib/ledger");
+  const state = await getCouponStateRecord(code.trim().toUpperCase());
+  if (!state) {
+    return { valid: false, percent: 0, label: sig.label, reason: "Code is not active" };
+  }
   if (state.revoked) {
     return { valid: false, percent: 0, label: sig.label, reason: "Code has been deactivated" };
   }

@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
-import { hashWalletAddress, generateChallenge } from "@/lib/crypto-utils";
+import { hashWalletAddress } from "@/lib/crypto-utils";
+import { consumeAuthChallenge, registerAuthChallenge } from "@/lib/db";
 import type { JWTPayload, WalletType } from "@/types";
 
 const JWT_EXPIRY = "1h";
-const CHALLENGE_TTL_SECS = 5 * 60; // 5 minutes
+const CHALLENGE_TTL_SECS = 5 * 60;
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -11,25 +13,28 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-// Stateless challenge — signed JWT embeds the expected wallet + nonce.
-// No database required; the token itself proves the server issued this challenge.
-export async function createChallenge(walletAddress: string): Promise<{
-  challenge: string;
-  challengeToken: string;
-  expiresAt: string;
-}> {
-  const challenge = generateChallenge();
-  const expiresAt = new Date(Date.now() + CHALLENGE_TTL_SECS * 1000).toISOString();
+export async function createChallenge(
+  walletAddress: string,
+  walletType: WalletType
+): Promise<{ challenge: string; challengeToken: string; expiresAt: string }> {
+  const challenge = `privasim:sign:${randomUUID()}:${Date.now()}`;
+  const expires = new Date(Date.now() + CHALLENGE_TTL_SECS * 1000);
+  const walletAddressHash = await hashWalletAddress(walletAddress);
+  const challengeId = randomUUID();
 
   const challengeToken = await new SignJWT({
     walletAddress: walletAddress.toLowerCase(),
+    walletType,
     challenge,
   })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(`${CHALLENGE_TTL_SECS}s`)
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setJti(challengeId)
+    .setIssuedAt()
+    .setExpirationTime(expires)
     .sign(getJwtSecret());
 
-  return { challenge, challengeToken, expiresAt };
+  await registerAuthChallenge(challengeId, walletAddressHash, expires);
+  return { challenge, challengeToken, expiresAt: expires.toISOString() };
 }
 
 export async function verifyWalletAndIssueJWT(
@@ -39,10 +44,21 @@ export async function verifyWalletAndIssueJWT(
   challenge: string,
   challengeToken: string
 ): Promise<string> {
-  // Verify the challenge token the server previously issued
-  let tokenPayload: { walletAddress?: string; challenge?: string };
+  if (walletType !== "ethereum") {
+    throw new Error("Monero wallet sign-in is not supported; payment does not require sign-in");
+  }
+
+  let tokenPayload: {
+    walletAddress?: string;
+    walletType?: string;
+    challenge?: string;
+    jti?: string;
+  };
   try {
-    const { payload } = await jwtVerify(challengeToken, getJwtSecret());
+    const { payload } = await jwtVerify(challengeToken, getJwtSecret(), {
+      algorithms: ["HS256"],
+      typ: "JWT",
+    });
     tokenPayload = payload as typeof tokenPayload;
   } catch {
     throw new Error("Invalid or expired challenge token");
@@ -50,33 +66,31 @@ export async function verifyWalletAndIssueJWT(
 
   if (
     tokenPayload.walletAddress !== walletAddress.toLowerCase() ||
-    tokenPayload.challenge !== challenge
+    tokenPayload.walletType !== walletType ||
+    tokenPayload.challenge !== challenge ||
+    !tokenPayload.jti
   ) {
     throw new Error("Challenge mismatch");
   }
 
+  const isValid = await verifyEthereumSignature(walletAddress, signature, challenge);
+  if (!isValid) throw new Error("Wallet signature verification failed");
+
   const walletHash = await hashWalletAddress(walletAddress);
+  const consumed = await consumeAuthChallenge(tokenPayload.jti, walletHash);
+  if (!consumed) throw new Error("Challenge already used or expired");
 
-  const isValid = await verifyCryptoSignature(walletAddress, walletType, signature, challenge);
-  if (!isValid) throw new Error("Signature verification failed");
-
-  const sessionPayload: Omit<JWTPayload, "iat" | "exp"> = { walletHash, walletType };
+  const sessionPayload: Omit<JWTPayload, "iat" | "exp"> = {
+    walletHash,
+    walletType,
+    authVersion: 2,
+  };
 
   return new SignJWT(sessionPayload as Record<string, unknown>)
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRY)
     .sign(getJwtSecret());
-}
-
-async function verifyCryptoSignature(
-  address: string,
-  walletType: WalletType,
-  signature: string,
-  message: string
-): Promise<boolean> {
-  if (walletType === "ethereum") return verifyEthereumSignature(address, signature, message);
-  return verifyMoneroSignature(address, signature, message);
 }
 
 async function verifyEthereumSignature(
@@ -84,33 +98,15 @@ async function verifyEthereumSignature(
   signature: string,
   message: string
 ): Promise<boolean> {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address) || !/^0x[a-fA-F0-9]{130}$/.test(signature)) {
+    return false;
+  }
   try {
     const { ethers } = await import("ethers");
-    const recovered = ethers.verifyMessage(message, signature);
-    return recovered.toLowerCase() === address.toLowerCase();
+    return ethers.verifyMessage(message, signature).toLowerCase() === address.toLowerCase();
   } catch {
     return false;
   }
-}
-
-async function verifyMoneroSignature(
-  address: string,
-  signature: string,
-  message: string
-): Promise<boolean> {
-  // Full Monero sig verification requires a Monero node; accept valid-format sigs at MVP
-  if (!signature || !address || !message) return false;
-  if (signature.length < 64) return false;
-  return true;
-}
-
-export async function issueJWT(walletHash: string, walletType: WalletType): Promise<string> {
-  const sessionPayload: Omit<JWTPayload, "iat" | "exp"> = { walletHash, walletType };
-  return new SignJWT(sessionPayload as Record<string, unknown>)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(JWT_EXPIRY)
-    .sign(getJwtSecret());
 }
 
 export async function verifyJWT(authHeader: string | null): Promise<JWTPayload> {
@@ -118,6 +114,14 @@ export async function verifyJWT(authHeader: string | null): Promise<JWTPayload> 
     throw new Error("Missing or malformed Authorization header");
   }
   const token = authHeader.slice(7);
-  const { payload } = await jwtVerify(token, getJwtSecret());
+  const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ["HS256"] });
+  if (
+    typeof payload.walletHash !== "string" ||
+    !/^[a-f0-9]{64}$/.test(payload.walletHash) ||
+    (payload.walletType !== "ethereum" && payload.walletType !== "monero") ||
+    payload.authVersion !== 2
+  ) {
+    throw new Error("Invalid session token");
+  }
   return payload as unknown as JWTPayload;
 }

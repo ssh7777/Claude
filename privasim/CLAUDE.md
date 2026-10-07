@@ -1,90 +1,48 @@
-# PRIVASIM — Claude Context
+# PRIVASIM — Project Context
 
-## What This Is
-Privacy-first eSIM marketplace. Crypto-only payments (Monero XMR + Ethereum ETH). No email, no KYC, no database. Sources eSIMs from PikaSim reseller API.
+## Overview
+Privacy-focused eSIM marketplace. Checkout does not require an identity account, email, or ID. It accepts Monero (XMR), Ethereum (ETH), USDT on Ethereum mainnet, and may offer additional assets through a separate swap provider. The application keeps temporary server-side order records for payment verification and fulfillment; do not describe orders as stateless or client-only.
 
-## Stack
-- Next.js 16 App Router + React 19 + TypeScript (params/searchParams are Promises; proxy.ts replaces middleware.ts)
-- No database (fully stateless, in-memory invoice store)
-- PikaSim MCP API (JSON-RPC 2.0 at `https://pikasim.com/mcp`)
-- Monero + Ethereum direct wallet payments
-- JWT auth via wallet signature (stateless HMAC challenge tokens)
+## Stack and architecture
+- Next.js App Router, React, TypeScript, Node.js API routes.
+- PostgreSQL persistence via `postgres`; migration: `db/migrations/0001_enterprise.sql`.
+- Supplier integration: PikaSim MCP JSON-RPC at `https://pikasim.com/mcp`.
+- Ethereum mainnet verification uses ethers with a configured RPC and public fallbacks; Monero verification uses authenticated Wallet RPC.
+- Order access is capability-based: the signed invoice token is saved in the browser and required for status/details/decryption and payment verification. A transaction hash is not a replacement for a lost invoice token.
+- eSIM credentials and top-up ICCIDs are AES-256-GCM encrypted at rest. They are decrypted server-side for delivery/supplier fulfillment.
+- `lib/fulfillment.ts` claims a verified payment transaction once and controls supplier fulfillment/review state.
+- Coupon revocation/limits use PostgreSQL state; use consumption and invoice insertion are atomic. Coupons are rejected if their persisted state is missing.
+- Monero invoices persist both wallet account and subaddress indexes; keep pending invoices verifiable when rotating the Wallet RPC configuration.
+- Admin API routes require the separate `ADMIN_API_KEY` header; it must not be reused as the supplier key. Ethereum receiving address and margin can be changed in the dashboard; Monero wallet changes require coordinated Wallet RPC/environment configuration.
+- `proxy.ts` applies security headers and crawler rules; do not add visitor logging or process-local security state.
 
-## Branch
-`claude/privasim-esim-marketplace-3fgqim` in `ssh7777/Claude`
-
-## Key Files
+## Important files
 | File | Purpose |
 |---|---|
-| `lib/pikasim.ts` | PikaSim API wrapper — always sends auth header |
-| `lib/auth.ts` | Stateless JWT auth — no DB, HMAC challenge tokens |
-| `lib/db.ts` | In-memory invoice store — no Supabase |
-| `lib/monero.ts` | Monero payment info generation |
-| `lib/ethereum.ts` | Ethereum payment info generation |
-| `lib/crypto-utils.ts` | AES-256-GCM encryption, SHA-256 wallet hashing |
-| `app/api/orders/create/route.ts` | Creates payment invoice (50% markup applied here) |
-| `components/WalletConnect.tsx` | MetaMask + Monero wallet auth UI |
-| `components/EsimCard.tsx` | Product card (50% markup applied here) |
-| `app/checkout/[packageCode]/page.tsx` | Checkout page (50% markup applied here) |
+| `lib/db.ts` | PostgreSQL persistence, claims, rate limits, retention |
+| `db/migrations/0001_enterprise.sql` | Production schema; apply before enabling checkout |
+| `lib/auth.ts`, `lib/invoiceToken.ts` | Optional wallet session and signed invoice capability tokens |
+| `lib/crypto-utils.ts` | Field encryption and keyed wallet identifiers |
+| `lib/ethereum.ts`, `lib/monero.ts` | Payment address generation and independent chain/wallet verification |
+| `lib/fulfillment.ts`, `lib/webhook.ts` | Payment claim/fulfillment state and raw-body HMAC verification |
+| `app/api/webhooks/` | PikaSim, Ethereum, and Monero webhook handlers |
+| `app/api/cron/retention/route.ts` | `CRON_SECRET`-protected cleanup endpoint |
+| `lib/adminAuth.ts` | Constant-time `ADMIN_API_KEY` check |
+| `lib/blog.ts` | Blog records sanitized before serving |
 
-## Margin — Owner-Adjustable (default 70%)
-- LIVE value: ledger key `set_margin_pct` (percent), set from Admin →
-  Pricing & Wallets, read via `getRetailMargin()` in `lib/settings.ts`
-  (60 s server cache). `lib/prices.ts` keeps `RETAIL_MARGIN = 1.7` as the
-  compile-time DEFAULT only and stays ledger-free (client-importable).
-- `retailPrice(wholesaleUsd, margin?)` — server code passes the live margin;
-  client components consume server-computed `retailUsd` from API responses.
-- Authoritative charge: orders/create. Display: shop pages (EsimCard margin
-  prop), checkout/topup (`retailUsd` from API), chatbot, country JSON-LD.
-- Blog daily-deals table renders at the DEFAULT margin (editorial/indicative).
-- NEVER hardcode a multiplier anywhere else.
+## Configuration and deployment
+Copy `.env.example` as a checklist. Production requires a managed PostgreSQL database, the migration applied, independently generated strong secrets, funded/configured supplier and wallet services, authenticated RPC endpoints, provider webhook agreements, an active retention cron, and a published support contact. Verify the actual deployed Vercel project/config; both repository root and `privasim/` contain Vercel config files.
 
-## API Key Security
-- PikaSim API key ONLY in `process.env.PIKASIM_API_KEY`
-- Never hardcoded anywhere
-- `.env.local` is gitignored
-- Verify: `grep -r "pk_live_" /home/user/Claude/privasim/` should return nothing
+`PAYMENT_HASH_SECRET` is a stable secret used to HMAC transaction references at rest. Rotating it without migrating old hashes can break transaction-replay matching. `DB_ENCRYPTION_KEY` must be backed up securely; changing it without re-encryption makes existing credentials unreadable. Rotate `JWT_SECRET` with awareness that wallet sessions, invoice tokens, keyed wallet hashes, rate-limit keys, and legacy JWT-signed coupons depend on it. New coupon codes use the independent `COUPON_SIGNING_SECRET`.
 
-## Required Env Vars (Vercel)
-```
-PIKASIM_API_KEY=pk_live_...          # PikaSim reseller key
-JWT_SECRET=<openssl rand -hex 32>    # 32+ chars
-DB_ENCRYPTION_KEY=<openssl rand -hex 32>  # exactly 64 hex chars
-MONERO_WALLET_PRIMARY=<XMR address>
-ETHEREUM_WALLET_ADDRESS=<ETH address>
-MONERO_WEBHOOK_SECRET=<random>
-ETHEREUM_WEBHOOK_SECRET=<random>
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-```
+Webhook routes require HMAC-SHA256 over the exact raw request body. Confirm each provider supports the configured signature/header semantics before enabling webhook delivery. Provider callbacks never replace the application's independent payment verification.
 
-## Build
+## Checks
 ```bash
-cd /home/user/Claude/privasim
-npm install --legacy-peer-deps
-npm run build   # must pass clean
-npm run dev     # dev server on :3000
+npm ci
+npm run type-check
+npm run lint
+npm run build
 ```
 
-## Known Limitation
-PikaSim API (`pikasim.com`) is **blocked by the cloud sandbox egress proxy**. API calls return 403 here. Code is correct — works on Vercel with no restrictions. Do not waste tokens debugging this locally.
-
-## Deployment Status
-- Code: complete, builds clean, all 22 routes
-- Deployed: YES — https://privasim.app
-- Auto-deploys via Vercel Git integration on every push to main; .github/workflows/deploy-vercel.yml is a MANUAL fallback only (two deploy systems racing caused the queue jams)
-
-## PikaSim MCP — Verified Facts (from live tools/list probe)
-- 15 tools; our pk_live_ reseller key works as an agent-wallet key
-- Purchase tools: `purchase_esim` (data ONLY) and `purchase_phone_plan`
-  (phone-plan codes are INVALID in purchase_esim — lib/pikasim.ts handles both)
-- `get_topup_options(iccid)` REQUIRED before `topup_esim` — top-up codes
-  differ from purchase codes
-- Tool results come as TEXT content blocks (prose like "Wallet Balance:
-  $10.00 USD"), not JSON — lib/pikasim.ts extracts via regex (__rawText path)
-- Responses are SSE (`event: message` / `data: {...}`) — parseMcpBody handles it
-- Wallet balance funds purchases; top up at pikasim.com/reseller/dashboard
-
-## What's NOT Implemented (intentional)
-- No order history persistence (in-memory only, resets on redeploy);
-  client keeps order data in localStorage and can re-claim via TX hash
-- No Monero full signature verification (accepted if format valid; TODO for production)
+No production deployment should be described as ready until these checks pass in CI and the external infrastructure/configuration items above have been provisioned and verified. No repository tests are currently defined.

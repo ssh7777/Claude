@@ -1,89 +1,94 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual, encryptField } from "@/lib/crypto-utils";
-import { getMoneroWebhookSecret } from "@/lib/monero";
-import { getInvoiceById, updateInvoiceStatus, updateInvoiceEsimData } from "@/lib/db";
-import { purchaseEsim } from "@/lib/pikasim";
+import { getInvoiceById } from "@/lib/db";
+import { verifyMoneroPayment, getMoneroWebhookSecret } from "@/lib/monero";
+import { fulfillPaidInvoice } from "@/lib/fulfillment";
+import { decodeWebhookBody, readLimitedBody, verifyWebhookHmac } from "@/lib/webhook";
 import { rateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
-interface MoneroWebhookPayload {
-  txId: string;
-  amount: number;
-  confirmations: number;
-  address: string;
-  status: "confirmed" | "pending" | "failed";
-  invoiceId?: string;
-  txDescription?: string;
+export const runtime = "nodejs";
+
+function fulfillmentResponse(result: Awaited<ReturnType<typeof fulfillPaidInvoice>>) {
+  switch (result.kind) {
+    case "delivered":
+      return NextResponse.json({ received: true, delivered: true });
+    case "topup_complete":
+      return NextResponse.json({ received: true, topupApplied: true });
+    case "processing":
+      return NextResponse.json({ received: true, processing: true }, { status: 202 });
+    case "needs_review":
+      return NextResponse.json({ received: true, needsReview: true }, { status: 202 });
+    case "replay":
+      return NextResponse.json({ error: "Transaction already claimed by another invoice" }, { status: 409 });
+    case "already_paid":
+      return NextResponse.json({ received: true, duplicatePayment: true });
+    case "not_found":
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`webhook:monero:${ip}`, RATE_LIMITS.webhook);
-  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-
-  const providedSig = req.headers.get("x-monero-signature") ?? "";
-  if (!timingSafeEqual(providedSig, getMoneroWebhookSecret())) {
+  let secret: string;
+  try {
+    secret = getMoneroWebhookSecret();
+  } catch {
+    return NextResponse.json({ error: "Webhook endpoint is not configured" }, { status: 503 });
+  }
+  let rawBody: Uint8Array;
+  try {
+    rawBody = await readLimitedBody(req, 32_000);
+  } catch {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+  const rawText = decodeWebhookBody(rawBody);
+  if (rawText === null) return NextResponse.json({ error: "Invalid UTF-8 payload" }, { status: 400 });
+  const signature = req.headers.get("x-monero-signature") ?? "";
+  if (!verifyWebhookHmac(rawBody, signature, secret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let payload: MoneroWebhookPayload;
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = await rateLimit(`webhook:monero:${ip}`, RATE_LIMITS.webhook);
+  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
+  let payload: { invoiceId?: unknown; txId?: unknown; txid?: unknown };
   try {
-    payload = await req.json();
+    const parsed: unknown = JSON.parse(rawText);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid object");
+    payload = parsed as typeof payload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
-  const { txId, amount, confirmations, status, txDescription } = payload;
-  const invoiceId =
-    payload.invoiceId ?? txDescription?.replace("PRIVASIM-", "") ?? "";
-
-  if (!invoiceId) return NextResponse.json({ error: "No invoice ID" }, { status: 400 });
+  const invoiceId = typeof payload.invoiceId === "string" ? payload.invoiceId.trim() : "";
+  const txHash = typeof (payload.txId ?? payload.txid) === "string"
+    ? String(payload.txId ?? payload.txid).trim()
+    : "";
+  if (!/^[a-f0-9]{32}$/.test(invoiceId) || !/^[a-fA-F0-9]{64}$/.test(txHash)) {
+    return NextResponse.json({ error: "Invalid invoice ID or transaction hash" }, { status: 400 });
+  }
 
   const invoice = await getInvoiceById(invoiceId);
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-
-  if (invoice.status === "confirmed") return NextResponse.json({ message: "Already processed" });
-
-  await updateInvoiceStatus(invoiceId, "pending", txId, confirmations);
-
-  if (status !== "confirmed" || confirmations < 10) {
-    return NextResponse.json({ message: "Awaiting confirmations", confirmations });
-  }
-
-  const tolerance = 0.02;
-  if (Math.abs(amount - invoice.amount_crypto) / invoice.amount_crypto > tolerance) {
-    await updateInvoiceStatus(invoiceId, "failed", txId, confirmations);
-    return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
+  if (invoice.crypto_type !== "monero" || invoice.monero_subaddress_index === undefined || invoice.monero_account_index === undefined) {
+    return NextResponse.json({ error: "Payment type does not match this webhook" }, { status: 400 });
   }
 
   try {
-    await updateInvoiceStatus(invoiceId, "confirmed", txId, confirmations);
-
-    const packageCode = invoice.package_code;
-    if (!packageCode) throw new Error("Package code missing from invoice");
-
-    const pikaResult = await purchaseEsim(packageCode);
-
-    // Encrypt and store eSIM credentials so user can retrieve them
-    const [iccidEnc, codeEnc] = await Promise.all([
-      encryptField(pikaResult.iccid),
-      encryptField(pikaResult.activationCode),
-    ]);
-
-    await updateInvoiceEsimData(invoiceId, {
-      iccid_encrypted: iccidEnc,
-      activation_code_encrypted: codeEnc,
-      sm_dp_address: pikaResult.smDpAddress ?? "",
-      pika_order_id: pikaResult.orderId,
-    });
-
-    console.log("XMR payment confirmed — eSIM provisioned", {
-      invoiceId,
-      iccid: pikaResult.iccid,
-    });
-
-    return NextResponse.json({ message: "Order created successfully" });
-  } catch (err) {
-    console.error("Post-payment XMR processing failed:", err);
-    return NextResponse.json({ message: "Payment confirmed — eSIM provisioning queued" });
+    const verified = await verifyMoneroPayment(
+      txHash,
+      invoice.amount_crypto,
+      invoice.monero_subaddress_index,
+      invoice.monero_account_index
+    );
+    if (!verified.ok) {
+      if (/needs at least/i.test(verified.error ?? "")) {
+        return NextResponse.json({ received: true, awaitingConfirmations: true }, { status: 202 });
+      }
+      return NextResponse.json({ error: verified.error ?? "Payment verification failed" }, { status: 400 });
+    }
+    return fulfillmentResponse(await fulfillPaidInvoice(invoiceId, txHash, verified.confirmations));
+  } catch (error) {
+    console.error("Monero wallet verification unavailable:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "Payment verification is temporarily unavailable" }, { status: 503 });
   }
 }

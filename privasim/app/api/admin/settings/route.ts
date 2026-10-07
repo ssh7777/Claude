@@ -1,55 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequest } from "@/lib/adminAuth";
 import {
   getWalletSettings,
-  setMoneroAddress,
   setEthereumAddress,
   setMarginPercent,
 } from "@/lib/settings";
 
 // Owner-only settings. Update receiving crypto addresses AND the retail
-// profit margin from the dashboard — validated, persisted to the ledger,
-// effective immediately (no redeploy). Gated by the reseller API key.
-
-function authorized(req: NextRequest): boolean {
-  const apiKey = process.env.PIKASIM_API_KEY ?? "";
-  return !!apiKey && req.headers.get("x-admin-key") === apiKey;
-}
+// profit margin from the dashboard — validated and persisted to PostgreSQL,
+// effective immediately (no redeploy). Gated by ADMIN_API_KEY.
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  return NextResponse.json(await getWalletSettings());
+  if (!isAdminRequest(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return NextResponse.json(await getWalletSettings(), { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdminRequest(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let body: { monero?: string; ethereum?: string; marginPercent?: number };
+  let body: { monero?: unknown; ethereum?: string; marginPercent?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (body.monero !== undefined) {
+    return NextResponse.json(
+      { error: "Monero receiving wallet is managed with the Wallet RPC environment configuration." },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  if (body.ethereum !== undefined && typeof body.ethereum !== "string") {
+    return NextResponse.json({ error: "ethereum must be a string" }, { status: 400 });
+  }
+
   const results: Record<string, string> = {};
   try {
-    if (body.monero) {
-      await setMoneroAddress(body.monero);
-      results.monero = "updated";
-    }
     if (body.ethereum) {
-      await setEthereumAddress(body.ethereum);
+      if (!(await setEthereumAddress(body.ethereum))) throw new Error("Could not persist the Ethereum address");
       results.ethereum = "updated";
     }
     if (body.marginPercent !== undefined) {
-      await setMarginPercent(Number(body.marginPercent));
+      if (!(await setMarginPercent(Number(body.marginPercent)))) throw new Error("Could not persist the margin");
       results.marginPercent = "updated";
     }
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Update failed";
+    const clientError = /^(Invalid|Margin must)/i.test(message);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Update failed" },
-      { status: 400 }
+      { error: clientError ? message : "Settings could not be persisted" },
+      { status: clientError ? 400 : 503, headers: { "Cache-Control": "no-store" } }
     );
   }
 
-  return NextResponse.json({ ...results, settings: await getWalletSettings() });
+  return NextResponse.json({ ...results, settings: await getWalletSettings() }, { headers: { "Cache-Control": "no-store" } });
 }

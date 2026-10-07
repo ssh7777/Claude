@@ -28,6 +28,7 @@ interface SavedOrder {
   createdAt: string;
   status: string;
   invoiceToken?: string;
+  isTopup?: boolean;
 }
 
 interface EsimCodes {
@@ -68,6 +69,8 @@ function OrderRow({
   const [expanded, setExpanded] = useState(false);
   const [checking, setChecking] = useState(false);
   const [esimReady, setEsimReady] = useState(false);
+  const [topupComplete, setTopupComplete] = useState(false);
+  const [fulfillmentStatus, setFulfillmentStatus] = useState("pending");
   const [revealing, setRevealing] = useState(false);
   const [codes, setCodes] = useState<EsimCodes | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -77,6 +80,7 @@ function OrderRow({
   const [txHash, setTxHash] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
+  const [verifyNotice, setVerifyNotice] = useState("");
 
   // eSIM data usage
   const [usage, setUsage] = useState<EsimUsage | null>(null);
@@ -86,20 +90,42 @@ function OrderRow({
     setChecking(true);
     setError("");
     try {
-      const res = await fetch(`/api/orders/${order.invoiceId}/status`);
+      const res = await fetch(`/api/orders/${order.invoiceId}/status`, {
+        headers: { "x-invoice-token": order.invoiceToken ?? "" },
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.status && data.status !== order.status) {
           onStatusUpdate(order.invoiceId, data.status);
         }
         setEsimReady(data.esimReady ?? false);
+        setTopupComplete(data.topupComplete ?? false);
+        setFulfillmentStatus(data.fulfillmentStatus ?? "pending");
+        if (data.esimReady) {
+          const delivery = await fetch(`/api/orders/${order.invoiceId}/decrypt`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ invoiceToken: order.invoiceToken }),
+            cache: "no-store",
+          });
+          if (delivery.ok) {
+            const newCodes = await delivery.json() as EsimCodes;
+            setCodes(newCodes);
+            try {
+              const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+              saved[order.invoiceId] = newCodes;
+              localStorage.setItem("privasim_codes", JSON.stringify(saved));
+            } catch {}
+          }
+        }
       }
     } catch {
       // Server may not have this order after a cold start
     } finally {
       setChecking(false);
     }
-  }, [order.invoiceId, order.status, onStatusUpdate]);
+  }, [order.invoiceId, order.status, order.invoiceToken, onStatusUpdate]);
 
   // Load saved eSIM codes from localStorage on mount
   useEffect(() => {
@@ -108,18 +134,19 @@ function OrderRow({
       if (saved[order.invoiceId]) {
         setCodes(saved[order.invoiceId]);
         setEsimReady(true);
+        setFulfillmentStatus("complete");
       }
     } catch {}
   }, [order.invoiceId]);
 
   useEffect(() => {
-    if (expanded && order.status === "pending") {
-      checkStatus();
-    }
-  }, [expanded, order.status, checkStatus]);
+    if (!expanded || esimReady) return;
+    void checkStatus();
+    const interval = setInterval(() => void checkStatus(), 15_000);
+    return () => clearInterval(interval);
+  }, [expanded, esimReady, checkStatus]);
 
   const revealCodes = async () => {
-    // Check localStorage first (persisted from when codes were first received)
     try {
       const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
       if (saved[order.invoiceId]) {
@@ -128,9 +155,28 @@ function OrderRow({
         return;
       }
     } catch {}
+
     setRevealing(true);
-    setError("eSIM codes not found in local storage. Please use the transaction hash below to re-verify your payment and retrieve your codes.");
-    setRevealing(false);
+    setError("");
+    try {
+      const response = await fetch(`/api/orders/${order.invoiceId}/decrypt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceToken: order.invoiceToken }),
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "eSIM codes are not ready yet.");
+      setCodes(data);
+      setEsimReady(true);
+      const allSaved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+      allSaved[order.invoiceId] = data;
+      localStorage.setItem("privasim_codes", JSON.stringify(allSaved));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not retrieve eSIM codes.");
+    } finally {
+      setRevealing(false);
+    }
   };
 
   const verifyPayment = async () => {
@@ -140,6 +186,7 @@ function OrderRow({
     }
     setVerifying(true);
     setVerifyError("");
+    setVerifyNotice("");
     try {
       const res = await fetch(`/api/orders/${order.invoiceId}/verify-payment`, {
         method: "POST",
@@ -147,17 +194,33 @@ function OrderRow({
         body: JSON.stringify({
           txHash: txHash.trim(),
           invoiceToken: order.invoiceToken,
-          source: (typeof localStorage !== "undefined" && localStorage.getItem("ps_source")) || "direct",
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Verification failed");
-      const newCodes = {
+      if (data.processing) {
+        onStatusUpdate(order.invoiceId, "confirmed");
+        setFulfillmentStatus(data.needsReview ? "needs_review" : "processing");
+        setVerifyNotice(data.message ?? "Payment verified; fulfillment is processing. Do not send another payment.");
+        return;
+      }
+      if (data.topup) {
+        onStatusUpdate(order.invoiceId, "confirmed");
+        setFulfillmentStatus("complete");
+        setTopupComplete(true);
+        setVerifyNotice(data.message ?? "Top-up applied successfully.");
+        return;
+      }
+      if (typeof data.iccid !== "string" || typeof data.activationCode !== "string") {
+        throw new Error("Payment response did not include eSIM credentials. Please refresh the order status.");
+      }
+      const newCodes: EsimCodes = {
         iccid: data.iccid,
         activationCode: data.activationCode,
         smDpAddress: data.smDpAddress ?? "",
       };
       onStatusUpdate(order.invoiceId, "confirmed");
+      setFulfillmentStatus("complete");
       setCodes(newCodes);
       setEsimReady(true);
       // Persist codes to localStorage so they survive page refresh
@@ -197,14 +260,21 @@ function OrderRow({
     (order.status === "pending" && new Date(order.expiresAt) < new Date());
 
   const currentStatus = isExpired && order.status !== "confirmed" ? "expired" : order.status;
-  const cryptoSymbol = order.cryptoType === "monero" ? "XMR" : "ETH";
-  const txPlaceholder = cryptoSymbol === "ETH" ? "0x..." : "Transaction ID (64 hex chars)";
+  const cryptoSymbol = order.cryptoType === "monero"
+    ? "XMR"
+    : order.cryptoType === "usdt_eth"
+      ? "USDT"
+      : order.cryptoType === "other"
+        ? "XMR swap"
+        : "ETH";
+  const txPlaceholder = cryptoSymbol === "ETH" || cryptoSymbol === "USDT" ? "0x..." : "Transaction ID (64 hex chars)";
+  const paymentNetwork = order.cryptoType === "monero" || order.cryptoType === "other" ? "Monero" : "Ethereum";
+  const deliveryLabel = order.isTopup ? "top-up" : "eSIM";
 
-  const TxVerifySection = () => (
+  const txVerifySection = (
     <div className="space-y-2">
       <p className="text-xs text-gray-400">
-        Paste your {cryptoSymbol === "ETH" ? "Ethereum" : "Monero"} transaction hash to verify on-chain
-        and instantly receive your eSIM.
+        Paste your {paymentNetwork} transaction hash to verify payment and check {deliveryLabel} fulfillment.
       </p>
       <input
         type="text"
@@ -272,13 +342,18 @@ function OrderRow({
 
       {expanded && (
         <div className="border-t border-white/10 p-4 space-y-3">
+          {verifyNotice && (
+            <div className="bg-blue-400/5 border border-blue-400/20 rounded-lg p-3 text-sm text-blue-200">
+              {verifyNotice}
+            </div>
+          )}
 
           {/* ── Pending (not expired) ─────────────────────────────────────── */}
           {order.status === "pending" && !isExpired && (
             <div className="space-y-2">
               <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-3 text-sm text-yellow-300">
                 Waiting for blockchain confirmation. Send exactly{" "}
-                <strong>{order.amountCrypto.toFixed(8)} {cryptoSymbol}</strong> to complete your order.
+                <strong>{order.amountCrypto.toFixed(8)} {cryptoSymbol}</strong> to complete your {deliveryLabel}.
               </div>
               <div className="bg-white/5 rounded-lg p-2">
                 <div className="text-xs text-gray-400 mb-1">Payment address</div>
@@ -305,9 +380,9 @@ function OrderRow({
 
               <div className="border-t border-white/10 pt-2">
                 <p className="text-xs font-medium text-[#ff6600] mb-2">
-                  Already sent? Verify your transaction hash to get your eSIM instantly:
+                  Already sent? Verify your transaction hash to confirm the {deliveryLabel}:
                 </p>
-                <TxVerifySection />
+                {txVerifySection}
               </div>
             </div>
           )}
@@ -316,15 +391,26 @@ function OrderRow({
           {isExpired && order.status !== "confirmed" && (
             <div className="space-y-2">
               <div className="bg-gray-400/5 border border-gray-400/20 rounded-lg p-3 text-sm text-gray-300">
-                Invoice expired. If you already sent payment, enter your transaction hash below to still receive your eSIM.
+                Invoice expired. If you already sent payment, verify the transaction below to check your {deliveryLabel} status.
               </div>
-              <TxVerifySection />
+              {txVerifySection}
             </div>
           )}
 
           {/* ── Confirmed — show eSIM codes ───────────────────────────────── */}
           {(order.status === "confirmed" || esimReady) && (
             <div className="space-y-2">
+              {order.isTopup ? (
+                <div className="rounded-lg border border-green-400/20 bg-green-400/5 p-3 text-sm text-green-300">
+                  {topupComplete
+                    ? "Top-up completed successfully."
+                    : "Payment confirmed. Top-up fulfillment is still processing; do not send another payment."}
+                </div>
+              ) : (
+                <>
+
+                  {fulfillmentStatus === "complete" || esimReady ? (
+                    <>
               {!codes ? (
                 <Button
                   onClick={revealCodes}
@@ -420,6 +506,16 @@ function OrderRow({
                   </p>
                 </div>
               )}
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-blue-400/20 bg-blue-400/5 p-3 text-sm text-blue-200">
+                      {fulfillmentStatus === "needs_review"
+                        ? "Payment is confirmed, but fulfillment needs manual review. Do not send another payment."
+                        : "Payment is confirmed and supplier fulfillment is processing. Do not send another payment."}
+                    </div>
+                  )}
+                            </>
+              )}
             </div>
           )}
 
@@ -500,7 +596,7 @@ export default function OrdersPage() {
               Your eSIM orders appear here automatically after purchase.
             </p>
             <p className="text-gray-500 text-xs mb-6">
-              Orders are stored in your browser — no account needed.
+              A recovery token and delivered credentials are saved in your browser. The server keeps a minimal order record for up to 30 days.
             </p>
             <Button className="bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
               <Link href="/shop">
@@ -519,7 +615,7 @@ export default function OrdersPage() {
               />
             ))}
             <p className="text-xs text-gray-600 text-center mt-4">
-              Orders are saved in this browser only. Clearing browser data removes this list.
+              This browser holds your invoice tokens and order list. Server-side invoice records are retained for up to 30 days; clearing browser data removes your access tokens.
             </p>
           </div>
         )}

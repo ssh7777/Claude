@@ -108,6 +108,7 @@ export interface CryptoPrices {
 export interface JWTPayload {
   walletHash: string;
   walletType: WalletType;
+  authVersion: 2;
   iat: number;
   exp: number;
 }

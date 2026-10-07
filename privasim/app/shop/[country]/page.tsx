@@ -10,7 +10,7 @@ import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const APP_URL = "https://privasim.app";
 
@@ -24,16 +24,16 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const countryCode = params.country.toUpperCase();
   const name = countryName(countryCode);
   return {
-    title: `${name} eSIM — Anonymous Data Plans, No KYC`,
-    description: `Buy a prepaid ${name} eSIM with Monero or Ethereum. Instant QR delivery, no account, no ID, no KYC. Data plans from $3 for ${name} travel.`,
+    title: `${name} eSIM — Prepaid Crypto Plans`,
+    description: `Browse prepaid ${name} eSIMs with crypto payment and no identity account required at checkout. Delivery follows required confirmations and supplier fulfillment.`,
     keywords: [
       `${name} esim`, `esim for ${name}`, `${name} travel data`,
       `anonymous esim ${name}`, `buy ${name} esim crypto`, `${name} prepaid data`,
     ],
     alternates: { canonical: `${APP_URL}/shop/${countryCode}` },
     openGraph: {
-      title: `${name} eSIM — Anonymous Data Plans`,
-      description: `Prepaid ${name} eSIM. Pay with Monero or Ethereum, no KYC, instant delivery.`,
+      title: `${name} eSIM — Prepaid Crypto Plans`,
+      description: `Prepaid ${name} eSIM plans. Checkout does not require an identity account; order records support payment verification and delivery.`,
       url: `${APP_URL}/shop/${countryCode}`,
       siteName: "PRIVASIM",
     },

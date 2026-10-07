@@ -18,7 +18,6 @@ interface PaymentModalProps {
   onClose: () => void;
   invoiceId: string;
   packageName: string;
-  packageCode: string;
   amountUsd: number;
   amountCrypto: number;
   cryptoType: "monero" | "ethereum" | "usdt_eth" | "other";
@@ -35,7 +34,6 @@ export default function PaymentModal({
   onClose,
   invoiceId,
   packageName,
-  packageCode,
   amountUsd,
   amountCrypto,
   cryptoType,
@@ -75,23 +73,48 @@ export default function PaymentModal({
 
   // Poll for automatic payment confirmation
   useEffect(() => {
-    if (!open || status !== "pending") return;
+    if (!open || (status !== "pending" && !processingAsync)) return;
+    let stopped = false;
     const poll = setInterval(async () => {
       try {
-        const res = await fetch(`/api/orders/${invoiceId}/status`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === "confirmed") {
-            setStatus("confirmed");
-            clearInterval(poll);
-          }
+        const res = await fetch(`/api/orders/${invoiceId}/status`, {
+          headers: { "x-invoice-token": invoiceToken ?? "" },
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status !== "confirmed") return;
+        setStatus("confirmed");
+        if (!data.esimReady) {
+          setProcessingAsync(true);
+          return;
         }
+        const delivery = await fetch(`/api/orders/${invoiceId}/decrypt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceToken }),
+          cache: "no-store",
+        });
+        if (!delivery.ok) return;
+        const codes = await delivery.json();
+        if (stopped) return;
+        setVerifiedCodes(codes);
+        setProcessingAsync(false);
+        try {
+          const saved = JSON.parse(localStorage.getItem("privasim_codes") ?? "{}");
+          saved[invoiceId] = codes;
+          localStorage.setItem("privasim_codes", JSON.stringify(saved));
+        } catch {}
+        clearInterval(poll);
       } catch {
-        // Ignore — server may not have this invoice in memory after cold start
+        // Retry on the next interval if the provider or database is temporarily unavailable.
       }
     }, 15_000);
-    return () => clearInterval(poll);
-  }, [open, status, invoiceId]);
+    return () => {
+      stopped = true;
+      clearInterval(poll);
+    };
+  }, [open, status, processingAsync, invoiceId, invoiceToken]);
 
   const copy = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -113,7 +136,6 @@ export default function PaymentModal({
         body: JSON.stringify({
           txHash: txHash.trim(),
           invoiceToken,
-          source: (typeof localStorage !== "undefined" && localStorage.getItem("ps_source")) || "direct",
         }),
       });
       const data = await res.json();
@@ -282,7 +304,7 @@ export default function PaymentModal({
                   Click below, pick your coin, and pay the shown amount — it converts automatically
                   and settles to our address. When the processor shows{" "}
                   <strong>&ldquo;complete&rdquo;</strong>, copy the destination transaction ID it displays
-                  and paste it in Step 2 to claim your eSIM instantly.
+                  and paste it in Step 2 for payment verification. Delivery starts after the required confirmations and supplier fulfillment.
                 </div>
                 <a
                   href={anonpayUrl}
@@ -361,7 +383,7 @@ export default function PaymentModal({
             <div className="bg-white/3 border border-[#ff6600]/30 rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2 mb-1">
                 <span className="w-5 h-5 rounded-full bg-[#ff6600] text-white text-xs flex items-center justify-center font-bold shrink-0">2</span>
-                <span className="text-sm font-semibold text-white">Get your eSIM instantly</span>
+                <span className="text-sm font-semibold text-white">Verify payment &amp; follow delivery</span>
               </div>
 
               <p className="text-xs text-gray-400">
@@ -399,12 +421,12 @@ export default function PaymentModal({
 
             <p className="text-xs text-gray-600 text-center">
               {isEth
-                ? "ETH confirms in ~30 sec. Do not send from an exchange — use a self-custody wallet."
+                ? "Ethereum mainnet requires 12 confirmations; timing varies. Send only ETH to this invoice."
                 : isUsdt
-                ? "USDT confirms in ~30 sec. ERC-20 on Ethereum Mainnet only — self-custody wallet recommended."
+                ? "USDT is ERC-20 on Ethereum mainnet and requires 12 confirmations; timing varies."
                 : isOther
-                ? "Swaps take 5–30 min depending on the coin. Keep the processor tab open until complete."
-                : "XMR takes 2–10 min (10 block confirmations). Do not send from an exchange."}
+                ? "The external swap provider controls its own timing, fees, and privacy terms. Keep its status page open until it confirms."
+                : "Monero requires 10 confirmations; timing varies. Send to this invoice subaddress."}
             </p>
           </div>
         )}
