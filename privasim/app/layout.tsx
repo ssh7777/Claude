@@ -1,16 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import "flag-icons/css/flag-icons.min.css";
 import Header from "@/components/Header";
 import PromoBanner from "@/components/PromoBanner";
 import Footer from "@/components/Footer";
 import Chatbot from "@/components/Chatbot";
-import TrackVisit from "@/components/TrackVisit";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-
-const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 const APP_URL = "https://privasim.app";
 
@@ -25,11 +19,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "PRIVASIM — Buy eSIM with Crypto | 190+ Countries, No KYC",
+    default: "PRIVASIM — Buy eSIM with Crypto | 190+ Countries, No Account Required",
     template: "%s | PRIVASIM",
   },
   description:
-    "Buy eSIMs for 190+ countries with Monero or Ethereum. No email. No KYC. No tracking. Instant delivery. The only anonymous eSIM marketplace.",
+    "Buy prepaid eSIMs for 190+ countries with cryptocurrency, without an identity account. Minimal order records support payment verification and secure delivery.",
   keywords: [
     "anonymous esim", "privacy esim", "buy esim crypto", "monero esim", "ethereum esim",
     "no kyc esim", "travel esim", "esim marketplace", "esim without registration",
@@ -54,14 +48,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: APP_URL,
     siteName: "PRIVASIM",
-    title: "PRIVASIM — Buy eSIM with Crypto | No KYC, 190+ Countries",
+    title: "PRIVASIM — Buy eSIM with Crypto | No Account, 190+ Countries",
     description:
-      "The only anonymous eSIM marketplace. Pay with Monero or Ethereum — no email, no identity, instant delivery.",
+      "Prepaid eSIMs for 190+ countries. No identity account is required; payment verification and delivery use a temporary order record.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PRIVASIM — Anonymous eSIM Marketplace",
-    description: "Buy eSIMs for 190+ countries with crypto. No email. No KYC.",
+    title: "PRIVASIM — eSIMs with Cryptocurrency",
+    description: "Buy prepaid eSIMs for 190+ countries without an identity account. Order records support payment verification and delivery.",
   },
   alternates: {
     canonical: APP_URL,
@@ -84,14 +78,14 @@ const JSON_LD = {
       name: "PRIVASIM",
       url: APP_URL,
       description:
-        "Privacy-first eSIM marketplace accepting Monero and Ethereum. No KYC, no email, 190+ countries.",
+        "Privacy-focused eSIM marketplace accepting cryptocurrency without requiring an identity account. Order data is retained temporarily for payment verification and delivery.",
     },
     {
       "@type": "WebSite",
       "@id": `${APP_URL}/#website`,
       url: APP_URL,
       name: "PRIVASIM",
-      description: "Buy eSIMs anonymously with Monero or Ethereum for 190+ countries.",
+      description: "Buy prepaid eSIMs for 190+ countries with cryptocurrency and no identity account requirement.",
       publisher: { "@id": `${APP_URL}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -110,7 +104,7 @@ const JSON_LD = {
           name: "Can I buy an eSIM without email or ID?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. PRIVASIM requires zero identity verification. Pay from any crypto wallet — no email, no phone, no account, no KYC.",
+            text: "Checkout does not require an identity account, email, phone number, or ID, and connecting a wallet is optional. Supplier and local SIM-registration requirements may vary by destination."
           },
         },
         {
@@ -118,7 +112,7 @@ const JSON_LD = {
           name: "Which cryptocurrencies does PRIVASIM accept?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "PRIVASIM accepts Monero (XMR) for maximum privacy, Ethereum (ETH), USDT on Ethereum mainnet, and 100+ other cryptocurrencies (BTC, LTC, SOL, DOGE and more) via anonymous swap. No credit cards.",
+            text: "PRIVASIM accepts Monero (XMR), Ethereum (ETH), USDT on Ethereum mainnet, and additional coins through a separate Trocador swap flow. Swap-provider terms and network fees apply. No credit cards.",
           },
         },
         {
@@ -134,7 +128,7 @@ const JSON_LD = {
           name: "How fast is eSIM delivery?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "eSIM activation codes are delivered instantly after blockchain confirmation — roughly 30 seconds for Ethereum, 2–10 minutes for Monero.",
+            text: "Delivery starts after required confirmations and supplier fulfillment. Ethereum requires 12 confirmations and Monero requires 10; actual times vary with network conditions and supplier response.",
           },
         },
         {
@@ -160,15 +154,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
       </head>
-      <body className={`${inter.className} min-h-screen bg-[#0a0a1a] antialiased`}>
+      <body className="font-sans min-h-screen bg-[#0a0a1a] antialiased">
         <PromoBanner />
         <Header />
         <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         <Footer />
         <Chatbot />
-        <TrackVisit />
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

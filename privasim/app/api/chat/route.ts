@@ -44,27 +44,27 @@ const RULES: Rule[] = [
   {
     test: /\b(hi|hello|hey|good (morning|afternoon|evening)|yo|sup)\b/i,
     reply:
-      "Hi! I'm ARIA, your anonymous eSIM guide. Ask me things like:\n• \"eSIM for Japan\" — live plans and prices\n• \"How do I pay with Monero?\"\n• \"Will my iPhone work?\"\n• \"Where is my order?\"",
+      "Hi! I'm ARIA, your privacy-focused eSIM guide. Ask me things like:\n• \"eSIM for Japan\" — live plans and prices\n• \"How do I pay with Monero?\"\n• \"Will my iPhone work?\"\n• \"Where is my order?\"",
   },
   {
     test: /\b(how|where).{0,30}\b(buy|purchase|order|get)\b|\bhow does (this|it) work\b/i,
     reply:
-      "Buying takes ~2 minutes and zero personal info:\n1. Pick your destination at [/shop](/shop)\n2. Choose a plan and hit **Buy Now**\n3. Pay with Monero (most private) or Ethereum\n4. Send the exact amount to the address shown\n5. After blockchain confirmation (~30s ETH, 2–10 min XMR) your eSIM QR code appears — also saved on [/orders](/orders)",
+      "Checkout does not require an identity account, email, or ID:\n1. Pick a destination at [/shop](/shop)\n2. Choose a plan and select **Buy Now**\n3. Pay with Monero, ETH, USDT, or a supported asset via the external Trocador swap flow\n4. Send the exact amount to the address shown\n5. After the required confirmations and supplier fulfillment, retrieve your eSIM at [/orders](/orders). Keep the invoice token saved in your browser; timings vary.",
   },
   {
     test: /\bmonero|xmr\b/i,
     reply:
-      "**Monero (XMR)** is our most private option — stealth addresses and ring signatures make payments untraceable.\n\nHow: at checkout choose Monero, then send the exact XMR amount from any wallet (Cake Wallet, Feather, Monerujo). Scan the QR or copy the address. Delivery after ~10 confirmations (2–10 minutes).",
+      "**Monero (XMR)** is our strongest direct-payment privacy option, but it does not guarantee anonymity: wallet, network, device, and service-provider metadata may still exist. At checkout choose Monero and send the exact amount to the invoice subaddress. Ten confirmations are required; timing depends on network conditions.",
   },
   {
     test: /\bethereum|\beth\b|metamask/i,
     reply:
-      "**Ethereum (ETH)** confirms fast (~30 seconds).\n\nImportant:\n• Send **ETH on Ethereum Mainnet** (chain ID 1) only\n• Do **not** send USDT, USDC, BNB or use other chains\n• Any wallet works: MetaMask, Trust Wallet, hardware wallets\n\nAfter sending, paste your transaction hash on the order page to claim your eSIM instantly.",
+      "**ETH and USDT** are accepted on Ethereum mainnet (chain ID 1). Ethereum payments require 12 confirmations; timing varies with block production and RPC availability. Send only the asset and amount shown on your invoice—do not use another token or chain. Keep your order token and verify payment from the original order page.",
   },
   {
-    test: /\b(bitcoin|btc|usdt|usdc|paypal|credit card|visa|mastercard|apple pay|google pay)\b/i,
+    test: /\b(bitcoin|btc|usdt|usdc|paypal|credit card|visa|mastercard|apple pay|google pay|other coins)\b/i,
     reply:
-      "We only accept **Monero (XMR)** and **Ethereum (ETH)** — they let us sell without collecting any identity. Bitcoin, stablecoins, cards, and PayPal aren't supported. If you hold other crypto, a quick swap to XMR or ETH on any exchange works.",
+      "PRIVASIM accepts Monero (XMR), Ethereum (ETH), and USDT on Ethereum mainnet directly. Additional supported assets may be offered through Trocador, an external swap provider with separate privacy terms and fees. Cards and PayPal are not supported. Check the payment options shown for your specific invoice.",
   },
   {
     test: /\b(device|phone|iphone|android|samsung|pixel|compatib|support(s|ed)?|work (on|with))\b/i,
@@ -79,17 +79,17 @@ const RULES: Rule[] = [
   {
     test: /\b(order|status|track|where.{0,15}(esim|order)|not?t? (arriv|receiv|deliver)\w*|still waiting|didn'?t (get|arrive|come)|paid but)\b/i,
     reply:
-      "Track your order at [/orders](/orders) — it's stored in your browser, no account needed.\n\n• **Pending** — waiting for blockchain confirmation (~30s ETH, 2–10 min XMR)\n• **Processing** — payment confirmed, eSIM being provisioned (30–60s)\n• **Delivered** — QR code and activation code shown\n\nIf you paid but see nothing after 10 minutes, open your order and paste your transaction hash to claim delivery.",
+      "Open [/orders](/orders) in the same browser where you checked out. The random invoice token is needed to access the server-side order record; keep the token and any delivered codes private.\n\n• **Pending** — awaiting required chain confirmations\n• **Processing** — payment confirmed; supplier fulfillment is in progress\n• **Delivered** — credentials are available\n\nIf payment remains pending, use the transaction-hash verification control on that order page. It still requires the original invoice token. Clearing browser storage can remove your access token.",
   },
   {
     test: /\brefund|cancel|money back|return\b/i,
     reply:
-      "eSIMs are provisioned instantly and activation codes are single-use, so **completed orders can't be refunded**. If your payment went through but the eSIM failed to deliver, use [/orders](/orders) to retry with your transaction hash — payment is never lost.",
+      "Refund eligibility depends on the order status, provider terms, and applicable consumer law; this chatbot cannot decide refund requests. If payment is confirmed but delivery is stuck, keep your invoice token and transaction reference, then contact the service operator. A published support channel must be configured before this site is used for production sales.",
   },
   {
     test: /\b(privacy|anonym|kyc|identity|tracking|log(s|ging)?|data (do you|you) (collect|store)|email|account|sign ?up|register)\b/i,
     reply:
-      "PRIVASIM is built for privacy:\n• **No account, email, or phone number** — ever\n• **No KYC** — we never ask who you are\n• Payments in Monero/Ethereum, not cards\n• eSIM credentials encrypted with AES-256-GCM\n• No cookies, no trackers, no third-party analytics\n\nOrders are tied to your browser only. Read more: [/privacy](/privacy).",
+      "PRIVASIM does not require an identity account, email, or ID at checkout. It retains a temporary order record for payment verification and fulfillment; eSIM credentials are encrypted at rest and delivered through a random invoice token saved in your browser. Monero, Ethereum, USDT, and an external swap flow have different privacy properties. No advertising trackers or third-party analytics scripts are used. Read more: [/privacy](/privacy).",
   },
   {
     test: /\b(top ?up|refill|extend|add (more )?data|ran out|used up)\b/i,
@@ -114,7 +114,7 @@ const RULES: Rule[] = [
   {
     test: /\b(problem|issue|help|support|broken|doesn'?t work|not working|error|fail)\b/i,
     reply:
-      "Sorry about that — let's fix it:\n• **eSIM won't install?** Check the device is unlocked and eSIM-capable (dial `*#06#`)\n• **No data abroad?** Enable data roaming on the eSIM line\n• **Payment sent but no eSIM?** Go to [/orders](/orders) and paste your transaction hash\n• **Other issue?** Check [/blog/esim-troubleshooting-guide](/blog/esim-troubleshooting-guide)\n\nWhat exactly is happening?",
+      "Sorry about that — let's investigate:\n• **eSIM won't install?** Check the device is unlocked and eSIM-capable (dial `*#06#`)\n• **No data abroad?** Enable data roaming on the eSIM line\n• **Payment sent but no eSIM?** Open [/orders](/orders) in the original browser and use its invoice token; verify with the transaction hash if prompted\n• **Other issue?** Check [/blog/esim-troubleshooting-guide](/blog/esim-troubleshooting-guide)\n\nWhat exactly is happening?",
   },
   {
     test: /\b(thank|thanks|thx|cheers|great|awesome|perfect)\b/i,
@@ -146,7 +146,7 @@ async function generateReply(text: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`chat:${ip}`, CHAT_RATE_LIMIT);
+  const { allowed } = await rateLimit(`chat:${ip}`, CHAT_RATE_LIMIT);
   if (!allowed) {
     return new Response(JSON.stringify({ error: "Too many requests" }), {
       status: 429,

@@ -1,9 +1,14 @@
-// Ethereum/USDT payment utilities — SERVER-SIDE ONLY
+// Ethereum native ETH and USDT (ERC-20, Ethereum mainnet) payment helpers.
 
 import QRCode from "qrcode";
 import { usdToEth } from "@/lib/prices";
 import { generateSecureId } from "@/lib/crypto-utils";
 import { getEthereumAddress } from "@/lib/settings";
+
+const DISPLAY_PRECISION = 100_000_000;
+const WEI_PER_DISPLAY_UNIT = BigInt(10) ** BigInt(10);
+const USDT_BASE_UNITS_PER_CENT = BigInt(10_000);
+const ETH_MIN_CONFIRMATIONS = 12;
 
 export interface EthereumPaymentInfo {
   address: string;
@@ -14,37 +19,39 @@ export interface EthereumPaymentInfo {
   invoiceId: string;
 }
 
-export async function generateEthereumPaymentInfo(
-  amountUsd: number
-): Promise<EthereumPaymentInfo> {
-  const address = await getEthereumAddress();
-  const amountEth = await usdToEth(amountUsd);
-  const invoiceId = generateSecureId();
-  const amountWei = BigInt(Math.floor(amountEth * 1e18)).toString(10);
+function ceilToEightDecimals(value: number): number {
+  return Math.ceil((value - Number.EPSILON) * DISPLAY_PRECISION) / DISPLAY_PRECISION;
+}
 
-  const paymentUrl = `ethereum:${address}@1?value=${amountWei}`;
-
-  // QR encodes the PLAIN address only. EIP-681 URIs confuse several wallets
-  // and generic scanners, which append the URI parts to the address.
-  const qrCode = await QRCode.toDataURL(address, {
+async function addressQr(address: string): Promise<string> {
+  return QRCode.toDataURL(address, {
     errorCorrectionLevel: "M",
     width: 256,
     margin: 2,
     color: { dark: "#1a1a2e", light: "#ffffff" },
   });
+}
 
+export async function generateEthereumPaymentInfo(amountUsd: number): Promise<EthereumPaymentInfo> {
+  const address = await getEthereumAddress();
+  const amountEth = ceilToEightDecimals(await usdToEth(amountUsd));
+  if (!Number.isFinite(amountEth) || amountEth <= 0) throw new Error("Unable to quote an ETH amount");
+  const invoiceId = generateSecureId();
+  const amountWei = BigInt(Math.round(amountEth * DISPLAY_PRECISION)) * WEI_PER_DISPLAY_UNIT;
+  const paymentUrl = `ethereum:${address}@1?value=${amountWei.toString(10)}`;
   return {
     address,
     amountEth,
     amountUsd,
-    qrCode,
+    qrCode: await addressQr(address),
     paymentUrl,
     invoiceId,
   };
 }
 
-// USDT (ERC-20 on Ethereum mainnet). Stablecoin: 1 USDT = 1 USD, 6 decimals.
+// USDT (ERC-20 on Ethereum mainnet): 6 token decimals, priced at USD cents.
 export const USDT_CONTRACT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+export const USDT_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 export interface UsdtPaymentInfo {
   address: string;
@@ -59,99 +66,132 @@ export async function generateUsdtPaymentInfo(amountUsd: number): Promise<UsdtPa
   const address = await getEthereumAddress();
   const amountUsdt = Math.ceil(amountUsd * 100) / 100;
   const invoiceId = generateSecureId();
-  const units = BigInt(Math.round(amountUsdt * 1e6)).toString(10);
-
-  // EIP-681 token transfer URL — wallets prefill the USDT send screen
-  const paymentUrl = `ethereum:${USDT_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
-
-  // QR encodes OUR plain address only — never the token contract, which
-  // scanners would otherwise present as the destination address.
-  const qrCode = await QRCode.toDataURL(address, {
-    errorCorrectionLevel: "M",
-    width: 256,
-    margin: 2,
-    color: { dark: "#1a1a2e", light: "#ffffff" },
-  });
-
-  return { address, amountUsdt, amountUsd, qrCode, paymentUrl, invoiceId };
+  const units = BigInt(Math.round(amountUsdt * 100)) * USDT_BASE_UNITS_PER_CENT;
+  const paymentUrl = `ethereum:${USDT_CONTRACT}@1/transfer?address=${address}&uint256=${units.toString(10)}`;
+  return { address, amountUsdt, amountUsd, qrCode: await addressQr(address), paymentUrl, invoiceId };
 }
 
-// Verify a USDT transfer to our address by decoding the Transfer event
-// in the transaction receipt. Works on any public RPC — no API key.
-export async function verifyUsdtPayment(
-  txHash: string,
-  expectedUsdt: number,
-  expectedAddress: string
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const { ethers } = await import("ethers");
-    const rpcs = [
-      process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com",
-      "https://ethereum-rpc.publicnode.com",
-      "https://cloudflare-eth.com",
-    ];
+function rpcUrls(): string[] {
+  return [
+    process.env.ETHEREUM_RPC_URL?.trim(),
+    "https://ethereum-rpc.publicnode.com",
+    "https://cloudflare-eth.com",
+  ].filter((url): url is string => Boolean(url));
+}
 
-    let receipt = null;
-    for (const url of rpcs) {
-      const provider = new ethers.JsonRpcProvider(url);
-      receipt = await provider.getTransactionReceipt(txHash).catch(() => null);
-      if (receipt) break;
+async function getMainnetProvider() {
+  const { ethers } = await import("ethers");
+  let lastError: unknown;
+  for (const url of [...new Set(rpcUrls())]) {
+    let provider: InstanceType<typeof ethers.JsonRpcProvider> | undefined;
+    try {
+      provider = new ethers.JsonRpcProvider(url);
+      const network = await provider.getNetwork();
+      if (network.chainId !== BigInt(1)) {
+        provider.destroy();
+        continue;
+      }
+      return { provider };
+    } catch (error) {
+      provider?.destroy();
+      lastError = error;
     }
-    if (!receipt) return { ok: false, error: "Transaction not found or not yet mined — wait ~30s and retry." };
-    if (receipt.status !== 1) return { ok: false, error: "Transaction failed on-chain." };
-
-    const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-    const to = expectedAddress.toLowerCase().replace(/^0x/, "").padStart(64, "0");
-
-    for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== USDT_CONTRACT.toLowerCase()) continue;
-      if (log.topics[0] !== transferTopic) continue;
-      if ((log.topics[2] ?? "").toLowerCase().slice(2) !== to) continue;
-      const amount = Number(BigInt(log.data)) / 1e6;
-      if (amount + 0.01 >= expectedUsdt * 0.95) return { ok: true };
-      return { ok: false, error: `USDT amount too low: sent $${amount.toFixed(2)}, need $${expectedUsdt.toFixed(2)}.` };
-    }
-    return { ok: false, error: "No USDT transfer to the PRIVASIM address found in this transaction." };
-  } catch {
-    return { ok: false, error: "Could not reach Ethereum RPC — try again in 30 seconds." };
   }
+  throw lastError instanceof Error ? lastError : new Error("No Ethereum mainnet RPC is available");
+}
+
+async function getConfirmedTransaction(txHash: string) {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) throw new Error("Invalid Ethereum transaction hash.");
+  const { provider } = await getMainnetProvider();
+  try {
+    const transaction = await provider.getTransaction(txHash);
+    if (!transaction) throw new Error("Transaction not found on Ethereum mainnet.");
+    const receipt = await provider.getTransactionReceipt(txHash);
+    if (!receipt) throw new Error("Transaction is not yet mined.");
+    if (receipt.status !== 1) throw new Error("Transaction failed on Ethereum mainnet.");
+    const blockNumber = await provider.getBlockNumber();
+    const confirmations = Math.max(0, blockNumber - receipt.blockNumber + 1);
+    if (confirmations < ETH_MIN_CONFIRMATIONS) {
+      throw new Error(`Ethereum payment needs at least ${ETH_MIN_CONFIRMATIONS} confirmations.`);
+    }
+    return { provider, transaction, receipt, confirmations };
+  } catch (error) {
+    provider.destroy();
+    throw error;
+  }
+}
+
+export interface PaymentVerificationResult {
+  ok: boolean;
+  confirmations: number;
+  error?: string;
+}
+
+function safeVerificationError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "Payment verification failed.";
+  if (/^(Invalid|Transaction|Ethereum payment)/.test(message)) return message;
+  return "Ethereum RPC verification is temporarily unavailable.";
 }
 
 export async function verifyEthereumPayment(
   txHash: string,
   expectedAmountEth: number,
   expectedAddress: string
-): Promise<boolean> {
-  if (!txHash || !expectedAddress) return false;
-
+): Promise<PaymentVerificationResult> {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(expectedAddress) || !Number.isFinite(expectedAmountEth) || expectedAmountEth <= 0) {
+    return { ok: false, confirmations: 0, error: "Invalid invoice payment details." };
+  }
+  let verification: Awaited<ReturnType<typeof getConfirmedTransaction>> | undefined;
   try {
-    const { ethers } = await import("ethers");
-    const rpcUrl = process.env.ETHEREUM_RPC_URL ?? "https://eth.llamarpc.com";
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    verification = await getConfirmedTransaction(txHash);
+    if (verification.transaction.to?.toLowerCase() !== expectedAddress.toLowerCase()) {
+      return { ok: false, confirmations: verification.confirmations, error: "Payment was not sent to this invoice address." };
+    }
+    const requiredWei = BigInt(Math.round(expectedAmountEth * DISPLAY_PRECISION)) * WEI_PER_DISPLAY_UNIT;
+    if (verification.transaction.value < requiredWei) {
+      return { ok: false, confirmations: verification.confirmations, error: "ETH payment amount is below the invoice amount." };
+    }
+    return { ok: true, confirmations: verification.confirmations };
+  } catch (error) {
+    return { ok: false, confirmations: verification?.confirmations ?? 0, error: safeVerificationError(error) };
+  } finally {
+    verification?.provider.destroy();
+  }
+}
 
-    const tx = await provider.getTransaction(txHash);
-    if (!tx) return false;
-
-    const receipt = await provider.getTransactionReceipt(txHash);
-    if (!receipt || receipt.status !== 1) return false;
-
-    // Verify destination address
-    if (tx.to?.toLowerCase() !== expectedAddress.toLowerCase()) return false;
-
-    // Verify amount (within 2% tolerance)
-    const sentEth = parseFloat(ethers.formatEther(tx.value));
-    const tolerance = 0.02;
-    const withinTolerance =
-      Math.abs(sentEth - expectedAmountEth) / expectedAmountEth <= tolerance;
-
-    return withinTolerance;
-  } catch {
-    return false;
+export async function verifyUsdtPayment(
+  txHash: string,
+  expectedUsdt: number,
+  expectedAddress: string
+): Promise<PaymentVerificationResult> {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(expectedAddress) || !Number.isFinite(expectedUsdt) || expectedUsdt <= 0) {
+    return { ok: false, confirmations: 0, error: "Invalid invoice payment details." };
+  }
+  let verification: Awaited<ReturnType<typeof getConfirmedTransaction>> | undefined;
+  try {
+    verification = await getConfirmedTransaction(txHash);
+    const receiverTopic = `0x${expectedAddress.toLowerCase().slice(2).padStart(64, "0")}`;
+    let receivedUnits = BigInt(0);
+    for (const log of verification.receipt.logs) {
+      if (log.address.toLowerCase() !== USDT_CONTRACT.toLowerCase()) continue;
+      if (log.topics[0]?.toLowerCase() !== USDT_TRANSFER_TOPIC) continue;
+      if (log.topics[2]?.toLowerCase() !== receiverTopic) continue;
+      receivedUnits += BigInt(log.data);
+    }
+    const requiredUnits = BigInt(Math.round(expectedUsdt * 100)) * USDT_BASE_UNITS_PER_CENT;
+    if (receivedUnits < requiredUnits) {
+      return { ok: false, confirmations: verification.confirmations, error: "USDT payment amount to this invoice address is insufficient." };
+    }
+    return { ok: true, confirmations: verification.confirmations };
+  } catch (error) {
+    return { ok: false, confirmations: verification?.confirmations ?? 0, error: safeVerificationError(error) };
+  } finally {
+    verification?.provider.destroy();
   }
 }
 
 export function getEthWebhookSecret(): string {
   const secret = process.env.ETHEREUM_WEBHOOK_SECRET;
-  if (!secret) throw new Error("ETHEREUM_WEBHOOK_SECRET is not configured");
+  if (!secret || secret.length < 32) throw new Error("ETHEREUM_WEBHOOK_SECRET must be at least 32 chars");
   return secret;
 }

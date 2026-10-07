@@ -9,7 +9,7 @@ export const revalidate = 300;
 export async function GET(req: NextRequest, props: { params: Promise<{ packageCode: string }> }) {
   const params = await props.params;
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { allowed } = rateLimit(`search:${ip}`, RATE_LIMITS.search);
+  const { allowed } = await rateLimit(`search:${ip}`, RATE_LIMITS.search);
 
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

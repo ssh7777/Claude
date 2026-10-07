@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Shield, LogOut, ChevronDown, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,45 +8,68 @@ import { shortenAddress } from "@/lib/utils";
 
 interface WalletState {
   address: string;
-  type: "monero" | "ethereum";
+  type: "ethereum";
 }
 
-// EIP-6963: modern multi-wallet discovery. Every installed browser wallet
-// (MetaMask, Trust, Brave, Coinbase, Rabby, OKX, Phantom-EVM, …) announces
-// itself with a name and icon — we show them all, no external SDK needed.
+interface Eip1193Provider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+}
+
 interface DiscoveredWallet {
   name: string;
   icon: string;
-  provider: { request: (args: { method: string }) => Promise<unknown> };
+  provider: Eip1193Provider;
+}
+
+function asMessageHex(message: string): string {
+  return `0x${Array.from(new TextEncoder().encode(message), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export default function WalletConnect() {
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [open, setOpen] = useState(false);
-  const [walletType, setWalletType] = useState<"monero" | "ethereum">("ethereum");
-  const [address, setAddress] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
   const [discovered, setDiscovered] = useState<DiscoveredWallet[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("privasim_wallet");
-    if (stored) {
-      try { setWallet(JSON.parse(stored)); } catch { localStorage.removeItem("privasim_wallet"); }
+    if (stored && localStorage.getItem("privasim_wallet_auth_version") !== "2") {
+      localStorage.removeItem("privasim_wallet");
+      localStorage.removeItem("privasim_jwt");
+    }
+    if (stored && localStorage.getItem("privasim_wallet_auth_version") === "2") {
+      try {
+        const parsed = JSON.parse(stored) as WalletState;
+        if (parsed.type === "ethereum" && /^0x[a-fA-F0-9]{40}$/.test(parsed.address)) {
+          setWallet(parsed);
+        } else {
+          localStorage.removeItem("privasim_wallet");
+          localStorage.removeItem("privasim_jwt");
+        }
+      } catch {
+        localStorage.removeItem("privasim_wallet");
+        localStorage.removeItem("privasim_jwt");
+      }
     }
   }, []);
 
-  // Discover all installed wallets via EIP-6963
   useEffect(() => {
-    const found: DiscoveredWallet[] = [];
+    const providers = new Map<string, DiscoveredWallet>();
     const onAnnounce = (event: Event) => {
       const detail = (event as CustomEvent).detail as {
-        info: { name: string; icon: string; uuid: string };
-        provider: DiscoveredWallet["provider"];
+        info?: { name?: string; icon?: string; uuid?: string };
+        provider?: Eip1193Provider;
       };
-      if (!found.some((w) => w.name === detail.info.name)) {
-        found.push({ name: detail.info.name, icon: detail.info.icon, provider: detail.provider });
-        setDiscovered([...found]);
+      if (!detail.info?.name || !detail.provider) return;
+      const id = detail.info.uuid ?? detail.info.name;
+      if (!providers.has(id)) {
+        providers.set(id, {
+          name: detail.info.name,
+          icon: detail.info.icon ?? "",
+          provider: detail.provider,
+        });
+        setDiscovered([...providers.values()]);
       }
     };
     window.addEventListener("eip6963:announceProvider", onAnnounce);
@@ -54,42 +77,54 @@ export default function WalletConnect() {
     return () => window.removeEventListener("eip6963:announceProvider", onAnnounce);
   }, [open]);
 
-  const connect = async (provider?: DiscoveredWallet["provider"]) => {
+  const connect = async (provider?: Eip1193Provider) => {
     setConnecting(true);
     setError("");
     try {
-      let addr = address.trim();
+      const selected = provider ?? window.ethereum;
+      if (!selected) throw new Error("Install or unlock an Ethereum browser wallet first.");
 
-      // Connect via a chosen wallet, or fall back to window.ethereum
-      const eth = provider ?? (typeof window !== "undefined" ? window.ethereum : undefined);
-      if (walletType === "ethereum" && !addr && eth) {
-        const accounts = await eth.request({ method: "eth_requestAccounts" }) as string[];
-        addr = accounts[0];
-        setAddress(addr);
+      const accounts = await selected.request({ method: "eth_requestAccounts" }) as string[];
+      const address = accounts?.[0];
+      if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        throw new Error("The wallet did not return a valid Ethereum address.");
       }
 
-      if (!addr) {
-        setError("Enter your wallet address.");
-        setConnecting(false);
-        return;
-      }
-
-      const res = await fetch("/api/auth/connect", {
+      const challengeResponse = await fetch("/api/auth/challenge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: addr, walletType }),
+        body: JSON.stringify({ walletAddress: address, walletType: "ethereum" }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Connection failed"); setConnecting(false); return; }
+      const challengeData = await challengeResponse.json();
+      if (!challengeResponse.ok) throw new Error(challengeData.error ?? "Could not start wallet verification.");
 
-      const walletData: WalletState = { address: addr, type: walletType };
+      const signature = await selected.request({
+        method: "personal_sign",
+        params: [asMessageHex(challengeData.challenge), address],
+      }) as string;
+
+      const verifyResponse = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          walletType: "ethereum",
+          signature,
+          challenge: challengeData.challenge,
+          challengeToken: challengeData.challengeToken,
+        }),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) throw new Error(verifyData.error ?? "Wallet signature verification failed.");
+
+      const walletData: WalletState = { address, type: "ethereum" };
       localStorage.setItem("privasim_wallet", JSON.stringify(walletData));
-      localStorage.setItem("privasim_jwt", data.jwt);
+      localStorage.setItem("privasim_jwt", verifyData.jwt);
+      localStorage.setItem("privasim_wallet_auth_version", "2");
       setWallet(walletData);
       setOpen(false);
-      setAddress("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(err instanceof Error ? err.message : "Wallet connection failed.");
     } finally {
       setConnecting(false);
     }
@@ -98,13 +133,14 @@ export default function WalletConnect() {
   const disconnect = () => {
     localStorage.removeItem("privasim_wallet");
     localStorage.removeItem("privasim_jwt");
+    localStorage.removeItem("privasim_wallet_auth_version");
     setWallet(null);
   };
 
   if (wallet) {
     return (
       <div className="flex items-center gap-2">
-        <Badge variant={wallet.type === "monero" ? "monero" : "ethereum"} className="px-3 py-1.5">
+        <Badge variant="ethereum" className="px-3 py-1.5">
           <Shield className="h-3 w-3 mr-1" />
           {shortenAddress(wallet.address)}
         </Badge>
@@ -118,95 +154,46 @@ export default function WalletConnect() {
   if (open) {
     return (
       <div className="flex flex-col gap-3 p-4 bg-[#1a1a2e] border border-white/15 rounded-xl shadow-xl min-w-[280px]">
-        <p className="text-sm font-semibold text-white">Connect Wallet</p>
+        <p className="text-sm font-semibold text-white">Verify Ethereum wallet ownership</p>
+        <p className="text-xs text-gray-400">
+          Your wallet will ask you to sign a one-time message. This is not a transaction. Connecting is optional for checkout.
+        </p>
 
-        <div className="flex gap-2">
-          {(["ethereum", "monero"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setWalletType(t); setAddress(""); setError(""); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                walletType === t
-                  ? t === "ethereum" ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                    : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
-                  : "text-gray-400 hover:text-white border border-transparent"
-              }`}
-            >
-              {t === "ethereum" ? "Ethereum" : "Monero"}
-            </button>
-          ))}
-        </div>
-
-        {walletType === "ethereum" && discovered.length > 0 && (
+        {discovered.length > 0 ? (
           <div className="space-y-2">
-            {discovered.map((w) => (
+            {discovered.map((item) => (
               <Button
-                key={w.name}
-                onClick={() => connect(w.provider)}
+                key={item.name}
+                onClick={() => connect(item.provider)}
                 disabled={connecting}
                 className="w-full bg-[#627eea] hover:bg-[#4f6acc] text-white justify-start"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={w.icon} alt="" className="h-4 w-4 mr-2 rounded" />
-                {connecting ? "Connecting..." : `Connect ${w.name}`}
+                {item.icon ? (
+                  // Wallet logos are provider-supplied data URLs; the image is never interpreted as markup.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.icon} alt="" className="h-4 w-4 mr-2 rounded" />
+                ) : <Wallet className="h-4 w-4 mr-2" />}
+                {connecting ? "Verifying…" : `Connect ${item.name}`}
               </Button>
             ))}
           </div>
-        )}
-
-        {walletType === "ethereum" && discovered.length === 0 &&
-          typeof window !== "undefined" && window.ethereum && (
+        ) : (
           <Button
             onClick={() => connect()}
-            disabled={connecting}
+            disabled={connecting || typeof window.ethereum === "undefined"}
             className="w-full bg-[#627eea] hover:bg-[#4f6acc] text-white"
           >
             <Wallet className="h-4 w-4 mr-2" />
-            {connecting ? "Connecting..." : "Connect Browser Wallet"}
+            {connecting ? "Verifying…" : "Connect Browser Wallet"}
           </Button>
         )}
 
-        <div className="relative">
-          {walletType === "ethereum" && typeof window !== "undefined" && window.ethereum && (
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-xs text-gray-500">or paste address</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
-          )}
-          <input
-            type="text"
-            placeholder={walletType === "ethereum" ? "0x... Ethereum address" : "4... Monero address"}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#ff6600]/50"
-          />
-        </div>
-
-        {!(walletType === "ethereum" && typeof window !== "undefined" && window.ethereum) && (
-          <Button
-            onClick={() => connect()}
-            disabled={connecting || address.length < 10}
-            className={`w-full ${walletType === "monero" ? "bg-[#ff6600] hover:bg-[#e55c00]" : "bg-[#627eea] hover:bg-[#4f6acc]"} text-white`}
-          >
-            {connecting ? "Connecting..." : "Connect"}
-          </Button>
+        {typeof window.ethereum === "undefined" && discovered.length === 0 && (
+          <p className="text-xs text-yellow-300">No Ethereum wallet extension was detected.</p>
         )}
-
-        {address.length >= 10 && (
-          <Button
-            onClick={() => connect()}
-            disabled={connecting}
-            variant="outline"
-            className="w-full border-white/20 text-white hover:bg-white/10 text-sm"
-          >
-            {connecting ? "Connecting..." : "Connect with address"}
-          </Button>
-        )}
-
         {error && <p className="text-xs text-red-400">{error}</p>}
         <button onClick={() => setOpen(false)} className="text-xs text-gray-500 hover:text-gray-300 mt-1">
-          Cancel — I&apos;ll pay anonymously
+          Cancel — checkout does not require a wallet account
         </button>
       </div>
     );

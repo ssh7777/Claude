@@ -260,7 +260,7 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-2 gap-3">
             {(
               [
-                { id: "monero", name: "Monero", desc: "Most private · XMR", dot: "#ff6600", ring: "border-orange-500/50 bg-orange-500/10" },
+                { id: "monero", name: "Monero", desc: "Privacy-focused · XMR", dot: "#ff6600", ring: "border-orange-500/50 bg-orange-500/10" },
                 { id: "ethereum", name: "Ethereum", desc: "ETH Mainnet only", dot: "#627eea", ring: "border-blue-500/50 bg-blue-500/10" },
                 { id: "usdt_eth", name: "USDT", desc: "Stablecoin · ERC-20", dot: "#26a17b", ring: "border-green-500/50 bg-green-500/10" },
                 { id: "other", name: "100+ Coins", desc: "BTC, LTC, DOGE…", dot: "#f7931a", ring: "border-yellow-500/50 bg-yellow-500/10" },
@@ -350,7 +350,6 @@ export default function CheckoutPage() {
           }}
           invoiceId={invoice.invoiceId}
           packageName={pkg.name}
-          packageCode={packageCode}
           amountUsd={invoice.amountUsd}
           amountCrypto={invoice.amountCrypto}
           cryptoType={cryptoType as "monero" | "ethereum" | "usdt_eth" | "other"}

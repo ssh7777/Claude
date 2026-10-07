@@ -1,8 +1,47 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import type { ReactNode } from "react";
 import { MessageCircle, X, Send, Loader2, Shield, ChevronDown } from "lucide-react";
-import Link from "next/link";
+
+function safeHref(rawHref: string): string | null {
+  if (rawHref.startsWith("/") && !rawHref.startsWith("//")) return rawHref;
+  try {
+    const url = new URL(rawHref);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderMessage(text: string): ReactNode[] {
+  const tokens = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
+  const output: ReactNode[] = [];
+  const appendText = (value: string, prefix: string) => {
+    value.split("\n").forEach((line, index, lines) => {
+      if (line) output.push(line);
+      if (index < lines.length - 1) output.push(<br key={`${prefix}-br-${index}`} />);
+    });
+  };
+  let position = 0;
+  let match: RegExpExecArray | null;
+  let index = 0;
+  while ((match = tokens.exec(text)) !== null) {
+    appendText(text.slice(position, match.index), `text-${index}`);
+    if (match[1] !== undefined) {
+      const href = safeHref(match[2]);
+      output.push(href
+        ? <a key={`link-${index}`} href={href} className="text-[#ff6600] hover:underline" target={href.startsWith("/") ? undefined : "_blank"} rel={href.startsWith("/") ? undefined : "noopener noreferrer nofollow"}>{match[1]}</a>
+        : match[1]);
+    } else {
+      output.push(<strong key={`strong-${index}`}>{match[3]}</strong>);
+    }
+    position = tokens.lastIndex;
+    index += 1;
+  }
+  appendText(text.slice(position), `text-${index}`);
+  return output;
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -11,7 +50,7 @@ interface Message {
 
 const INITIAL_MESSAGE: Message = {
   role: "assistant",
-  content: "Hi! I'm ARIA, your anonymous eSIM guide. Ask me about plans, countries, payment methods, or how to install your eSIM.",
+  content: "Hi! I'm ARIA, your privacy-focused eSIM guide. Ask me about plans, countries, payment methods, or how to install your eSIM.",
 };
 
 export default function Chatbot() {
@@ -138,14 +177,7 @@ export default function Chatbot() {
                       }`}
                     >
                       {msg.content ? (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: msg.content
-                              .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#ff6600] hover:underline">$1</a>')
-                              .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-                              .replace(/\n/g, "<br/>"),
-                          }}
-                        />
+                        <span>{renderMessage(msg.content)}</span>
                       ) : streaming && i === messages.length - 1 ? (
                         <span className="flex gap-1 py-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }} />

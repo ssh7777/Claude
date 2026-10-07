@@ -1,43 +1,38 @@
-// Simple in-memory rate limiter for edge middleware
-// For production, replace with Redis/Upstash for distributed rate limiting
+import { createHmac } from "node:crypto";
+import { consumeRateLimit } from "@/lib/db";
 
-const store = new Map<string, { count: number; resetAt: number }>();
-
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;
   max: number;
 }
 
-export function rateLimit(
-  identifier: string,
-  config: RateLimitConfig
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const key = identifier;
-  const existing = store.get(key);
-
-  if (!existing || now > existing.resetAt) {
-    const resetAt = now + config.windowMs;
-    store.set(key, { count: 1, resetAt });
-    return { allowed: true, remaining: config.max - 1, resetAt };
-  }
-
-  if (existing.count >= config.max) {
-    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
-  }
-
-  existing.count += 1;
-  return { allowed: true, remaining: config.max - existing.count, resetAt: existing.resetAt };
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
 }
 
-// Cleanup old entries periodically
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of store.entries()) {
-      if (now > value.resetAt) store.delete(key);
-    }
-  }, 60_000);
+/**
+ * Distributed rate limiting backed by PostgreSQL. Identifiers are HMACed before
+ * persistence so raw IP addresses / wallet identifiers are not stored in the
+ * rate-limit table. Database errors intentionally fail closed at the caller.
+ */
+export async function rateLimit(
+  identifier: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  if (!Number.isSafeInteger(config.windowMs) || config.windowMs < 1 ||
+      !Number.isSafeInteger(config.max) || config.max < 1) {
+    throw new Error("Invalid rate-limit configuration");
+  }
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET must be configured to secure rate-limit identifiers");
+  }
+  const key = createHmac("sha256", secret)
+    .update(`rate-limit:${identifier.slice(0, 512)}`)
+    .digest("hex");
+  return consumeRateLimit(key, config.windowMs, config.max);
 }
 
 export const RATE_LIMITS = {

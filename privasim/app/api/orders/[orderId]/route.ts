@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInvoiceById } from "@/lib/db";
+import { verifyInvoiceToken } from "@/lib/invoiceToken";
 
-// Invoice ID is a secret — anyone with it can view their order status.
-// No wallet/JWT required since there's no email or identity to steal.
-export async function GET(_req: NextRequest, props: { params: Promise<{ orderId: string }> }) {
-  const params = await props.params;
-  const invoice = await getInvoiceById(params.orderId);
-  if (!invoice) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+export async function GET(req: NextRequest, props: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = await props.params;
+  const token = verifyInvoiceToken(req.headers.get("x-invoice-token") ?? "");
+  if (!token || token.invoiceId !== orderId) {
+    return NextResponse.json({ error: "Invalid invoice credentials" }, { status: 401 });
   }
+  const invoice = await getInvoiceById(orderId);
+  if (!invoice) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   return NextResponse.json({
     id: invoice.invoice_id,
@@ -19,14 +20,16 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ orderId:
     dataAmount: invoice.data_amount,
     durationDays: invoice.duration_days,
     status: invoice.status,
+    fulfillmentStatus: invoice.fulfillment_status,
     cryptoType: invoice.crypto_type,
     amountUsd: invoice.amount_usd,
     amountCrypto: invoice.amount_crypto,
     paymentAddress: invoice.payment_address,
     expiresAt: invoice.expires_at,
     createdAt: invoice.created_at,
-    esimReady: !!(invoice.iccid_encrypted && invoice.activation_code_encrypted),
-    smDpAddress: invoice.sm_dp_address,
+    esimReady: invoice.fulfillment_status === "complete" && !!(invoice.iccid_encrypted && invoice.activation_code_encrypted),
+    isTopup: !!invoice.topup_iccid_encrypted,
+    topupComplete: !!invoice.topup_iccid_encrypted && invoice.fulfillment_status === "complete",
     esimPurchasedAt: invoice.esim_purchased_at,
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }

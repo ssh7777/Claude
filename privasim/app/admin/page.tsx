@@ -2,19 +2,19 @@
 
 // Enterprise owner dashboard — everything in one place:
 //  Overview   · wallet balance + backend orders
-//  Analytics  · traffic + sales by source (which channel converts)
 //  Coupons    · create / revoke / delete, with usage limits
 //  Wallets    · update receiving XMR/ETH addresses (validated, no redeploy)
-// All gated by the reseller API key.
+// All gated by the dedicated administrator API key.
 
 import { useState } from "react";
 import {
-  LayoutDashboard, Loader2, RefreshCw, Wallet, BarChart3, Ticket, KeyRound, Save,
+  LayoutDashboard, Loader2, RefreshCw, Wallet, Ticket, KeyRound, Save,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Tab = "overview" | "analytics" | "coupons" | "wallets";
+type Tab = "overview" | "coupons" | "wallets";
 
 export default function AdminPage() {
   const [key, setKey] = useState("");
@@ -25,7 +25,6 @@ export default function AdminPage() {
 
   // data
   const [overview, setOverview] = useState<{ balanceUsd: number; summary: string | null } | null>(null);
-  const [analytics, setAnalytics] = useState<{ sources: any[]; totals: any } | null>(null);
   const [coupons, setCoupons] = useState<{ code: string; uses: number; maxUses: number; revoked: boolean }[]>([]);
   const [wallets, setWallets] = useState<{ monero: string; ethereum: string; moneroSource: string; ethereumSource: string; marginPercent?: number; marginSource?: string } | null>(null);
 
@@ -45,7 +44,6 @@ export default function AdminPage() {
   };
 
   const loadAll = async () => {
-    fetch("/api/admin/analytics", { headers: H() }).then(r => r.json()).then(setAnalytics).catch(() => {});
     fetch("/api/admin/discounts", { headers: H() }).then(r => r.json()).then(j => setCoupons(j.coupons ?? [])).catch(() => {});
     fetch("/api/admin/settings", { headers: H() }).then(r => r.json()).then(setWallets).catch(() => {});
   };
@@ -78,7 +76,6 @@ export default function AdminPage() {
   };
 
   // wallets + pricing form
-  const [xmr, setXmr] = useState("");
   const [eth, setEth] = useState("");
   const [marginInput, setMarginInput] = useState("");
   const [walletMsg, setWalletMsg] = useState("");
@@ -88,14 +85,13 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST", headers: H(),
         body: JSON.stringify({
-          monero: xmr.trim() || undefined,
           ethereum: eth.trim() || undefined,
           marginPercent: marginInput.trim() === "" ? undefined : Number(marginInput),
         }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Failed");
-      setWallets(j.settings); setXmr(""); setEth(""); setMarginInput("");
+      setWallets(j.settings); setEth(""); setMarginInput("");
       setWalletMsg("✓ Settings updated");
     } catch (e) { setWalletMsg(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(false); }
@@ -108,10 +104,10 @@ export default function AdminPage() {
           <KeyRound className="h-7 w-7 text-[#ff6600]" />
           <h1 className="text-2xl font-black text-white">Owner Dashboard</h1>
         </div>
-        <p className="text-sm text-gray-400 mb-3">Enter your reseller API key.</p>
+        <p className="text-sm text-gray-400 mb-3">Enter your administrator key.</p>
         <div className="flex gap-2">
           <Input type="password" value={key} onChange={e => setKey(e.target.value)}
-            placeholder="pk_live_…" className="bg-white/10 border-white/20 text-white"
+            placeholder="Admin key" className="bg-white/10 border-white/20 text-white"
             onKeyDown={e => e.key === "Enter" && unlock()} />
           <Button onClick={unlock} disabled={busy} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock"}
@@ -122,9 +118,8 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: any }[] = [
+  const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "coupons", label: "Coupons", icon: Ticket },
     { id: "wallets", label: "Pricing & Wallets", icon: Wallet },
   ];
@@ -168,52 +163,6 @@ export default function AdminPage() {
           <div className="p-5 bg-white/5 border border-white/10 rounded-xl">
             <h2 className="font-bold text-white mb-3">Backend orders (live)</h2>
             <pre className="text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto">{overview.summary ?? "No orders yet."}</pre>
-          </div>
-        </div>
-      )}
-
-      {tab === "analytics" && (
-        <div className="space-y-4">
-          {analytics?.totals && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                ["Visits", analytics.totals.visits],
-                ["Checkouts", analytics.totals.checkouts],
-                ["Sales", analytics.totals.sales],
-                ["Revenue", `$${(analytics.totals.revenueUsd ?? 0).toFixed(2)}`],
-              ].map(([k, v]) => (
-                <div key={k as string} className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                  <div className="text-xs text-gray-400">{k}</div>
-                  <div className="text-xl font-black text-white">{v}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="p-5 bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
-            <h2 className="font-bold text-white mb-3">Traffic &amp; sales by source</h2>
-            <table className="w-full text-sm">
-              <thead><tr className="text-gray-400 text-left">
-                <th className="pb-2">Source</th><th className="pb-2">Visits</th><th className="pb-2">Sales</th>
-                <th className="pb-2">Revenue</th><th className="pb-2">Conv.</th>
-              </tr></thead>
-              <tbody>
-                {(analytics?.sources ?? []).map((s: any) => (
-                  <tr key={s.source} className="border-t border-white/5">
-                    <td className="py-2 text-white font-medium">{s.source}</td>
-                    <td className="py-2 text-gray-300">{s.visits}</td>
-                    <td className="py-2 text-gray-300">{s.sales}</td>
-                    <td className="py-2 text-green-400">${s.revenueUsd.toFixed(2)}</td>
-                    <td className="py-2 text-gray-300">{s.convRate}%</td>
-                  </tr>
-                ))}
-                {(!analytics?.sources || analytics.sources.length === 0) && (
-                  <tr><td colSpan={5} className="py-4 text-gray-500 text-center">No traffic recorded yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-            <p className="text-xs text-gray-500 mt-3">
-              Tag your marketing links with <code className="text-gray-300">?utm_source=reddit</code> etc. so each channel is attributed.
-            </p>
           </div>
         </div>
       )}
@@ -284,23 +233,22 @@ export default function AdminPage() {
           <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
             <div>
               <h2 className="font-bold text-white mb-1">Receiving wallets</h2>
-              <p className="text-xs text-gray-400">Update the addresses customer payments go to. Validated and effective immediately — no redeploy.</p>
+              <p className="text-xs text-gray-400">Ethereum address changes are validated and effective immediately. The Monero receiving address is tied to the configured Wallet RPC and must be updated through deployment configuration.</p>
             </div>
             {wallets && (
               <div className="text-xs text-gray-400 space-y-1">
-                <div>Monero (<span className={wallets.moneroSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.moneroSource}</span>): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
+                <div>Monero (Wallet RPC configuration): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
                 <div>Ethereum (<span className={wallets.ethereumSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.ethereumSource}</span>): <code className="text-gray-300 break-all">{wallets.ethereum}</code></div>
               </div>
             )}
             <div className="space-y-2">
-              <Input value={xmr} onChange={e => setXmr(e.target.value)} placeholder="New Monero address (4… or 8…)" className="bg-white/10 border-white/20 text-white text-sm" />
               <Input value={eth} onChange={e => setEth(e.target.value)} placeholder="New Ethereum address (0x…)" className="bg-white/10 border-white/20 text-white text-sm" />
             </div>
-            <Button onClick={saveWallets} disabled={busy || (!xmr.trim() && !eth.trim())} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
-              <Save className="h-4 w-4 mr-2" /> Save wallets
+            <Button onClick={saveWallets} disabled={busy || !eth.trim()} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
+              <Save className="h-4 w-4 mr-2" /> Save Ethereum address
             </Button>
             <div className="text-xs text-yellow-300/80 bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
-              ⚠ Double-check every character. Funds sent to a wrong address are unrecoverable.
+              ⚠ Double-check the Ethereum address. For Monero, keep the configured Wallet RPC and `MONERO_WALLET_PRIMARY` aligned; retain access to the old wallet until all open invoices are resolved.
             </div>
           </div>
 

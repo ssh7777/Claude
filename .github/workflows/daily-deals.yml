@@ -1,4 +1,4 @@
-name: Daily content automation (deals + auto-article + SEO ping)
+name: Daily content automation (review by pull request)
 
 on:
   schedule:
@@ -7,12 +7,27 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: daily-content-refresh
+  cancel-in-progress: false
 
 jobs:
   refresh:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare automated review branch
+        env:
+          BRANCH: automation/daily-content
+        run: |
+          git fetch origin "refs/heads/main:refs/remotes/origin/main"
+          git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          git checkout -B "$BRANCH" origin/main
 
       - name: Generate today's cheapest-deals data from live catalog
         run: |
@@ -65,36 +80,39 @@ jobs:
         continue-on-error: true
         run: node privasim/scripts/generate-roundup.mjs
 
-      - name: Commit and push if changed
+      - name: Validate generated JSON
+        run: node -e 'JSON.parse(require("node:fs").readFileSync("privasim/data/auto-articles.json", "utf8")); JSON.parse(require("node:fs").readFileSync("privasim/data/daily-deals.json", "utf8"))'
+
+      - name: Open or update a review pull request
+        env:
+          BRANCH: automation/daily-content
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "Claude"
-          git config user.email "noreply@anthropic.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add privasim/data/daily-deals.json privasim/data/auto-articles.json
           if git diff --cached --quiet; then
-            echo "No changes — skipping commit"
+            echo "No generated content changes."
+            PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+            if [ -n "$PR" ]; then
+              gh pr close "$PR" --comment "Closing stale generated content: the current refresh has no changes against main." --delete-branch
+            fi
             exit 0
           fi
-          git commit -m "Daily content: deals + 3 auto-articles $(date -u +%F)"
-          git push origin main
 
-      # Give Vercel's Git integration time to build + promote the new pages
-      # before asking search engines to crawl them.
-      - name: Wait for deploy to promote
-        run: sleep 240
+          DATE=$(date -u +%F)
+          TITLE="Daily content update — $DATE"
+          BODY="Automated catalog/news content update for review. This workflow no longer commits generated content directly to main; merge only after the PR checks pass and copy is reviewed."
+          git commit -m "Daily content update: $DATE"
+          git push --force-with-lease origin "$BRANCH"
 
-      - name: Ping IndexNow (Bing, Yandex, Seznam, Naver) for instant crawl
-        continue-on-error: true
-        run: |
-          # IndexNow key is hosted at /<key>.txt on the site (public/ file).
-          KEY="a7f3c1e9b2d4e6f8a0c2e4b6d8f0a1c3"
-          BASE="https://privasim.app"
-          URLS="$BASE/ $BASE/blog $BASE/blog/best-esim-deals-today $BASE/shop $BASE/shop/global $BASE/sitemap.xml"
-          # Today's freshly generated articles (written by the generator)
-          if [ -f privasim/data/new-slugs.txt ]; then
-            while read -r slug; do
-              [ -n "$slug" ] && URLS="$URLS $BASE/blog/$slug"
-            done < privasim/data/new-slugs.txt
+          PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --title "$TITLE" --body "$BODY"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$BODY"
           fi
-          for url in $URLS; do
-            curl -sS "https://api.indexnow.org/indexnow?url=${url}&key=${KEY}" -o /dev/null -w "IndexNow %{http_code} ${url}\n" || true
-          done
+
+          # GITHUB_TOKEN pushes do not trigger push/PR workflows automatically.
+          # Explicitly dispatch the secret-free CI workflow for this branch.
+          gh workflow run privasim-ci.yml --ref "$BRANCH"

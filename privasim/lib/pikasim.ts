@@ -54,12 +54,13 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    signal: AbortSignal.timeout(60_000),
   });
 
   const rawText = await response.text();
 
   if (!response.ok) {
-    throw new Error(`PikaSim MCP ${response.status}: ${rawText.slice(0, 300)}`);
+    throw new Error(`PikaSim MCP returned HTTP ${response.status}`);
   }
 
   const json = parseMcpBody(rawText) as {
@@ -68,7 +69,7 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
   };
 
   if (json.error) {
-    throw new Error(`PikaSim tool error: ${json.error.message ?? JSON.stringify(json.error)}`);
+    throw new Error("PikaSim supplier tool call failed");
   }
 
   // MCP wraps the payload in content blocks: { result: { content: [{ type:"text", text:"..." }] } }
@@ -129,11 +130,15 @@ async function apiGet<T>(path: string, params?: Record<string, string>): Promise
   // every page — without this, EVERY render re-downloaded the ~900 KB
   // all-countries catalog (the main cause of slow page loads). Purchases
   // and other MCP calls stay strictly no-store.
-  const response = await fetch(url.toString(), { method: "GET", headers, next: { revalidate: 300 } });
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers,
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(10_000),
+  });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`PikaSim ${response.status} ${response.statusText}: ${text.slice(0, 300)}`);
+    throw new Error(`PikaSim catalog request returned HTTP ${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -363,7 +368,7 @@ function parsePurchaseResult(raw: Record<string, unknown>): PikaSimPurchaseResul
     const qrCodeUrl = text.match(/https?:\/\/\S*(?:qr|install)\S*/i)?.[0];
 
     if (!orderId && !iccid) {
-      throw new Error(`eSIM purchase returned no usable data: ${text.slice(0, 400)}`);
+      throw new Error("eSIM supplier returned no usable order identifier");
     }
     return {
       orderId: orderId ?? "",
@@ -387,10 +392,7 @@ function parsePurchaseResult(raw: Record<string, unknown>): PikaSimPurchaseResul
   // PikaSim may be async — return what we have even if ICCID is missing yet.
   // The caller should check result.iccid; if empty, store orderId and wait for webhook.
   if (!orderId && !iccid) {
-    const fields = Object.keys(raw).join(", ");
-    throw new Error(
-      `eSIM purchase returned no usable data. Fields: [${fields}]. Response: ${JSON.stringify(raw).slice(0, 500)}`
-    );
+    throw new Error("eSIM supplier returned no usable order identifier");
   }
 
   return {

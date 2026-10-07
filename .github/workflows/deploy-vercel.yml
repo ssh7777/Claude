@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Prebuilt deploys finish in ~5 min; anything longer is a real failure.
     timeout-minutes: 20
@@ -26,8 +27,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps --prefix privasim
+      - name: Install locked dependencies
+        run: npm ci --prefix privasim
+
+      - name: Lint
+        run: npm run lint --prefix privasim
+
+      - name: Type-check
+        run: npm run type-check --prefix privasim
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --prefix privasim
 
       # Link deterministically: fetch the project's real IDs from the Vercel
       # API instead of relying on `vercel link` inference. This is what makes

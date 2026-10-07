@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { Globe, Phone } from "lucide-react";
 import CountrySearch from "@/components/CountrySearch";
 import EsimCard from "@/components/EsimCard";
@@ -12,39 +13,38 @@ export const metadata: Metadata = {
   description: "Browse eSIM data plans for 190+ countries. Pay with Monero or Ethereum.",
 };
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 async function FeaturedPackages() {
+  let packages: Awaited<ReturnType<typeof searchEsimPackages>>[];
+  let margin: number;
   try {
-    // Show a mix of popular country packages as featured
-    const [jpPackages, usPackages, thPackages, margin] = await Promise.all([
+    // Show a mix of popular country packages as featured.
+    const [jpPackages, usPackages, thPackages, retailMargin] = await Promise.all([
       searchEsimPackages("JP", "data"),
       searchEsimPackages("US", "data"),
       searchEsimPackages("TH", "data"),
       getRetailMargin(),
     ]);
-
-    const featured = [
-      ...(jpPackages.slice(0, 2)),
-      ...(usPackages.slice(0, 2)),
-      ...(thPackages.slice(0, 2)),
-    ].slice(0, 6);
-
-    if (!featured.length) return null;
-
-    return (
-      <div>
-        <h2 className="text-xl font-bold text-white mb-4">Popular Plans</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featured.map((pkg) => (
-            <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
-          ))}
-        </div>
-      </div>
-    );
+    packages = [jpPackages, usPackages, thPackages];
+    margin = retailMargin;
   } catch {
     return null;
   }
+
+  const featured = packages.flatMap((items) => items.slice(0, 2)).slice(0, 6);
+  if (!featured.length) return null;
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-white mb-4">Popular Plans</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {featured.map((pkg) => (
+          <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const REGIONS = [
@@ -128,7 +128,7 @@ export default async function ShopPage() {
 
       {/* Global + phone plan entry points */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12 max-w-3xl mx-auto">
-        <a
+        <Link
           href="/shop/global"
           className="flex items-center gap-4 p-5 rounded-xl bg-gradient-to-br from-[#ff6600]/20 to-[#ff9944]/5 border border-[#ff6600]/30 hover:border-[#ff6600]/60 transition-all group"
         >
@@ -141,8 +141,8 @@ export default async function ShopPage() {
             </div>
             <div className="text-sm text-gray-400">One eSIM for 120+ countries</div>
           </div>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/shop/global#phone"
           className="flex items-center gap-4 p-5 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-400/5 border border-blue-400/30 hover:border-blue-400/60 transition-all group"
         >
@@ -155,7 +155,7 @@ export default async function ShopPage() {
             </div>
             <div className="text-sm text-gray-400">Real phone number included</div>
           </div>
-        </a>
+        </Link>
       </div>
 
       <Suspense

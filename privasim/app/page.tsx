@@ -3,29 +3,31 @@ import { Shield, Zap, Globe, Lock, Eye, Coins, ArrowRight, Check } from "lucide-
 import { Button } from "@/components/ui/button";
 import CountrySearch from "@/components/CountrySearch";
 
+export const dynamic = "force-dynamic";
+
 const FEATURES = [
   {
     icon: Shield,
-    title: "Zero Identity Required",
-    desc: "No email, no phone, no KYC. Connect your crypto wallet and buy.",
+    title: "No Identity Account Required",
+    desc: "No email, phone, or ID is required at checkout. Wallet connection is optional.",
     color: "text-[#ff6600]",
   },
   {
     icon: Lock,
-    title: "End-to-End Encrypted",
-    desc: "Your eSIM data is encrypted at rest. Only you can decrypt your activation codes.",
+    title: "Encrypted at Rest",
+    desc: "eSIM credentials are encrypted in the database and delivered through your random invoice token; the service decrypts them for delivery.",
     color: "text-green-400",
   },
   {
     icon: Eye,
-    title: "No Tracking, No Cookies",
-    desc: "Zero analytics. Zero pixels. Zero third-party scripts. Your browsing is private.",
+    title: "No Advertising Analytics",
+    desc: "No advertising pixels or third-party analytics scripts. Hosting providers may still process connection metadata.",
     color: "text-blue-400",
   },
   {
     icon: Coins,
-    title: "Crypto Only",
-    desc: "Accept Monero (most private) and Ethereum/USDT. No credit cards, no PayPal.",
+    title: "Crypto Payments",
+    desc: "Pay with Monero, Ethereum, or USDT on Ethereum mainnet; additional assets may use an external swap service. No card details are collected.",
     color: "text-purple-400",
   },
   {
@@ -36,8 +38,8 @@ const FEATURES = [
   },
   {
     icon: Zap,
-    title: "Instant Delivery",
-    desc: "eSIM provisioned automatically after payment confirms. Scan QR and go.",
+    title: "Digital Delivery",
+    desc: "Retrieve credentials after the required payment confirmations and supplier fulfillment.",
     color: "text-yellow-400",
   },
 ];
@@ -75,8 +77,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
-              No email. No tracking. No KYC. Connect your Monero or Ethereum wallet,
-              browse plans, pay crypto, get your eSIM instantly.
+              No account, email, or ID at checkout. Choose Monero, ETH, USDT, or supported coins via swap; once payment confirms, retrieve delivery with your order token.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
@@ -93,7 +94,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center justify-center gap-6 text-sm text-gray-400">
-              {["No email required", "Instant delivery", "XMR + ETH accepted", "30-day auto-delete"].map((item) => (
+              {["No identity account", "Delivery after confirmation", "XMR · ETH · USDT", "30-day order retention"].map((item) => (
                 <div key={item} className="flex items-center gap-1.5">
                   <Check className="h-3.5 w-3.5 text-green-400" />
                   {item}
@@ -149,24 +150,24 @@ export default function HomePage() {
         <div className="container">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-3">How It Works</h2>
-            <p className="text-gray-400">Three steps to anonymous global connectivity</p>
+            <p className="text-gray-400">Choose a plan, pay, and retrieve your eSIM with a private order token</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
             {[
               {
                 step: "01",
-                title: "Connect Wallet",
-                desc: "No email needed. Connect Monero or Ethereum wallet. JWT issued on-chain signature.",
+                title: "Choose a Plan",
+                desc: "Browse available destinations and plans. No identity account or email is required at checkout.",
               },
               {
                 step: "02",
-                title: "Pay Crypto",
-                desc: "Send Monero or ETH to our address. Confirmed in 2–10 minutes. You keep full control.",
+                title: "Pay with Crypto",
+                desc: "Use the asset and network shown on the invoice. Required confirmations and timing vary by chain.",
               },
               {
                 step: "03",
-                title: "Get eSIM",
-                desc: "Encrypted ICCID delivered instantly. Scan QR code to install on your device.",
+                title: "Retrieve Your eSIM",
+                desc: "After confirmation and supplier fulfillment, use your saved invoice token to view the QR code and activation details.",
               },
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -207,10 +208,10 @@ export default function HomePage() {
       <section className="py-20 container">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#ff6600]/20 to-[#ff9500]/5 border border-[#ff6600]/30 p-12 text-center glow-orange">
           <h2 className="text-4xl font-black text-white mb-4">
-            Start with <span className="gradient-text">Zero Identity</span>
+            Start with <span className="gradient-text">No Identity Account</span>
           </h2>
-          <p className="text-gray-300 text-lg mb-8 max-w-lg mx-auto">
-            No account. No email. No KYC. Just a crypto wallet and you&apos;re connected to the world.
+            <p className="text-gray-300 text-lg mb-8 max-w-lg mx-auto">
+            No identity account, email, or ID is required at checkout. Pay with supported cryptocurrency; supplier and destination requirements may vary.
           </p>
           <Button size="xl" className="bg-[#ff6600] hover:bg-[#e55c00] text-white font-bold" asChild>
             <Link href="/shop">

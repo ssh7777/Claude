@@ -1,16 +1,15 @@
-// Runtime-mutable settings — wallet addresses the owner can change from the
-// admin dashboard WITHOUT a redeploy. Stored in the persistent ledger
-// (Vercel Edge Config) with env vars as the fallback/default.
+// Runtime-mutable settings — wallet addresses and margin can be changed by
+// the owner without a redeploy. Overrides are stored in PostgreSQL; validated
+// environment values are used as the baseline configuration.
 //
 // Security:
-//  - Reads are public-server-side only (used to build payment invoices).
-//  - Writes go through /api/admin/settings, gated by the reseller API key,
-//    with strict address-format validation. A bad address can misroute
-//    customer funds, so validation is conservative.
+//  - Reads are server-side only (used to build payment invoices).
+//  - Writes go through /api/admin/settings and require the dedicated
+//    ADMIN_API_KEY. Address validation is conservative because a bad address
+//    can misroute customer funds.
 
-import { ledgerGet, ledgerSet } from "@/lib/ledger";
+import { ledgerGet, ledgerPersistent, ledgerSet } from "@/lib/ledger";
 
-const KEY_XMR = "set_wallet_xmr";
 const KEY_ETH = "set_wallet_eth";
 const KEY_MARGIN = "set_margin_pct";
 
@@ -33,6 +32,10 @@ export function isValidMarginPercent(pct: number): boolean {
 export async function getMarginPercent(): Promise<number> {
   if (marginCache && Date.now() - marginCache.at < MARGIN_CACHE_MS) {
     return marginCache.pct;
+  }
+  if (!ledgerPersistent()) {
+    marginCache = { pct: DEFAULT_MARGIN_PERCENT, at: Date.now() };
+    return DEFAULT_MARGIN_PERCENT;
   }
   const stored = await ledgerGet<number>(KEY_MARGIN);
   const pct =
@@ -68,11 +71,11 @@ export function isValidEthAddress(addr: string): boolean {
 }
 
 export async function getMoneroAddress(): Promise<string> {
-  const override = await ledgerGet<string>(KEY_XMR);
-  if (override && isValidMoneroAddress(override)) return override;
-  const env = process.env.MONERO_WALLET_PRIMARY;
-  if (!env) throw new Error("MONERO_WALLET_PRIMARY is not configured");
-  return env;
+  const address = process.env.MONERO_WALLET_PRIMARY?.trim();
+  if (!address || !isValidMoneroAddress(address)) {
+    throw new Error("MONERO_WALLET_PRIMARY is missing or invalid");
+  }
+  return address;
 }
 
 export async function getEthereumAddress(): Promise<string> {
@@ -83,11 +86,6 @@ export async function getEthereumAddress(): Promise<string> {
   return env;
 }
 
-export async function setMoneroAddress(addr: string): Promise<boolean> {
-  if (!isValidMoneroAddress(addr)) throw new Error("Invalid Monero address");
-  return ledgerSet(KEY_XMR, addr.trim());
-}
-
 export async function setEthereumAddress(addr: string): Promise<boolean> {
   if (!isValidEthAddress(addr)) throw new Error("Invalid Ethereum address");
   return ledgerSet(KEY_ETH, addr.trim());
@@ -96,18 +94,17 @@ export async function setEthereumAddress(addr: string): Promise<boolean> {
 export async function getWalletSettings(): Promise<{
   monero: string;
   ethereum: string;
-  moneroSource: "custom" | "default";
+  moneroSource: "environment";
   ethereumSource: "custom" | "default";
   marginPercent: number;
   marginSource: "custom" | "default";
 }> {
-  const xmrOverride = await ledgerGet<string>(KEY_XMR);
   const ethOverride = await ledgerGet<string>(KEY_ETH);
   const marginOverride = await ledgerGet<number>(KEY_MARGIN);
   return {
     monero: await getMoneroAddress(),
     ethereum: await getEthereumAddress(),
-    moneroSource: xmrOverride ? "custom" : "default",
+    moneroSource: "environment",
     ethereumSource: ethOverride ? "custom" : "default",
     marginPercent: await getMarginPercent(),
     marginSource:

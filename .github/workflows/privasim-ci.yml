@@ -1,0 +1,57 @@
+name: Privasim CI
+
+on:
+  pull_request:
+    paths:
+      - "privasim/**"
+      - ".github/workflows/privasim-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "privasim/**"
+      - ".github/workflows/privasim-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: privasim-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: privasim/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: privasim
+        run: npm ci
+
+      - name: Lint
+        working-directory: privasim
+        run: npm run lint
+
+      - name: Type-check
+        working-directory: privasim
+        run: npm run type-check
+
+      - name: Validate generated article data
+        working-directory: privasim
+        run: node -e 'JSON.parse(require("node:fs").readFileSync("data/auto-articles.json", "utf8"))'
+
+      - name: Audit production dependencies
+        working-directory: privasim
+        run: npm audit --omit=dev
+
+      - name: Production build (no production credentials required)
+        working-directory: privasim
+        run: npm run build

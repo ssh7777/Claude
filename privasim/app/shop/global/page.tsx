@@ -9,14 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const APP_URL = "https://privasim.app";
 
 export const metadata: Metadata = {
   title: "Global eSIM Plans — 120+ Countries, One eSIM | Data + Calls + SMS",
   description:
-    "One anonymous eSIM for 120+ countries. Global data plans plus phone-number plans with real number, voice calls and SMS. Pay with Monero or Ethereum, no KYC.",
+    "One eSIM for 120+ countries where available. Compare global data and phone plans; checkout does not require an identity account, and delivery follows payment confirmation and supplier fulfillment.",
   keywords: [
     "global esim", "worldwide esim", "international esim", "esim 120 countries",
     "esim with phone number", "esim voice sms", "travel esim global", "anonymous global esim",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${APP_URL}/shop/global` },
   openGraph: {
     title: "Global eSIM Plans — 120+ Countries, One eSIM",
-    description: "Global data + phone-number eSIMs. Crypto payment, no KYC, instant delivery.",
+    description: "Global data and phone eSIMs where available. Crypto payment; delivery follows confirmations and supplier fulfillment.",
     url: `${APP_URL}/shop/global`,
     siteName: "PRIVASIM",
   },
