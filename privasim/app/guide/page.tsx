@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Plane,
   HelpCircle,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,11 +18,11 @@ const APP_URL = "https://privasim.app";
 export const metadata: Metadata = {
   title: "eSIM Installation Guide — iPhone & Android Setup in 2 Minutes",
   description:
-    "Step-by-step guide to install and activate your PRIVASIM eSIM on iPhone or Android: scan the QR code, enable data roaming, get online. Includes troubleshooting.",
+    "Step-by-step guide to install and activate your PRIVASIM eSIM on iPhone or Android: scan the QR code, enable data roaming, get online. Includes troubleshooting and related privacy guides.",
   alternates: { canonical: `${APP_URL}/guide` },
   openGraph: {
     title: "eSIM Installation Guide — Setup in 2 Minutes",
-    description: "Install your anonymous eSIM on iPhone or Android, step by step.",
+    description: "Install your anonymous eSIM on iPhone or Android, step by step. 99 countries including China.",
     url: `${APP_URL}/guide`,
     siteName: "PRIVASIM",
   },
@@ -46,7 +47,7 @@ export default function GuidePage() {
     "@context": "https://schema.org",
     "@type": "HowTo",
     name: "How to install a PRIVASIM eSIM",
-    description: "Install and activate your anonymous eSIM on iPhone or Android in about 2 minutes.",
+    description: "Install and activate your anonymous eSIM on iPhone or Android in about 2 minutes. Works for 99 countries including China.",
     step: IPHONE_STEPS.map((s, i) => ({
       "@type": "HowToStep",
       position: i + 1,
@@ -62,13 +63,13 @@ export default function GuidePage() {
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 text-sm text-gray-400 mb-4">
           <QrCode className="h-4 w-4 text-[#ff6600]" />
-          2-minute setup
+          2-minute setup · 99 countries including CN
         </div>
         <h1 className="text-4xl font-black text-white mb-3">
           eSIM <span className="gradient-text">Installation Guide</span>
         </h1>
         <p className="text-gray-400 max-w-lg mx-auto">
-          You need Wi-Fi to install. Do this at home or on hotel Wi-Fi — before you fly is best.
+          You need Wi-Fi to install. Do this at home or on hotel Wi-Fi — before you fly is best. Works for all 99 sitemap countries including China.
         </p>
       </div>
 
@@ -143,6 +144,19 @@ export default function GuidePage() {
               <p className="text-sm text-gray-300">{tip}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="mb-12 p-6 bg-white/3 border border-white/8 rounded-xl">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <BookOpen className="h-4 w-4 text-[#ff6600]" />
+          Related guides
+        </h3>
+        <div className="space-y-2 text-sm">
+          <Link href="/blog/how-to-buy-esim-with-monero" className="block text-gray-400 hover:text-[#ff6600]">→ How to Buy eSIM with Monero — includes FAQ and related guides, article-specific og:image</Link>
+          <Link href="/blog/esim-troubleshooting-guide" className="block text-gray-400 hover:text-[#ff6600]">→ Troubleshooting Guide</Link>
+          <Link href="/blog/no-kyc-esim-complete-guide" className="block text-gray-400 hover:text-[#ff6600]">→ No-KYC eSIM Complete Guide</Link>
+          <Link href="/blog" className="block text-gray-400 hover:text-[#ff6600]">→ Browse by destination and RSS feed at /blog</Link>
         </div>
       </section>
 

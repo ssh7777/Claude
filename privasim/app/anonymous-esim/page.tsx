@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Shield, Zap, Globe, Coins, ChevronRight, EyeOff } from "lucide-react";
+import { Shield, Zap, Globe, Coins, ChevronRight, EyeOff, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Pillar landing page for the head keyword "anonymous eSIM" — permanent,
@@ -12,16 +12,17 @@ const APP_URL = "https://privasim.app";
 export const metadata: Metadata = {
   title: "Anonymous eSIM — Buy Mobile Data with No ID, No Email, No KYC",
   description:
-    "The anonymous eSIM explained: buy prepaid mobile data for 190+ countries with Monero, Bitcoin, ETH or USDT. No account, no email, no identity — QR delivered in minutes.",
+    "The anonymous eSIM explained: buy prepaid mobile data for 190+ countries with Monero, Bitcoin, ETH or USDT. No account, no email, no identity — QR delivered in minutes. 99 countries in sitemap including China, blog RSS feed.",
   keywords: [
     "anonymous esim", "anonymous sim card", "esim without id", "no kyc esim",
     "private esim", "esim anonymous payment", "buy esim anonymously", "esim no registration",
+    "china esim anonymous", "esim CN",
   ],
   alternates: { canonical: `${APP_URL}/anonymous-esim` },
   openGraph: {
     title: "Anonymous eSIM — No ID, No Email, No KYC",
     description:
-      "Prepaid mobile data for 190+ countries, bought with crypto, delivered as a QR code. Zero identity collected.",
+      "Prepaid mobile data for 190+ countries, bought with crypto, delivered as a QR code. Zero identity collected. 99 countries including CN.",
     url: `${APP_URL}/anonymous-esim`,
     siteName: "PRIVASIM",
   },
@@ -35,7 +36,7 @@ const JSON_LD = {
       name: "Anonymous eSIM",
       provider: { "@type": "Organization", name: "PRIVASIM", url: APP_URL },
       description:
-        "Prepaid eSIM data plans for 190+ countries purchasable with cryptocurrency and no identity: no account, no email, no KYC.",
+        "Prepaid eSIM data plans for 190+ countries purchasable with cryptocurrency and no identity: no account, no email, no KYC. 99 countries in sitemap including China.",
       areaServed: "Worldwide",
       url: `${APP_URL}/anonymous-esim`,
     },
@@ -71,7 +72,7 @@ const JSON_LD = {
           name: "Which countries can I get an anonymous eSIM for?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "190+ countries including Japan, USA, UK, Germany, Thailand, UAE and Turkey, plus global plans covering 120+ countries with a single eSIM.",
+            text: "190+ countries including Japan, USA, UK, Germany, Thailand, UAE, Turkey, China (CN), plus global plans covering 120+ countries with a single eSIM. 99 countries are featured in sitemap.",
           },
         },
       ],
@@ -80,7 +81,7 @@ const JSON_LD = {
 };
 
 const STEPS = [
-  { n: "1", title: "Pick a plan", body: "190+ countries, live prices, no login wall." },
+  { n: "1", title: "Pick a plan", body: "190+ countries, live prices, no login wall. 99 featured including CN." },
   { n: "2", title: "Pay with crypto", body: "Monero, ETH, USDT or 100+ coins. Exact amount, one address." },
   { n: "3", title: "Scan the QR", body: "Delivered right after confirmation. Install and you're online." },
 ];
@@ -92,12 +93,13 @@ export default function AnonymousEsimPage() {
 
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 bg-[#ff6600]/10 border border-[#ff6600]/30 rounded-full px-4 py-1.5 text-sm text-[#ff9944] mb-5">
-          <EyeOff className="h-4 w-4" /> Zero identity collected — ever
+          <EyeOff className="h-4 w-4" /> Zero identity collected — ever · 99 countries in sitemap including CN
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">The Anonymous eSIM</h1>
         <p className="text-lg text-gray-300 max-w-2xl mx-auto">
           Prepaid mobile data for <strong className="text-white">190+ countries</strong>, bought with
           crypto and delivered as a QR code. No account. No email. No KYC. Nothing to leak, sell, or subpoena.
+          Sitemap has 99 /shop/XX URLs including /shop/CN, blog has RSS feed and archive pages 2-4.
         </p>
         <div className="flex justify-center gap-3 mt-7">
           <Button size="lg" className="bg-[#ff6600] hover:bg-[#e55c00] text-white font-bold" asChild>
@@ -137,24 +139,28 @@ export default function AnonymousEsimPage() {
         <h2>Who uses it</h2>
         <p>
           Travelers skipping the SIM-registration queue, journalists protecting sources, crypto holders who
-          want to spend coins on something useful, and anyone who thinks a data plan shouldn't come with a
+          want to spend coins on something useful, and anyone who thinks a data plan shouldn&apos;t come with a
           dossier. Popular destinations: <Link href="/shop/JP">Japan</Link>, <Link href="/shop/US">USA</Link>,{" "}
           <Link href="/shop/TH">Thailand</Link>, <Link href="/shop/DE">Germany</Link>,{" "}
-          <Link href="/shop/AE">UAE</Link>, <Link href="/shop/TR">Turkey</Link> — or one{" "}
+          <Link href="/shop/AE">UAE</Link>, <Link href="/shop/CN">China</Link>, <Link href="/shop/TR">Turkey</Link> — or one{" "}
           <Link href="/shop/global">global eSIM for 120+ countries</Link>.
         </p>
         <h2>What it costs</h2>
         <p>
           From about $3 for 500 MB to ~$20 for 10 GB depending on country — the same range as identity-based
-          sellers. See <Link href="/blog/best-esim-deals-today">today's live cheapest deals</Link> (refreshed
-          daily) or the <Link href="/blog/airalo-alternative">Airalo</Link> and{" "}
+          sellers. See <Link href="/blog/best-esim-deals-today">today&apos;s live cheapest deals</Link> (refreshed
+          daily, changefreq=daily in sitemap) or the <Link href="/blog/airalo-alternative">Airalo</Link> and{" "}
           <Link href="/blog/holafly-alternative">Holafly</Link> comparisons.
+        </p>
+        <h2>Stay updated</h2>
+        <p>
+          Blog has <Link href="/blog/feed.xml">RSS feed with content:encoded and ~50 items</Link>, archive pages 2-4, and daily privacy news. Homepage shows Latest from the Blog. API at <Link href="/api/blog">/api/blog</Link> returns total = full archive size (~76), not page length.
         </p>
       </article>
 
       <div className="grid sm:grid-cols-3 gap-4 text-center">
         {[
-          { icon: Globe, t: "190+ countries", d: "incl. global multi-country plans" },
+          { icon: Globe, t: "190+ countries", d: "99 in sitemap incl. CN, 190+ total" },
           { icon: Coins, t: "100+ coins accepted", d: "XMR · ETH · USDT · BTC & more" },
           { icon: Zap, t: "Instant delivery", d: "QR after blockchain confirmation" },
         ].map(({ icon: Icon, t, d }) => (
@@ -164,6 +170,14 @@ export default function AnonymousEsimPage() {
             <div className="text-xs text-gray-400 mt-1">{d}</div>
           </div>
         ))}
+      </div>
+
+      <div className="text-center mt-8 flex justify-center gap-3">
+        <Link href="/blog/feed.xml" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-[#ff6600]">
+          <Rss className="h-4 w-4" /> Blog RSS feed
+        </Link>
+        <span className="text-gray-600">·</span>
+        <Link href="/blog" className="text-sm text-gray-400 hover:text-[#ff6600]">Browse by destination</Link>
       </div>
 
       <div className="text-center mt-12">

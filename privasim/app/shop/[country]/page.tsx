@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
+import { ArrowLeft, Wifi, Phone, Globe, BookOpen } from "lucide-react";
 import { searchEsimPackages } from "@/lib/pikasim";
 import { countryName } from "@/lib/countries";
 import { retailPrice } from "@/lib/prices";
@@ -9,6 +9,7 @@ import { getRetailMargin } from "@/lib/settings";
 import EsimCard from "@/components/EsimCard";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
+import { getBlogPosts } from "@/lib/blog";
 
 export const revalidate = 300;
 
@@ -25,10 +26,11 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const name = countryName(countryCode);
   return {
     title: `${name} eSIM — Anonymous Data Plans, No KYC`,
-    description: `Buy a prepaid ${name} eSIM with Monero or Ethereum. Instant QR delivery, no account, no ID, no KYC. Data plans from $3 for ${name} travel.`,
+    description: `Buy a prepaid ${name} eSIM with Monero or Ethereum. Instant QR delivery, no account, no ID, no KYC. Data plans from $3 for ${name} travel. Includes China CN support.`,
     keywords: [
       `${name} esim`, `esim for ${name}`, `${name} travel data`,
       `anonymous esim ${name}`, `buy ${name} esim crypto`, `${name} prepaid data`,
+      `${name} esim no registration`, `${name} esim monero`,
     ],
     alternates: { canonical: `${APP_URL}/shop/${countryCode}` },
     openGraph: {
@@ -61,6 +63,12 @@ export default async function CountryShopPage(props: PageProps) {
   const dataPackages = packages.filter((p) => p.type === "data");
   const phonePackages = packages.filter((p) => p.type === "phone");
   const displayName = packages[0]?.country || countryName(countryCode);
+
+  // Related blog posts for this country (auto-generated)
+  const relatedPosts = getBlogPosts(100).filter((p) =>
+    p.slug.toLowerCase().includes(countryCode.toLowerCase()) ||
+    p.tags.some((t) => t.toLowerCase() === displayName.toLowerCase() || t.toLowerCase() === countryCode.toLowerCase())
+  ).slice(0, 3);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -118,12 +126,15 @@ export default async function CountryShopPage(props: PageProps) {
         <div className="flex items-center gap-3 mb-2">
           <Flag code={countryCode} className="text-5xl" />
           <div>
-            <h1 className="text-3xl font-black text-white">{displayName}</h1>
+            <h1 className="text-3xl font-black text-white">{displayName} eSIM — Anonymous, No KYC</h1>
             <p className="text-gray-400">
-              {dataPackages.length} data plans &bull; {phonePackages.length} phone plans
+              {dataPackages.length} data plans &bull; {phonePackages.length} phone plans &bull; Pay with Monero, ETH, 100+ coins
             </p>
           </div>
         </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Buy a prepaid {displayName} eSIM with Monero or Ethereum. No account, no email, no KYC. Instant QR delivery. Part of our 99-country sitemap including CN.
+        </p>
       </div>
 
       <div className="flex gap-2 mb-8">
@@ -194,6 +205,22 @@ export default async function CountryShopPage(props: PageProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {phonePackages.map((pkg) => (
                   <EsimCard key={pkg.code} pkg={pkg} margin={margin} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {relatedPosts.length > 0 && (
+            <section className="mt-12 p-6 bg-white/3 border border-white/8 rounded-xl">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+                <BookOpen className="h-4 w-4 text-[#ff6600]" />
+                Related guides for {displayName}
+              </h3>
+              <div className="space-y-2">
+                {relatedPosts.map((post) => (
+                  <Link key={post.slug} href={`/blog/${post.slug}`} className="block text-sm text-gray-400 hover:text-[#ff6600]">
+                    → {post.title}
+                  </Link>
                 ))}
               </div>
             </section>

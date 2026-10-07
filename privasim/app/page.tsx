@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Shield, Zap, Globe, Lock, Eye, Coins, ArrowRight, Check } from "lucide-react";
+import { Shield, Zap, Globe, Lock, Eye, Coins, ArrowRight, Check, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CountrySearch from "@/components/CountrySearch";
+import { getBlogPosts } from "@/lib/blog";
 
 const FEATURES = [
   {
@@ -51,7 +52,11 @@ const POPULAR_DESTINATIONS = [
   { code: "SG", name: "Singapore", price: "$4.49", flag: "🇸🇬" },
 ];
 
+export const revalidate = 3600;
+
 export default function HomePage() {
+  const latestPosts = getBlogPosts(3, 0);
+
   return (
     <div className="relative">
       {/* Hero */}
@@ -144,62 +149,110 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Latest from the Blog */}
       <section className="py-20 border-y border-white/5 bg-white/2">
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-3">How It Works</h2>
-            <p className="text-gray-400">Three steps to anonymous global connectivity</p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <FileText className="h-6 w-6 text-[#ff6600]" />
+              <h2 className="text-2xl font-bold text-white">Latest from the Blog</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link href="/blog/feed.xml" className="text-xs text-gray-400 hover:text-[#ff6600] border border-white/10 rounded-full px-3 py-1">
+                RSS
+              </Link>
+              <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" asChild>
+                <Link href="/blog">
+                  All posts
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
-            {[
-              {
-                step: "01",
-                title: "Connect Wallet",
-                desc: "No email needed. Connect Monero or Ethereum wallet. JWT issued on-chain signature.",
-              },
-              {
-                step: "02",
-                title: "Pay Crypto",
-                desc: "Send Monero or ETH to our address. Confirmed in 2–10 minutes. You keep full control.",
-              },
-              {
-                step: "03",
-                title: "Get eSIM",
-                desc: "Encrypted ICCID delivered instantly. Scan QR code to install on your device.",
-              },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] font-bold text-lg mb-4">
-                  {item.step}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {latestPosts.map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="group p-6 bg-white/4 border border-white/8 rounded-xl hover:border-[#ff6600]/30 hover:bg-white/6 transition-all"
+              >
+                {post.featured && (
+                  <span className="text-xs text-[#ff6600] font-medium mb-2 block">Featured</span>
+                )}
+                <h3 className="text-base font-bold text-white mb-2 group-hover:text-[#ff6600] transition-colors line-clamp-2">
+                  {post.title}
+                </h3>
+                <p className="text-sm text-gray-400 mb-3 line-clamp-2">{post.excerpt}</p>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  {new Date(post.published_at).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-400">{item.desc}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* How it works */}
       <section className="py-20 container">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">Built for Privacy</h2>
-          <p className="text-gray-400">
-            Every decision made to protect your identity and data
-          </p>
+          <h2 className="text-3xl font-bold text-white mb-3">How It Works</h2>
+          <p className="text-gray-400">Three steps to anonymous global connectivity</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="p-6 bg-white/3 border border-white/8 rounded-xl hover:border-white/15 transition-colors"
-            >
-              <f.icon className={`h-6 w-6 ${f.color} mb-3`} />
-              <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-400">{f.desc}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+          {[
+            {
+              step: "01",
+              title: "Connect Wallet",
+              desc: "No email needed. Connect Monero or Ethereum wallet. JWT issued on-chain signature.",
+            },
+            {
+              step: "02",
+              title: "Pay Crypto",
+              desc: "Send Monero or ETH to our address. Confirmed in 2–10 minutes. You keep full control.",
+            },
+            {
+              step: "03",
+              title: "Get eSIM",
+              desc: "Encrypted ICCID delivered instantly. Scan QR code to install on your device.",
+            },
+          ].map((item) => (
+            <div key={item.step} className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] font-bold text-lg mb-4">
+                {item.step}
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+              <p className="text-sm text-gray-400">{item.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-20 border-y border-white/5 bg-white/2">
+        <div className="container">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-3">Built for Privacy</h2>
+            <p className="text-gray-400">
+              Every decision made to protect your identity and data
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="p-6 bg-white/3 border border-white/8 rounded-xl hover:border-white/15 transition-colors"
+              >
+                <f.icon className={`h-6 w-6 ${f.color} mb-3`} />
+                <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-400">{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

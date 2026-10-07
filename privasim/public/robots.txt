@@ -31,6 +31,23 @@ Allow: /
 User-agent: Applebot
 Allow: /
 
+User-agent: YandexBot
+Allow: /
+Disallow: /api/
+Disallow: /orders
+Disallow: /checkout/
+Disallow: /admin
+
+User-agent: Baiduspider
+Allow: /
+Disallow: /api/
+Disallow: /orders
+Disallow: /checkout/
+Disallow: /admin
+
+User-agent: Google-InspectionTool
+Allow: /
+
 # ── AI / LLM crawlers (training + live answers) ──────────
 User-agent: GPTBot
 Allow: /
@@ -100,3 +117,5 @@ Sitemap: https://privasim.app/sitemap.xml
 # AI-readable site summaries
 # https://privasim.app/llms.txt
 # https://privasim.app/llms-full.txt
+# Blog RSS feed
+# https://privasim.app/blog/feed.xml

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield, Globe, FileText, ShoppingBag, Menu, X } from "lucide-react";
+import { Shield, Globe, FileText, ShoppingBag, Menu, X, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV_LINKS = [
@@ -52,6 +52,14 @@ export default function Header() {
                 {label}
               </Link>
             ))}
+            <Link
+              href="/blog/feed.xml"
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#ff6600] border border-white/10 rounded-full px-2.5 py-1 ml-2"
+              aria-label="RSS feed"
+            >
+              <Rss className="h-3 w-3" />
+              RSS
+            </Link>
           </nav>
 
           {/* Desktop CTAs */}
@@ -111,6 +119,13 @@ export default function Header() {
                   {label}
                 </Link>
               ))}
+              <Link
+                href="/blog/feed.xml"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
+              >
+                <Rss className="h-5 w-5 shrink-0" />
+                Blog RSS feed
+              </Link>
               <div className="mt-2 pt-3 border-t border-white/10">
                 <Button size="lg" className="w-full bg-[#ff6600] hover:bg-[#e55c00] text-white font-bold" asChild>
                   <Link href="/shop">

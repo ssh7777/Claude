@@ -59,6 +59,28 @@ Not supported: carrier-locked phones, most budget Android models before 2021. Fu
 - eSIM usage (data remaining, validity) can be tracked at https://privasim.app/esim/[ICCID].
 - Each activation code is single-use. There are no refunds once an eSIM is provisioned.
 
+## Blog & Guides
+
+PRIVASIM maintains a daily-updated blog with privacy guides, eSIM tutorials, destination-specific buying guides, and privacy news roundups:
+
+- **All posts**: https://privasim.app/blog
+- **RSS feed**: https://privasim.app/blog/feed.xml — valid RSS 2.0 with content:encoded, ~50 latest items
+- **Archive pagination**: /blog/page/2, /blog/page/3, /blog/page/4 (20 posts per page, 404 beyond last page)
+- **Popular evergreen guides**:
+  - How to Buy an eSIM with Monero: https://privasim.app/blog/how-to-buy-esim-with-monero — includes FAQ and related guides, article-specific og:image at /blog/how-to-buy-esim-with-monero/opengraph-image
+  - No-KYC eSIMs Complete Guide: https://privasim.app/blog/no-kyc-esim-complete-guide
+  - eSIM Installation Guide: https://privasim.app/blog/esim-installation-guide
+  - Why Privacy Matters: https://privasim.app/blog/why-privacy-matters-esim
+  - Best eSIM Deals Today (daily, changefreq=daily in sitemap): https://privasim.app/blog/best-esim-deals-today
+  - Airalo Alternative: https://privasim.app/blog/airalo-alternative
+  - Holafly Alternative: https://privasim.app/blog/holafly-alternative
+- **Daily auto-articles**: 3 new buyer-intent articles per day from live catalog prices (e.g., cheapest Japan eSIM, buy Thailand eSIM with crypto)
+- **Daily privacy-news roundup**: curated headlines from EFF, Schneier, HN privacy feeds
+- **Topics**: privacy, Monero payments, travel eSIMs, no-KYC connectivity, burner eSIMs, journalist safety
+- **Browse by destination**: blog page includes destination filter linking to /shop/{country}
+
+New articles are published automatically every day via GitHub Actions (06:00 UTC daily-deals workflow) and pinged to search engines via IndexNow (Bing, Yandex, Seznam, Naver). Sitemap validation runs at 07:45 UTC.
+
 ## How PRIVASIM Compares
 
 Versus mainstream eSIM sellers (Airalo, Holafly, Nomad and similar):
@@ -89,13 +111,21 @@ What PRIVASIM does NOT claim: the mobile network still sees your device (IMEI) a
 
 ## Site Map for Crawlers
 
-- https://privasim.app/ — home
+- https://privasim.app/ — home (includes Latest from the Blog)
 - https://privasim.app/shop — all countries
-- https://privasim.app/shop/{ISO2} — country plans (e.g. /shop/JP, /shop/US, /shop/TH)
+- https://privasim.app/shop/{ISO2} — country plans (e.g. /shop/JP, /shop/US, /shop/TH, /shop/CN — 99 countries total)
 - https://privasim.app/shop/global — global + phone plans
 - https://privasim.app/topup — anonymous top-up
 - https://privasim.app/guide — eSIM installation guide
-- https://privasim.app/blog — daily-updated articles and deals
+- https://privasim.app/blog — daily-updated articles and deals (20 per page)
+- https://privasim.app/blog/page/2, /blog/page/3, /blog/page/4 — archive pagination
+- https://privasim.app/blog/feed.xml — RSS feed (50 items, content:encoded)
+- https://privasim.app/feed.xml — redirects to /blog/feed.xml
+- https://privasim.app/blog/{slug} — individual articles
+- https://privasim.app/blog/{slug}/opengraph-image — article-specific OG image (1200x630 PNG)
 - https://privasim.app/orders — order retrieval (private, noindex)
 - https://privasim.app/privacy — privacy policy
-- https://privasim.app/sitemap.xml — full sitemap
+- https://privasim.app/sitemap.xml — full sitemap (~187 URLs: 99 country pages, blog posts, archive pages, static routes, deals daily)
+- https://privasim.app/robots.txt — includes YandexBot, Baiduspider, Google-InspectionTool, Blog RSS feed comment
+- https://privasim.app/llms.txt — includes Blog & Guides section
+- https://privasim.app/api/blog — returns total = full archive size (~76), not page length

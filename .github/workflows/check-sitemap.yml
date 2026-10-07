@@ -1,6 +1,8 @@
 name: Check live sitemap domain correctness
 
 on:
+  schedule:
+    - cron: "45 7 * * *" # every day 07:45 UTC — after daily content deploy
   workflow_dispatch:
 
 jobs:
@@ -13,7 +15,39 @@ jobs:
           TOTAL=$(grep -c "<loc>" /tmp/sm.xml || true)
           BAD=$(grep -c "privasim-two" /tmp/sm.xml || true)
           GOOD=$(grep -c "https://privasim.app" /tmp/sm.xml || true)
+          CN=$(grep -c "/shop/CN" /tmp/sm.xml || true)
+          SHOP_COUNT=$(grep -c "/shop/[A-Z][A-Z]" /tmp/sm.xml || true)
+          BLOG_ARCHIVE=$(grep -c "/blog/page/" /tmp/sm.xml || true)
+          DEALS_DAILY=$(grep -A2 "best-esim-deals-today" /tmp/sm.xml | grep -c "daily" || true)
           echo "total URLs: $TOTAL | privasim.app: $GOOD | privasim-two (BAD): $BAD"
-          head -c 600 /tmp/sm.xml
+          echo "shop country URLs: $SHOP_COUNT (expected ~99) | /shop/CN: $CN | blog archive pages: $BLOG_ARCHIVE | deals daily: $DEALS_DAILY"
+          head -c 1000 /tmp/sm.xml
           echo
-          [ "$BAD" = "0" ] && echo "SITEMAP OK" || { echo "STILL BROKEN"; exit 1; }
+          [ "$BAD" = "0" ] || { echo "STILL BROKEN — found privasim-two"; exit 1; }
+          [ "$TOTAL" -ge 150 ] || { echo "SITEMAP TOO SMALL — expected ~187 URLs, got $TOTAL"; exit 1; }
+          [ "$SHOP_COUNT" -ge 90 ] || { echo "MISSING COUNTRY URLs — expected ~99, got $SHOP_COUNT"; exit 1; }
+          [ "$CN" -ge 1 ] || { echo "MISSING /shop/CN"; exit 1; }
+          [ "$BLOG_ARCHIVE" -ge 2 ] || { echo "MISSING BLOG ARCHIVE PAGES"; exit 1; }
+          echo "SITEMAP OK — $TOTAL URLs, $SHOP_COUNT country pages, CN present, archive pages present"
+
+      - name: Verify RSS feed
+        continue-on-error: true
+        run: |
+          curl -sS https://privasim.app/blog/feed.xml -o /tmp/feed.xml
+          ITEMS=$(grep -c "<item>" /tmp/feed.xml || true)
+          HAS_CONTENT=$(grep -c "content:encoded" /tmp/feed.xml || true)
+          echo "RSS items: $ITEMS | has content:encoded: $HAS_CONTENT"
+          [ "$ITEMS" -ge 10 ] || { echo "RSS TOO SMALL"; exit 1; }
+          [ "$HAS_CONTENT" -ge 1 ] || { echo "RSS MISSING content:encoded"; exit 1; }
+          echo "RSS OK"
+
+      - name: Verify robots.txt and llms.txt
+        continue-on-error: true
+        run: |
+          curl -sS https://privasim.app/robots.txt -o /tmp/robots.txt
+          curl -sS https://privasim.app/llms.txt -o /tmp/llms.txt
+          grep -q "YandexBot" /tmp/robots.txt && echo "YandexBot OK" || echo "MISSING YandexBot"
+          grep -q "Baiduspider" /tmp/robots.txt && echo "Baiduspider OK" || echo "MISSING Baiduspider"
+          grep -q "Google-InspectionTool" /tmp/robots.txt && echo "Google-InspectionTool OK" || echo "MISSING Google-InspectionTool"
+          grep -q "Blog RSS feed" /tmp/robots.txt && echo "Blog RSS feed comment OK" || echo "MISSING Blog RSS feed comment"
+          grep -q "Blog & Guides" /tmp/llms.txt && echo "llms.txt Blog & Guides OK" || echo "MISSING Blog & Guides in llms.txt"
