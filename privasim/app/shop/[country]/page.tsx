@@ -83,7 +83,7 @@ export default async function CountryShopPage(props: PageProps) {
       item: {
         "@type": "Product",
         name: p.name,
-        description: `${p.dataAmount} eSIM data plan for ${displayName}, valid ${p.durationDays} days. Anonymous purchase with Monero or Ethereum.`,
+        description: `${p.dataAmount} eSIM data plan for ${displayName}, valid ${p.durationDays} days. Crypto purchase; checkout does not require an identity account.`,
         offers: {
           "@type": "Offer",
           price: retailPrice(p.priceUsd, margin).toFixed(2),

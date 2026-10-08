@@ -75,7 +75,7 @@ No analytics cookies
             Accepts XMR, ETH, USDT & supported swap assets
           </div>
           <p className="text-xs text-gray-500">
-            190+ countries &bull; Delivery after confirmation &bull; No identity account required
+            Many destinations &bull; Delivery after confirmation &bull; No identity account required
           </p>
         </div>
       </div>

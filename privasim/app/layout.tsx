@@ -19,11 +19,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "PRIVASIM — Buy eSIM with Crypto | 190+ Countries, No Account Required",
+    default: "PRIVASIM — Buy eSIM with Crypto | No Account Required",
     template: "%s | PRIVASIM",
   },
   description:
-    "Buy prepaid eSIMs for 190+ countries with cryptocurrency, without an identity account. Minimal order records support payment verification and secure delivery.",
+    "Buy prepaid eSIMs with cryptocurrency, without an identity account. A temporary order record supports payment verification and delivery.",
   keywords: [
     "anonymous esim", "privacy esim", "buy esim crypto", "monero esim", "ethereum esim",
     "no kyc esim", "travel esim", "esim marketplace", "esim without registration",
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: APP_URL,
     siteName: "PRIVASIM",
-    title: "PRIVASIM — Buy eSIM with Crypto | No Account, 190+ Countries",
+    title: "PRIVASIM — Buy eSIM with Crypto | No Account Required",
     description:
-      "Prepaid eSIMs for 190+ countries. No identity account is required; payment verification and delivery use a temporary order record.",
+      "Prepaid eSIMs for many destinations. No identity account is required; payment verification and delivery use a temporary order record.",
   },
   twitter: {
     card: "summary_large_image",
     title: "PRIVASIM — eSIMs with Cryptocurrency",
-    description: "Buy prepaid eSIMs for 190+ countries without an identity account. Order records support payment verification and delivery.",
+    description: "Buy prepaid eSIMs without an identity account. Order records support payment verification and delivery.",
   },
   alternates: {
     canonical: APP_URL,
@@ -85,7 +85,7 @@ const JSON_LD = {
       "@id": `${APP_URL}/#website`,
       url: APP_URL,
       name: "PRIVASIM",
-      description: "Buy prepaid eSIMs for 190+ countries with cryptocurrency and no identity account requirement.",
+      description: "Buy prepaid eSIMs with cryptocurrency and no identity account requirement.",
       publisher: { "@id": `${APP_URL}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -120,7 +120,7 @@ const JSON_LD = {
           name: "How many countries does PRIVASIM cover?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "PRIVASIM offers eSIM plans for 190+ countries across Asia Pacific, Europe, Americas, Middle East, and Africa.",
+            text: "PRIVASIM offers eSIM plans for a broad range of countries across Asia Pacific, Europe, Americas, Middle East, and Africa. Exact availability depends on the supplier catalog and can change.",
           },
         },
         {

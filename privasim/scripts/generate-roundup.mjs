@@ -115,7 +115,7 @@ ${s.items.map((i) => `<li><a href="${esc(i.link)}" rel="nofollow noopener" targe
 <p>The daily reading list for people who care about digital privacy — curated headlines with links to the original reporting. Why we track this: every new SIM-registration law, data-broker leak, and surveillance expansion is a reason <a href="/blog/why-privacy-matters-esim">anonymous connectivity</a> exists.</p>
 ${body}
 <h2>Stay connected without the paper trail</h2>
-<p>PRIVASIM sells eSIMs for 190+ countries with no email, no account, no KYC — pay with Monero, Ethereum, USDT or 100+ other coins. <a href="/shop">Browse plans →</a></p>
+<p>PRIVASIM sells eSIMs without an identity account or email, and pays with Monero, Ethereum, USDT, or additional assets through an external swap provider. <a href="/shop">Browse plans →</a></p>
 <p><em>This roundup is generated automatically every day from public feeds. All headlines link to and credit their original sources.</em></p>
 `,
   };

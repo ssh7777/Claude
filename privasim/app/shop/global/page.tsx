@@ -14,16 +14,16 @@ export const dynamic = "force-dynamic";
 const APP_URL = "https://privasim.app";
 
 export const metadata: Metadata = {
-  title: "Global eSIM Plans — 120+ Countries, One eSIM | Data + Calls + SMS",
+  title: "Global eSIM Plans — One eSIM, Many Countries | Data + Calls + SMS",
   description:
-    "One eSIM for 120+ countries where available. Compare global data and phone plans; checkout does not require an identity account, and delivery follows payment confirmation and supplier fulfillment.",
+    "One eSIM for many countries where available. Compare global data and phone plans; checkout does not require an identity account, and delivery follows payment confirmation and supplier fulfillment.",
   keywords: [
-    "global esim", "worldwide esim", "international esim", "esim 120 countries",
+    "global esim", "worldwide esim", "international esim", "global esim many countries",
     "esim with phone number", "esim voice sms", "travel esim global", "anonymous global esim",
   ],
   alternates: { canonical: `${APP_URL}/shop/global` },
   openGraph: {
-    title: "Global eSIM Plans — 120+ Countries, One eSIM",
+    title: "Global eSIM Plans — One eSIM, Many Countries",
     description: "Global data and phone eSIMs where available. Crypto payment; delivery follows confirmations and supplier fulfillment.",
     url: `${APP_URL}/shop/global`,
     siteName: "PRIVASIM",
@@ -65,7 +65,7 @@ export default async function GlobalShopPage() {
           <div>
             <h1 className="text-3xl font-black text-white">Global Plans</h1>
             <p className="text-gray-400">
-              One eSIM for 120+ countries &bull; {dataPlans.length} data plans &bull; {phonePlans.length} phone plans
+              One eSIM for many countries &bull; {dataPlans.length} data plans &bull; {phonePlans.length} phone plans
             </p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default async function GlobalShopPage() {
                 Global Data eSIMs
               </h2>
               <p className="text-sm text-gray-400 mb-4">
-                Works in 120+ countries with a single installation — perfect for multi-country trips.
+                Works across many countries with a single installation — useful for multi-country trips.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {dataPlans.map((pkg) => (

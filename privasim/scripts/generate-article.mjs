@@ -52,8 +52,8 @@ const TOPIC_TEMPLATES = [
     intro: (n) => `Working out how much mobile data you'll use in ${n} saves you money. Here's a realistic breakdown by traveller type, with current eSIM prices.` },
   { kind: "vs", title: (n) => `${n} Travel SIM vs eSIM: Which Is Better for Privacy?`,
     intro: (n) => `Local SIM and eSIM identity requirements vary in ${n}. Compare the available options and check current requirements before travel.` },
-  { kind: "cheapest", title: (n) => `Cheapest ${n} eSIM in ${year} — Live Prices, No Account Needed`,
-    intro: (n) => `Looking for an affordable ${n} eSIM? Catalog prices change, so compare the current live plans. Checkout does not require an identity account or email; temporary order data is retained for fulfillment.` },
+  { kind: "cheapest", title: (n) => `Cheapest ${n} eSIM in ${year} — Listed Prices, No Account Needed`,
+    intro: (n) => `Looking for an affordable ${n} eSIM? Catalog prices change, so compare the current listed plans. Checkout does not require an identity account or email; temporary order data is retained for fulfillment.` },
   { kind: "crypto", title: (n) => `Buy a ${n} eSIM with Crypto (Monero, ETH, USDT)`,
     intro: (n) => `You can pay for ${n} mobile data entirely in cryptocurrency — Monero, Ethereum, and USDT on Ethereum mainnet are supported directly; additional assets may be available through the external Trocador swap provider. No identity account or card is required at checkout.` },
   { kind: "nokyc", title: (n) => `${n} eSIM Without an Identity Account (${year})`,
@@ -67,8 +67,8 @@ function buildArticle(code, tpl, plans) {
   ).join("");
 
   const priceLine = plans.length
-    ? `Current cheapest ${name} plan: <strong>${plans[0].volumeGB} GB for $${retail(plans[0].priceUSD)}</strong> (${plans[0].duration || plans[0].validityDays} days).`
-    : `Browse live ${name} plans at <a href="/shop/${code}">/shop/${code}</a>.`;
+    ? `Lowest-priced ${name} plan in this snapshot: <strong>${plans[0].volumeGB} GB for $${retail(plans[0].priceUSD)}</strong> (${plans[0].duration || plans[0].validityDays} days). Prices shown are a dated snapshot and may have changed.`
+    : `Browse current ${name} plans at <a href="/shop/${code}">/shop/${code}</a>.`;
 
   const slug = `${tpl.kind}-esim-${code.toLowerCase()}-${today}`;
   return {
@@ -101,7 +101,7 @@ ${plans.length ? `<table><tr><th>Data</th><th>Validity</th><th>Price</th><th></t
 <li>Open the <a href="/orders">orders page</a> in the browser that saved your invoice token after confirmations and supplier fulfillment.</li>
 <li>Install it (<a href="/guide">step-by-step guide</a>) and enable data roaming on arrival.</li>
 </ol>
-<p><em>Prices update automatically every day. Last refreshed ${today}.</em> <a href="/shop/${code}">See all ${name} eSIMs →</a></p>
+<p><em>Prices shown are a snapshot taken on ${today} and may have changed since. Confirm current prices on the shop page.</em> <a href="/shop/${code}">See all ${name} eSIMs →</a></p>
 `,
   };
 }

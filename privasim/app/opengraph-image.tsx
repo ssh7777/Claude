@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "PRIVASIM — Prepaid eSIMs with cryptocurrency for 190+ countries.";
+export const alt = "PRIVASIM — Prepaid eSIMs with cryptocurrency for many destinations.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -42,7 +42,7 @@ export default function Image() {
           </div>
         </div>
         <div style={{ fontSize: 34, color: "#d1d5db", marginTop: 28, textAlign: "center" }}>
-          Prepaid eSIMs for 190+ countries
+          Prepaid eSIMs for many destinations
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 36 }}>
           {["No identity account", "Monero · ETH · USDT", "Delivery after fulfillment"].map((t) => (

@@ -10,7 +10,7 @@ import Flag from "@/components/Flag";
 
 export const metadata: Metadata = {
   title: "Browse eSIMs",
-  description: "Browse eSIM data plans for 190+ countries. Pay with Monero or Ethereum.",
+  description: "Browse eSIM data plans. Pay with Monero, Ethereum, USDT, or supported coins via a swap provider.",
 };
 
 export const dynamic = "force-dynamic";
@@ -112,13 +112,13 @@ export default async function ShopPage() {
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 text-sm text-gray-400 mb-4">
           <Globe className="h-4 w-4 text-[#ff6600]" />
-          190+ countries available
+          eSIM plans available
         </div>
         <h1 className="text-4xl font-black text-white mb-3">
           Browse <span className="gradient-text">eSIM Plans</span>
         </h1>
         <p className="text-gray-400 max-w-lg mx-auto">
-          Search by country to find data and phone plans. Prices include all fees.
+          Search by country to find data and phone plans. Listed prices are the amount due at checkout and include the PRIVASIM retail margin; blockchain network fees and any external swap-provider fees are separate.
         </p>
       </div>
 
@@ -139,7 +139,7 @@ export default async function ShopPage() {
             <div className="font-bold text-white group-hover:text-[#ff9944] transition-colors">
               Global eSIMs
             </div>
-            <div className="text-sm text-gray-400">One eSIM for 120+ countries</div>
+            <div className="text-sm text-gray-400">One eSIM for many countries</div>
           </div>
         </Link>
         <Link

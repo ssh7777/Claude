@@ -231,7 +231,7 @@ export default function CheckoutPage() {
 
           <ul className="space-y-2 mb-4">
             {[
-              "Instant eSIM delivery",
+              "Digital eSIM delivery",
               "No personal data required",
               "Encrypted eSIM credentials",
               "Works on unlocked devices",
