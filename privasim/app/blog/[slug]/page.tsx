@@ -156,7 +156,7 @@ export default async function BlogPostPage(props: PageProps) {
       <div className="mt-12 p-6 bg-white/4 border border-[#ff6600]/20 rounded-xl text-center">
         <h2 className="text-lg font-bold text-white mb-2">Ready for privacy-focused connectivity?</h2>
         <p className="text-gray-400 text-sm mb-4">
-          eSIMs for 190+ countries. Checkout does not require an identity account or email; supplier and destination requirements may vary.
+          eSIMs for many destinations. Checkout does not require an identity account or email; supplier and destination requirements may vary.
         </p>
         <Button className="bg-[#ff6600] hover:bg-[#e55c00] text-white" asChild>
           <Link href="/shop">Browse plans</Link>

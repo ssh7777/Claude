@@ -104,12 +104,12 @@ const RULES: Rule[] = [
   {
     test: /\b(price|cost|cheap|how much|pricing)\b/i,
     reply:
-      "Rough guide: 1GB plans from ~$5, 5GB from ~$12, 10GB from ~$20 — varies by country. Tell me a destination (e.g. \"eSIM for Japan\") and I'll pull live prices, or browse [/shop](/shop).",
+      "Rough guide: 1GB plans from ~$5, 5GB from ~$12, 10GB from ~$20 — sample ranges that vary by country and change over time. Tell me a destination (e.g. \"eSIM for Japan\") and I'll pull current listed prices, or browse [/shop](/shop).",
   },
   {
     test: /\b(countr|coverage|where (do|can)|destinations?|region)\b/i,
     reply:
-      "We cover **190+ countries** — Asia, Europe, Americas, Middle East, Africa, plus regional and global plans. Name a country (e.g. \"Thailand\") and I'll show live plans, or browse everything at [/shop](/shop).",
+      "We offer eSIM plans for a broad range of countries — Asia, Europe, Americas, Middle East, Africa, plus regional and global plans. Name a country (e.g. \"Thailand\") and I'll show live plans, or browse everything at [/shop](/shop).",
   },
   {
     test: /\b(problem|issue|help|support|broken|doesn'?t work|not working|error|fail)\b/i,

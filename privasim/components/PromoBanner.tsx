@@ -27,7 +27,7 @@ export default function PromoBanner() {
     <div className="bg-gradient-to-r from-[#ff6600] to-[#ff9944] text-white text-center px-3 py-2 text-sm font-medium">
       <span className="inline-flex items-center gap-1.5 flex-wrap justify-center">
         <Zap className="h-4 w-4 shrink-0" />
-        Launch offer: {PROMO_PERCENT}% off every eSIM — code
+        Save {PROMO_PERCENT}% with code
         <button
           onClick={copy}
           title="Copy code"
@@ -36,7 +36,7 @@ export default function PromoBanner() {
           {PROMO_CODE}
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </button>
-        at checkout · limited redemptions
+        at checkout
       </span>
     </div>
   );

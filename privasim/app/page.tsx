@@ -32,8 +32,8 @@ const FEATURES = [
   },
   {
     icon: Globe,
-    title: "190+ Countries",
-    desc: "Global coverage via PikaSim network. Data and phone plans available.",
+    title: "Wide country coverage",
+    desc: "eSIM plans for a broad range of countries and regions, subject to supplier catalog availability.",
     color: "text-teal-400",
   },
   {
@@ -70,7 +70,7 @@ export default function HomePage() {
 
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white mb-6">
               eSIMs for{" "}
-              <span className="gradient-text">190+ Countries</span>
+              <span className="gradient-text">Many Countries</span>
               <br />
               Pay with{" "}
               <span className="gradient-text">Crypto</span>
@@ -120,7 +120,7 @@ export default function HomePage() {
       <section className="py-20 container">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-3">Popular Destinations</h2>
-          <p className="text-gray-400">Instant eSIM delivery. Works within minutes of payment.</p>
+          <p className="text-gray-400">Digital delivery after payment confirmation and supplier fulfillment.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {POPULAR_DESTINATIONS.map((dest) => (
@@ -138,7 +138,7 @@ export default function HomePage() {
         <div className="text-center mt-8">
           <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" asChild>
             <Link href="/shop">
-              View all 190+ countries
+              View all countries
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

@@ -1,6 +1,6 @@
 # PRIVASIM
 
-> PRIVASIM sells prepaid eSIM plans for 190+ countries. Checkout does not require an identity account, email, phone number, or government ID. A temporary server-side order record supports payment verification and fulfillment.
+> PRIVASIM sells prepaid eSIM plans for a broad range of countries. Checkout does not require an identity account, email, phone number, or government ID. A temporary server-side order record supports payment verification and fulfillment.
 
 Website: https://privasim.app
 Shop: https://privasim.app/shop
@@ -9,7 +9,7 @@ Install guide: https://privasim.app/guide
 
 ## Key facts
 
-- Data eSIMs for 190+ countries, global plans, and selected phone-number plans.
+- Data eSIMs for a broad range of countries, global plans, and selected phone-number plans.
 - Direct payment methods: Monero (XMR), Ethereum (ETH), and USDT on Ethereum mainnet.
 - Additional assets may be offered through Trocador, a separate swap service. It has its own terms, fees, and privacy practices; do not describe that flow as anonymous.
 - Payment verification requires 10 Monero confirmations or 12 Ethereum confirmations. Actual timing varies; supplier fulfillment can add time.

@@ -12,16 +12,16 @@ const APP_URL = "https://privasim.app";
 export const metadata: Metadata = {
   title: "Anonymous eSIM — Buy Mobile Data with No ID, No Email, No KYC",
   description:
-    "Buy prepaid eSIMs for 190+ countries with cryptocurrency, without an identity account. Temporary order records support payment verification and delivery.",
+    "Buy prepaid eSIMs with cryptocurrency, without an identity account. Temporary order records support payment verification and delivery.",
   keywords: [
     "anonymous esim", "anonymous sim card", "esim without id", "no kyc esim",
     "private esim", "esim anonymous payment", "buy esim anonymously", "esim no registration",
   ],
   alternates: { canonical: `${APP_URL}/anonymous-esim` },
-  openGraph: {
-    title: "Anonymous eSIM — No ID, No Email, No KYC",
-    description:
-      "Prepaid mobile data for 190+ countries. No identity account is required; payment and delivery use a temporary order record.",
+    openGraph: {
+      title: "Anonymous eSIM — No ID, No Email, No KYC",
+      description:
+        "Prepaid mobile data for many destinations. No identity account is required; payment and delivery use a temporary order record.",
     url: `${APP_URL}/anonymous-esim`,
     siteName: "PRIVASIM",
   },
@@ -35,7 +35,7 @@ const JSON_LD = {
       name: "Anonymous eSIM",
       provider: { "@type": "Organization", name: "PRIVASIM", url: APP_URL },
       description:
-        "Prepaid eSIM data plans for 190+ countries. Checkout does not require an identity account; temporary order records support payment verification and delivery.",
+        "Prepaid eSIM data plans for many destinations. Checkout does not require an identity account; temporary order records support payment verification and delivery.",
       areaServed: "Worldwide",
       url: `${APP_URL}/anonymous-esim`,
     },
@@ -71,7 +71,7 @@ const JSON_LD = {
           name: "Which countries can I get an anonymous eSIM for?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "190+ countries including Japan, USA, UK, Germany, Thailand, UAE and Turkey, plus global plans covering 120+ countries with a single eSIM.",
+            text: "A broad range of countries including Japan, USA, UK, Germany, Thailand, UAE and Turkey, plus global plans covering many countries with a single eSIM.",
           },
         },
       ],
@@ -80,7 +80,7 @@ const JSON_LD = {
 };
 
 const STEPS = [
-  { n: "1", title: "Pick a plan", body: "190+ countries, live prices, no login wall." },
+  { n: "1", title: "Pick a plan", body: "Many countries, current catalog prices, no login wall." },
   { n: "2", title: "Pay with crypto", body: "Monero, ETH, USDT or 100+ coins. Exact amount, one address." },
   { n: "3", title: "Retrieve the eSIM", body: "After payment confirmation and supplier fulfillment, open your order and install the QR code." },
 ];
@@ -96,7 +96,7 @@ export default function AnonymousEsimPage() {
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">The Anonymous eSIM</h1>
         <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-          Prepaid mobile data for <strong className="text-white">190+ countries</strong>, bought with
+          Prepaid mobile data for <strong className="text-white">many countries</strong>, bought with
           crypto and delivered as a QR code. No identity account or email is required. A temporary order record is retained for payment checks and delivery.
         </p>
         <div className="flex justify-center gap-3 mt-7">
@@ -141,20 +141,20 @@ export default function AnonymousEsimPage() {
           dossier. Popular destinations: <Link href="/shop/JP">Japan</Link>, <Link href="/shop/US">USA</Link>,{" "}
           <Link href="/shop/TH">Thailand</Link>, <Link href="/shop/DE">Germany</Link>,{" "}
           <Link href="/shop/AE">UAE</Link>, <Link href="/shop/TR">Turkey</Link> — or one{" "}
-          <Link href="/shop/global">global eSIM for 120+ countries</Link>.
+          <Link href="/shop/global">global eSIM for many countries</Link>.
         </p>
         <h2>What it costs</h2>
         <p>
-          From about $3 for 500 MB to ~$20 for 10 GB depending on country — the same range as identity-based
-          sellers. See <Link href="/blog/best-esim-deals-today">today&apos;s live cheapest deals</Link> (refreshed
-          daily) or the <Link href="/blog/airalo-alternative">Airalo</Link> and{" "}
+          From about $3 for 500 MB to ~$20 for 10 GB depending on country; actual prices vary by destination and
+          change over time. See <Link href="/blog/best-esim-deals-today">today&apos;s listed cheapest deals</Link> or the{" "}
+          <Link href="/blog/airalo-alternative">Airalo</Link> and{" "}
           <Link href="/blog/holafly-alternative">Holafly</Link> comparisons.
         </p>
       </article>
 
       <div className="grid sm:grid-cols-3 gap-4 text-center">
         {[
-          { icon: Globe, t: "190+ countries", d: "incl. global multi-country plans" },
+          { icon: Globe, t: "Many countries", d: "incl. global multi-country plans" },
           { icon: Coins, t: "Crypto payments", d: "XMR · ETH · USDT · supported swap assets" },
           { icon: Zap, t: "Digital delivery", d: "After chain confirmation and supplier fulfillment" },
         ].map(({ icon: Icon, t, d }) => (
