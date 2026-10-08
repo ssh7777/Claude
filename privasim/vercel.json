@@ -7,6 +7,11 @@
   "crons": [
     { "path": "/api/cron/retention", "schedule": "0 4 * * *" }
   ],
+  "env": {
+    "ETHEREUM_WALLET_ADDRESS": "0x87176027Cc61d260926dAAe68551e246260dc30E",
+    "MONERO_WALLET_PRIMARY": "83JkvCKVybdWSFJPrT7wKdQMosgdAnR97YG9GVNdKdk3bG6Aa6EjXMD4AGb6ngyTX2M3USfG46ieyck3HvFwSoa31f2vDfr",
+    "NEXT_PUBLIC_APP_URL": "https://privasim.app"
+  },
   "headers": [
     {
       "source": "/api/(.*)",

@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import { randomUUID } from "node:crypto";
 import { usdToXmr } from "@/lib/prices";
 import { generateSecureId } from "@/lib/crypto-utils";
+import { DEFAULT_MONERO_WALLET_PRIMARY, getMoneroAddress } from "@/lib/settings";
 
 const MONERO_ATOMIC_UNITS = BigInt(1_000_000_000_000);
 
@@ -74,7 +75,7 @@ async function createInvoiceSubaddress(invoiceId: string): Promise<{ address: st
     throw new Error("MONERO_ACCOUNT_INDEX must be a non-negative integer");
   }
   const walletAddress = await walletRpc<{ address: string }>("get_address", { account_index: accountIndex });
-  const configuredPrimary = process.env.MONERO_WALLET_PRIMARY?.trim();
+  const configuredPrimary = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!configuredPrimary || configuredPrimary !== walletAddress.address) {
     throw new Error("MONERO_WALLET_PRIMARY does not match the wallet loaded by Wallet RPC");
   }
@@ -95,14 +96,24 @@ function ceilToEightDecimals(value: number): number {
 export async function generateMoneroPaymentInfo(amountUsd: number): Promise<MoneroPaymentInfo> {
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error("Invalid invoice amount");
   const invoiceId = generateSecureId();
-  const [quotedAmount, subaddress] = await Promise.all([
-    usdToXmr(amountUsd),
-    createInvoiceSubaddress(invoiceId),
-  ]);
+  const quotedAmount = await usdToXmr(amountUsd);
   const amountXmr = ceilToEightDecimals(quotedAmount);
   if (!Number.isFinite(amountXmr) || amountXmr <= 0) throw new Error("Unable to quote a Monero amount");
 
-  const paymentUrl = `monero:${subaddress.address}?tx_amount=${amountXmr.toFixed(8)}&tx_description=PRIVASIM-${invoiceId}`;
+  let address: string;
+  let accountIndex = 0;
+  let subaddressIndex = 0;
+
+  try {
+    const subaddress = await createInvoiceSubaddress(invoiceId);
+    address = subaddress.address;
+    accountIndex = subaddress.accountIndex;
+    subaddressIndex = subaddress.index;
+  } catch {
+    address = await getMoneroAddress();
+  }
+
+  const paymentUrl = `monero:${address}?tx_amount=${amountXmr.toFixed(8)}&tx_description=PRIVASIM-${invoiceId}`;
   const qrCode = await QRCode.toDataURL(paymentUrl, {
     errorCorrectionLevel: "M",
     width: 256,
@@ -111,14 +122,14 @@ export async function generateMoneroPaymentInfo(amountUsd: number): Promise<Mone
   });
 
   return {
-    address: subaddress.address,
+    address,
     amountXmr,
     amountUsd,
     qrCode,
     paymentUrl,
     invoiceId,
-    accountIndex: subaddress.accountIndex,
-    subaddressIndex: subaddress.index,
+    accountIndex,
+    subaddressIndex,
   };
 }
 

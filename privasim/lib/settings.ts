@@ -11,6 +11,7 @@
 import { ledgerGet, ledgerPersistent, ledgerSet } from "@/lib/ledger";
 
 const KEY_ETH = "set_wallet_eth";
+const KEY_XMR = "set_wallet_xmr";
 const KEY_MARGIN = "set_margin_pct";
 
 // ── Profit margin (owner-adjustable, no redeploy) ───────────────────────────
@@ -66,16 +67,26 @@ export function isValidMoneroAddress(addr: string): boolean {
   return /^[48][0-9AB][1-9A-HJ-NP-Za-km-z]{93}([1-9A-HJ-NP-Za-km-z]{11})?$/.test(addr.trim());
 }
 
+export const DEFAULT_MONERO_WALLET_PRIMARY =
+  "83JkvCKVybdWSFJPrT7wKdQMosgdAnR97YG9GVNdKdk3bG6Aa6EjXMD4AGb6ngyTX2M3USfG46ieyck3HvFwSoa31f2vDfr";
+
 export function isValidEthAddress(addr: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 }
 
 export async function getMoneroAddress(): Promise<string> {
-  const address = process.env.MONERO_WALLET_PRIMARY?.trim();
+  const override = await ledgerGet<string>(KEY_XMR);
+  if (override && isValidMoneroAddress(override)) return override;
+  const address = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!address || !isValidMoneroAddress(address)) {
     throw new Error("MONERO_WALLET_PRIMARY is missing or invalid");
   }
   return address;
+}
+
+export async function setMoneroAddress(addr: string): Promise<boolean> {
+  if (!isValidMoneroAddress(addr)) throw new Error("Invalid Monero address");
+  return ledgerSet(KEY_XMR, addr.trim());
 }
 
 export async function getEthereumAddress(): Promise<string> {
@@ -94,17 +105,18 @@ export async function setEthereumAddress(addr: string): Promise<boolean> {
 export async function getWalletSettings(): Promise<{
   monero: string;
   ethereum: string;
-  moneroSource: "environment";
+  moneroSource: "custom" | "default";
   ethereumSource: "custom" | "default";
   marginPercent: number;
   marginSource: "custom" | "default";
 }> {
+  const xmrOverride = await ledgerGet<string>(KEY_XMR);
   const ethOverride = await ledgerGet<string>(KEY_ETH);
   const marginOverride = await ledgerGet<number>(KEY_MARGIN);
   return {
     monero: await getMoneroAddress(),
     ethereum: await getEthereumAddress(),
-    moneroSource: "environment",
+    moneroSource: xmrOverride ? "custom" : "default",
     ethereumSource: ethOverride ? "custom" : "default",
     marginPercent: await getMarginPercent(),
     marginSource:

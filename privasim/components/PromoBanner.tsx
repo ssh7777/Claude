@@ -1,6 +1,6 @@
 "use client";
 
-// Site-wide launch-offer banner. The code is a real, server-verified coupon
+// Site-wide promo banner. The code is a real, server-verified coupon
 // (HMAC-signed, usage-capped in the ledger) — remove or swap the constant
 // when the promotion ends; an expired code simply stops validating.
 
@@ -31,6 +31,7 @@ export default function PromoBanner() {
         <button
           onClick={copy}
           title="Copy code"
+          aria-label="Copy promo code"
           className="inline-flex items-center gap-1 bg-black/25 hover:bg-black/40 rounded px-2 py-0.5 font-mono text-xs tracking-tight transition-colors"
         >
           {PROMO_CODE}

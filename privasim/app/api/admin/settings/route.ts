@@ -3,6 +3,7 @@ import { isAdminRequest } from "@/lib/adminAuth";
 import {
   getWalletSettings,
   setEthereumAddress,
+  setMoneroAddress,
   setMarginPercent,
 } from "@/lib/settings";
 
@@ -18,18 +19,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let body: { monero?: unknown; ethereum?: string; marginPercent?: number };
+  let body: { monero?: string; ethereum?: string; marginPercent?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (body.monero !== undefined) {
-    return NextResponse.json(
-      { error: "Monero receiving wallet is managed with the Wallet RPC environment configuration." },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
-    );
+  if (body.monero !== undefined && typeof body.monero !== "string") {
+    return NextResponse.json({ error: "monero must be a string" }, { status: 400 });
   }
   if (body.ethereum !== undefined && typeof body.ethereum !== "string") {
     return NextResponse.json({ error: "ethereum must be a string" }, { status: 400 });
@@ -37,6 +35,10 @@ export async function POST(req: NextRequest) {
 
   const results: Record<string, string> = {};
   try {
+    if (body.monero) {
+      if (!(await setMoneroAddress(body.monero))) throw new Error("Could not persist the Monero address");
+      results.monero = "updated";
+    }
     if (body.ethereum) {
       if (!(await setEthereumAddress(body.ethereum))) throw new Error("Could not persist the Ethereum address");
       results.ethereum = "updated";
