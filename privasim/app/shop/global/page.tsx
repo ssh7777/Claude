@@ -1,10 +1,11 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Globe, Phone, Wifi, MessageSquare, Clock } from "lucide-react";
-import { getGlobalPackages, getPhonePlans } from "@/lib/pikasim";
+import { getPhonePlans, loadGlobalCatalog, type CatalogSource } from "@/lib/pikasim";
 import { retailPrice } from "@/lib/prices";
 import { getRetailMargin } from "@/lib/settings";
 import EsimCard from "@/components/EsimCard";
+import CatalogNotice from "@/components/CatalogNotice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,16 +32,22 @@ export const metadata: Metadata = {
 };
 
 export default async function GlobalShopPage() {
-  let dataPlans: Awaited<ReturnType<typeof getGlobalPackages>> = [];
+  let dataPlans: Awaited<ReturnType<typeof loadGlobalCatalog>>["packages"] = [];
   let phonePlans: Awaited<ReturnType<typeof getPhonePlans>> = [];
   let fetchError = false;
+  let stale = false;
+  let catalogSource: CatalogSource = "supplier";
 
   try {
-    [dataPlans, phonePlans] = await Promise.all([
-      getGlobalPackages().catch(() => []),
+    const [globalCatalog, phone] = await Promise.all([
+      loadGlobalCatalog(),
       getPhonePlans({ region: "Global" }).catch(() => []),
     ]);
-    if (dataPlans.length === 0 && phonePlans.length === 0) fetchError = true;
+    dataPlans = globalCatalog.packages;
+    stale = globalCatalog.stale;
+    catalogSource = globalCatalog.source;
+    phonePlans = phone;
+    if (dataPlans.length === 0) fetchError = true;
   } catch {
     fetchError = true;
   }
@@ -57,6 +64,8 @@ export default async function GlobalShopPage() {
             All countries
           </Link>
         </Button>
+
+        {stale && <CatalogNotice source={catalogSource} className="mb-4" />}
 
         <div className="flex items-center gap-3 mb-2">
           <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-[#ff6600] to-[#ff9944] flex items-center justify-center">

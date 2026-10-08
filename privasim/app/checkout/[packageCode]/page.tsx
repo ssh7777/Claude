@@ -53,6 +53,9 @@ export default function CheckoutPage() {
   const packageCode = params.packageCode as string;
 
   const [pkg, setPkg] = useState<EsimPackage | null>(null);
+  // True when the displayed plan came from a cached/committed catalog because
+  // the supplier was unreachable. The invoice is always re-quoted live.
+  const [staleCatalog, setStaleCatalog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cryptoType, setCryptoType] = useState<CryptoType>("monero");
   const [creating, setCreating] = useState(false);
@@ -104,6 +107,7 @@ export default function CheckoutPage() {
           router.push("/shop");
         } else {
           setPkg(data);
+          setStaleCatalog(Boolean(data.stale));
         }
       })
       .catch(() => router.push("/shop"))
@@ -134,7 +138,12 @@ export default function CheckoutPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? data.message ?? `Order failed (HTTP ${res.status})`);
+      if (!res.ok) {
+        const detail = data.error ?? data.message ?? `Order failed (HTTP ${res.status})`;
+        // The server returns a requestId so support can find the exact failure
+        // in the platform logs.
+        throw new Error(data.requestId ? `${detail} (reference ${data.requestId})` : detail);
+      }
 
       // Save order to localStorage so it appears in orders page without wallet
       saveOrderToLocal({
@@ -202,6 +211,19 @@ export default function CheckoutPage() {
             Back to {pkg.country}
           </Link>
         </Button>
+
+        {staleCatalog && (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 mb-6 text-sm text-amber-200"
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-400" />
+            <p>
+              The supplier is unreachable right now, so this plan is shown from a saved catalog. The
+              price below is indicative — the exact amount is set when your invoice is created.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">

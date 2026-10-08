@@ -21,6 +21,12 @@ Privacy-focused eSIM marketplace. Checkout does not require an identity account,
 |---|---|
 | `lib/db.ts` | PostgreSQL persistence, claims, rate limits, retention |
 | `db/migrations/0001_enterprise.sql` | Production schema; apply before enabling checkout |
+| `lib/prices.ts` | Pure pricing math — **client-safe, keep free of Node/database imports** |
+| `lib/priceFeed.ts` | Server-only exchange rates: CoinGecko → Kraken → Binance → cached → static fallback |
+| `lib/pikasim.ts` | Supplier client + resilient catalog (supplier → DB snapshot → `data/fallback-catalog.json`) |
+| `data/fallback-catalog.json` | Committed offline catalog snapshot; browse-only, never used to price an invoice |
+| `lib/configCheck.ts` | Deployment preflight; reports missing/malformed env without logging values |
+| `app/api/health/route.ts` | Readiness probe (booleans publicly; live probes with `ADMIN_API_KEY`) |
 | `lib/auth.ts`, `lib/invoiceToken.ts` | Optional wallet session and signed invoice capability tokens |
 | `lib/crypto-utils.ts` | Field encryption and keyed wallet identifiers |
 | `lib/ethereum.ts`, `lib/monero.ts` | Payment address generation and independent chain/wallet verification |
@@ -29,9 +35,12 @@ Privacy-focused eSIM marketplace. Checkout does not require an identity account,
 | `app/api/cron/retention/route.ts` | `CRON_SECRET`-protected cleanup endpoint |
 | `lib/adminAuth.ts` | Constant-time `ADMIN_API_KEY` check |
 | `lib/blog.ts` | Blog records sanitized before serving |
+| `docs/DEPLOYMENT.md` | Vercel settings, env-var checklist, failure-code runbook |
 
 ## Configuration and deployment
-Copy `.env.example` as a checklist. Production requires a managed PostgreSQL database, the migration applied, independently generated strong secrets, funded/configured supplier and wallet services, authenticated RPC endpoints, provider webhook agreements, an active retention cron, and a published support contact. Verify the actual deployed Vercel project/config; both repository root and `privasim/` contain Vercel config files.
+Copy `.env.example` as a checklist; `docs/DEPLOYMENT.md` is the full runbook. Production requires a managed PostgreSQL database, the migration applied, independently generated strong secrets, funded/configured supplier and wallet services, authenticated RPC endpoints, provider webhook agreements, an active retention cron, and a published support contact. Verify the actual deployed Vercel project/config; both repository root and `privasim/` contain Vercel config files, kept consistent so either Root Directory setting works.
+
+Checkout degrades rather than failing: exchange rates fall back through three providers plus a cached quote (`lib/priceFeed.ts`), and the shop catalog falls back to a PostgreSQL snapshot or a committed static file (`lib/pikasim.ts`). **Invoices are always priced from a live supplier read and a live-or-cached exchange rate — never from a stale catalog.** `/api/orders/create` returns `{ error, code, requestId }` and logs a structured `invoice_creation_failed` event with the stage and stack; `/api/health` reports configuration gaps without exposing values.
 
 `PAYMENT_HASH_SECRET` is a stable secret used to HMAC transaction references at rest. Rotating it without migrating old hashes can break transaction-replay matching. `DB_ENCRYPTION_KEY` must be backed up securely; changing it without re-encryption makes existing credentials unreadable. Rotate `JWT_SECRET` with awareness that wallet sessions, invoice tokens, keyed wallet hashes, rate-limit keys, and legacy JWT-signed coupons depend on it. New coupon codes use the independent `COUPON_SIGNING_SECRET`.
 

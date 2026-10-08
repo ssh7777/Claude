@@ -2,11 +2,12 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wifi, Phone, Globe } from "lucide-react";
-import { searchEsimPackages } from "@/lib/pikasim";
+import { loadCatalog } from "@/lib/pikasim";
 import { countryName } from "@/lib/countries";
 import { retailPrice } from "@/lib/prices";
 import { getRetailMargin } from "@/lib/settings";
 import EsimCard from "@/components/EsimCard";
+import CatalogNotice from "@/components/CatalogNotice";
 import { Button } from "@/components/ui/button";
 import Flag from "@/components/Flag";
 
@@ -48,14 +49,10 @@ export default async function CountryShopPage(props: PageProps) {
 
   const typeFilter = (searchParams.type ?? "all") as "data" | "phone" | "all";
 
-  let packages: Awaited<ReturnType<typeof searchEsimPackages>> = [];
-  let fetchError = false;
-  try {
-    packages = await searchEsimPackages(countryCode, typeFilter);
-  } catch {
-    fetchError = true;
-    packages = [];
-  }
+  // Never throws: supplier → PostgreSQL snapshot → committed static snapshot.
+  const catalog = await loadCatalog(countryCode, typeFilter);
+  const packages = catalog.packages;
+  const fetchError = catalog.source === "fallback" && packages.length === 0;
   const margin = await getRetailMargin();
 
   const dataPackages = packages.filter((p) => p.type === "data");
@@ -114,6 +111,8 @@ export default async function CountryShopPage(props: PageProps) {
             All countries
           </Link>
         </Button>
+
+        {catalog.stale && <CatalogNotice source={catalog.source} className="mb-4" />}
 
         <div className="flex items-center gap-3 mb-2">
           <Flag code={countryCode} className="text-5xl" />
