@@ -1,7 +1,7 @@
 // Ethereum native ETH and USDT (ERC-20, Ethereum mainnet) payment helpers.
 
 import QRCode from "qrcode";
-import { usdToEth } from "@/lib/prices";
+import { usdToEth } from "@/lib/priceFeed";
 import { generateSecureId } from "@/lib/crypto-utils";
 import { getEthereumAddress } from "@/lib/settings";
 

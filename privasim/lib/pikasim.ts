@@ -3,14 +3,58 @@
 // Purchases & account ops: MCP JSON-RPC 2.0 at https://pikasim.com/mcp
 
 import type { EsimPackage, ProductType, PikaSimPackage, PikaSimPurchaseResult } from "@/types";
+import fallbackCatalog from "@/data/fallback-catalog.json";
 
-const PIKASIM_REST  = "https://pikasim.com/api";
-const PIKASIM_MCP   = "https://pikasim.com/mcp";
+// Base URLs are overridable so the supplier client can be pointed at a proxy,
+// a staging endpoint, or a local mock during incident response / testing.
+function restBase(): string {
+  return (process.env.PIKASIM_REST_BASE ?? "https://pikasim.com/api").replace(/\/+$/, "");
+}
+
+function mcpBase(): string {
+  return (process.env.PIKASIM_MCP_BASE ?? "https://pikasim.com/mcp").replace(/\/+$/, "");
+}
 
 function getApiKey(): string {
   const key = process.env.PIKASIM_API_KEY;
   if (!key) throw new Error("PIKASIM_API_KEY is not configured");
   return key;
+}
+
+/** True when the supplier client has credentials configured. */
+export function isSupplierConfigured(): boolean {
+  return Boolean(process.env.PIKASIM_API_KEY?.trim());
+}
+
+// ── Supplier health signal ──────────────────────────────────────────────────
+// `getPackageDetails` returns null both for "genuinely unknown package" and for
+// "the supplier is unreachable", which are very different situations for the
+// checkout. Callers use this to tell them apart and return a retryable 503
+// instead of a misleading 404.
+
+const SUPPLIER_DEGRADED_WINDOW_MS = 5 * 60 * 1000;
+let lastSupplierErrorAt = 0;
+let lastSupplierError: string | null = null;
+
+function recordSupplierError(error: unknown): void {
+  lastSupplierErrorAt = Date.now();
+  lastSupplierError = errText(error);
+}
+
+export interface SupplierHealth {
+  degraded: boolean;
+  lastError: string | null;
+  ageMs: number | null;
+}
+
+export function supplierHealth(): SupplierHealth {
+  if (!lastSupplierErrorAt) return { degraded: false, lastError: null, ageMs: null };
+  const ageMs = Date.now() - lastSupplierErrorAt;
+  return {
+    degraded: ageMs < SUPPLIER_DEGRADED_WINDOW_MS,
+    lastError: lastSupplierError,
+    ageMs,
+  };
 }
 
 // ── MCP JSON-RPC 2.0 transport ──────────────────────────────────────────────
@@ -45,7 +89,7 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
     params: { name: toolName, arguments: args },
   };
 
-  const response = await fetch(PIKASIM_MCP, {
+  const response = await fetch(mcpBase(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -69,7 +113,9 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
   };
 
   if (json.error) {
-    throw new Error("PikaSim supplier tool call failed");
+    throw new Error(
+      `PikaSim supplier tool call failed${json.error.message ? `: ${json.error.message}` : ""}`
+    );
   }
 
   // MCP wraps the payload in content blocks: { result: { content: [{ type:"text", text:"..." }] } }
@@ -85,6 +131,10 @@ async function callMCP(toolName: string, args: Record<string, unknown>): Promise
   }
 
   return result ?? json;
+}
+
+function errText(error: unknown): string {
+  return error instanceof Error ? error.message : "unknown supplier error";
 }
 
 // ── Free-text extraction (PikaSim MCP answers in prose) ────────────────────
@@ -117,7 +167,7 @@ function extractUsd(text: string): number | undefined {
 // ── REST GET transport (package listing only) ─────────────────────────────
 
 async function apiGet<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${PIKASIM_REST}${path}`);
+  const url = new URL(`${restBase()}${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   }
@@ -138,7 +188,9 @@ async function apiGet<T>(path: string, params?: Record<string, string>): Promise
   });
 
   if (!response.ok) {
-    throw new Error(`PikaSim catalog request returned HTTP ${response.status}`);
+    const error = new Error(`PikaSim catalog request returned HTTP ${response.status}`);
+    recordSupplierError(error);
+    throw error;
   }
 
   return response.json() as Promise<T>;
@@ -241,7 +293,8 @@ export async function searchEsimPackages(
 
     return packages.map(normalizePikaPackage);
   } catch (err) {
-    console.error("[PikaSim] searchEsimPackages failed:", err);
+    recordSupplierError(err);
+    console.error("[PikaSim] searchEsimPackages failed:", errText(err));
     throw err;
   }
 }
@@ -329,16 +382,202 @@ export async function getPackageDetails(packageCode: string): Promise<EsimPackag
     const result = await apiGet<{ packages?: PikaSimPackage[] }>("/packages/all-countries");
     const pkg = (result.packages ?? []).find((p) => p.packageCode === packageCode);
     if (pkg) return normalizePikaPackage(pkg);
-  } catch {
-    // fall through to MCP
+  } catch (error) {
+    // Silent catch blocks made supplier outages invisible in the logs.
+    recordSupplierError(error);
+    console.error("[PikaSim] all-countries lookup failed for %s:", packageCode, errText(error));
   }
   // Not in the country list — try global list, then MCP details (phone plans)
   try {
     const globals = await getGlobalPackages();
     const g = globals.find((p) => p.code === packageCode);
     if (g) return g;
-  } catch { /* ignore */ }
+  } catch (error) {
+    recordSupplierError(error);
+    console.error("[PikaSim] global lookup failed for %s:", packageCode, errText(error));
+  }
   return getPackageDetailsMCP(packageCode);
+}
+
+// ── Catalog resilience ─────────────────────────────────────────────────────
+// Shop pages must never render blank because the supplier is offline. Every
+// successful supplier read is mirrored into PostgreSQL per country, so a later
+// outage can be served from the last known catalog. `data/fallback-catalog.json`
+// is a committed snapshot used only when neither the supplier nor the database
+// has anything for that destination. Anything served from the cache or the
+// static file is flagged `stale` and the UI says so, because the authoritative
+// price is always recomputed live at invoice creation.
+
+export type CatalogSource = "supplier" | "cache" | "fallback";
+
+export interface CatalogResult {
+  packages: EsimPackage[];
+  /** True when the data came from the cache or the committed snapshot. */
+  stale: boolean;
+  source: CatalogSource;
+  error?: string;
+}
+
+const CATALOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface CatalogSnapshot {
+  capturedAt: number;
+  packages: EsimPackage[];
+}
+
+async function readSnapshot(scope: string): Promise<EsimPackage[] | null> {
+  if (!process.env.DATABASE_URL?.trim()) return null;
+  try {
+    const { ledgerGet } = await import("@/lib/ledger");
+    const snap = await ledgerGet<CatalogSnapshot>(`cat_${scope.toUpperCase()}`);
+    if (!snap || !Array.isArray(snap.packages)) return null;
+    if (!Number.isFinite(snap.capturedAt)) return null;
+    if (Date.now() - snap.capturedAt > CATALOG_MAX_AGE_MS) return null;
+    return snap.packages;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSnapshot(scope: string, packages: EsimPackage[]): Promise<void> {
+  if (!process.env.DATABASE_URL?.trim() || packages.length === 0) return;
+  try {
+    const { ledgerSet } = await import("@/lib/ledger");
+    await ledgerSet(`cat_${scope.toUpperCase()}`, {
+      capturedAt: Date.now(),
+      packages: packages.slice(0, 500),
+    } satisfies CatalogSnapshot);
+  } catch (error) {
+    console.warn(
+      "[PikaSim] could not persist catalog snapshot:",
+      error instanceof Error ? error.message : "unknown error"
+    );
+  }
+}
+
+interface FallbackEntry {
+  code: string;
+  name: string;
+  country: string;
+  countryCode: string;
+  dataAmount: string;
+  durationDays: number;
+  priceUsd: number;
+  type: string;
+  networks: string[];
+}
+
+function staticPackages(): EsimPackage[] {
+  return (fallbackCatalog.packages as FallbackEntry[]).map((entry) => ({
+    code: entry.code,
+    name: entry.name,
+    country: entry.country,
+    countryCode: entry.countryCode,
+    dataAmount: entry.dataAmount,
+    durationDays: entry.durationDays,
+    priceUsd: entry.priceUsd,
+    type: entry.type === "phone" ? "phone" : "data",
+    networks: entry.networks ?? [],
+  }));
+}
+
+function filterType(packages: EsimPackage[], type: "data" | "phone" | "all"): EsimPackage[] {
+  if (type === "all") return packages;
+  return packages.filter((pkg) => pkg.type === type);
+}
+
+/**
+ * Country/global catalog that degrades instead of throwing.
+ * Supplier → per-country snapshot in PostgreSQL → committed static snapshot.
+ */
+export async function loadCatalog(
+  country?: string,
+  type: "data" | "phone" | "all" = "all"
+): Promise<CatalogResult> {
+  const scope = (country ?? "ALL").toUpperCase();
+  try {
+    const packages = await searchEsimPackages(country, type);
+    void writeSnapshot(scope, packages);
+    return { packages, stale: false, source: "supplier" };
+  } catch (error) {
+    const message = errText(error);
+    console.error("[PikaSim] catalog fetch failed for %s:", scope, message);
+  }
+
+  const cached = filterType((await readSnapshot(scope)) ?? [], type);
+  if (cached.length > 0) {
+    return { packages: cached, stale: true, source: "cache", error: "supplier_unreachable" };
+  }
+
+  const all = staticPackages();
+  const scoped = country ? all.filter((pkg) => pkg.countryCode === scope) : all;
+  const fallback = filterType(scoped, type);
+  return {
+    packages: fallback,
+    stale: fallback.length > 0,
+    source: "fallback",
+    error: fallback.length > 0 ? "supplier_unreachable" : "no_catalog_available",
+  };
+}
+
+/** Global multi-country catalog with the same degradation ladder. */
+export async function loadGlobalCatalog(): Promise<CatalogResult> {
+  try {
+    const packages = await getGlobalPackages();
+    void writeSnapshot("GLOBAL", packages);
+    return { packages, stale: false, source: "supplier" };
+  } catch (error) {
+    console.error("[PikaSim] global catalog fetch failed:", errText(error));
+  }
+
+  const cached = (await readSnapshot("GLOBAL")) ?? [];
+  if (cached.length > 0) {
+    return { packages: cached, stale: true, source: "cache", error: "supplier_unreachable" };
+  }
+
+  const fallback = staticPackages().filter((pkg) => pkg.countryCode === "GLOBAL");
+  return {
+    packages: fallback,
+    stale: fallback.length > 0,
+    source: "fallback",
+    error: fallback.length > 0 ? "supplier_unreachable" : "no_catalog_available",
+  };
+}
+
+export interface PackageLookup {
+  pkg: EsimPackage | null;
+  stale: boolean;
+  source: CatalogSource | "none";
+}
+
+/**
+ * Single package lookup that falls back to the cached/static catalog when the
+ * supplier is unreachable. The stale flag is surfaced to the client so the UI
+ * can warn that the displayed price will be re-quoted at checkout.
+ */
+export async function loadPackageDetails(packageCode: string): Promise<PackageLookup> {
+  try {
+    const pkg = await getPackageDetails(packageCode);
+    if (pkg && Number.isFinite(pkg.priceUsd) && pkg.priceUsd > 0) {
+      return { pkg, stale: false, source: "supplier" };
+    }
+  } catch (error) {
+    console.error("[PikaSim] package lookup failed for %s:", packageCode, errText(error));
+  }
+
+  const staticMatch = staticPackages().find((pkg) => pkg.code === packageCode);
+  if (staticMatch) {
+    return { pkg: staticMatch, stale: true, source: "fallback" };
+  }
+
+  const scopes = [packageCode.slice(0, 2).toUpperCase(), "GLOBAL", "ALL"];
+  for (const scope of scopes) {
+    const cached = await readSnapshot(scope);
+    const match = cached?.find((pkg) => pkg.code === packageCode);
+    if (match) return { pkg: match, stale: true, source: "cache" };
+  }
+
+  return { pkg: null, stale: false, source: "none" };
 }
 
 export async function checkAgentBalance(): Promise<{ balanceUsd: number }> {

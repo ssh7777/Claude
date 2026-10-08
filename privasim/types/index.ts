@@ -99,10 +99,21 @@ export interface AuthToken {
   expiresIn: number;
 }
 
+export type PriceSource =
+  | "coingecko"
+  | "kraken"
+  | "binance"
+  | "cache"
+  | "static_fallback";
+
 export interface CryptoPrices {
   xmr: number;
   eth: number;
   updatedAt: number;
+  /** Where the rate came from. Absent on values produced before this field existed. */
+  source?: PriceSource;
+  /** True when the rate is older than the freshness window (served from cache/static fallback). */
+  stale?: boolean;
 }
 
 export interface JWTPayload {

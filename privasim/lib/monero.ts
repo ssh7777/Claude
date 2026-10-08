@@ -4,7 +4,7 @@
 
 import QRCode from "qrcode";
 import { randomUUID } from "node:crypto";
-import { usdToXmr } from "@/lib/prices";
+import { usdToXmr } from "@/lib/priceFeed";
 import { generateSecureId } from "@/lib/crypto-utils";
 import { DEFAULT_MONERO_WALLET_PRIMARY, getMoneroAddress } from "@/lib/settings";
 

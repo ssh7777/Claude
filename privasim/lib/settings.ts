@@ -38,13 +38,26 @@ export async function getMarginPercent(): Promise<number> {
     marginCache = { pct: DEFAULT_MARGIN_PERCENT, at: Date.now() };
     return DEFAULT_MARGIN_PERCENT;
   }
-  const stored = await ledgerGet<number>(KEY_MARGIN);
-  const pct =
-    typeof stored === "number" && isValidMarginPercent(stored)
-      ? stored
-      : DEFAULT_MARGIN_PERCENT;
-  marginCache = { pct, at: Date.now() };
-  return pct;
+  try {
+    const stored = await ledgerGet<number>(KEY_MARGIN);
+    const pct =
+      typeof stored === "number" && isValidMarginPercent(stored)
+        ? stored
+        : DEFAULT_MARGIN_PERCENT;
+    marginCache = { pct, at: Date.now() };
+    return pct;
+  } catch (error) {
+    // A ledger outage must not take every shop page or the checkout down.
+    // Falling back to the documented default margin keeps prices consistent
+    // with what the owner configured by default; the error is logged so the
+    // outage is visible in the platform logs.
+    console.error(
+      "[settings] margin lookup failed; using default margin:",
+      error instanceof Error ? error.message : "unknown error"
+    );
+    marginCache = { pct: DEFAULT_MARGIN_PERCENT, at: Date.now() };
+    return DEFAULT_MARGIN_PERCENT;
+  }
 }
 
 /** Multiplier form used by retailPrice(): 70% → 1.7 */
@@ -74,8 +87,22 @@ export function isValidEthAddress(addr: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 }
 
+async function safeLedgerGet<T>(key: string): Promise<T | null> {
+  if (!ledgerPersistent()) return null;
+  try {
+    return await ledgerGet<T>(key);
+  } catch (error) {
+    console.error(
+      "[settings] ledger read failed for %s; using environment default:",
+      key,
+      error instanceof Error ? error.message : "unknown error"
+    );
+    return null;
+  }
+}
+
 export async function getMoneroAddress(): Promise<string> {
-  const override = await ledgerGet<string>(KEY_XMR);
+  const override = await safeLedgerGet<string>(KEY_XMR);
   if (override && isValidMoneroAddress(override)) return override;
   const address = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!address || !isValidMoneroAddress(address)) {
@@ -90,7 +117,7 @@ export async function setMoneroAddress(addr: string): Promise<boolean> {
 }
 
 export async function getEthereumAddress(): Promise<string> {
-  const override = await ledgerGet<string>(KEY_ETH);
+  const override = await safeLedgerGet<string>(KEY_ETH);
   if (override && isValidEthAddress(override)) return override;
   const env = process.env.ETHEREUM_WALLET_ADDRESS;
   if (!env) throw new Error("ETHEREUM_WALLET_ADDRESS is not configured");
@@ -110,9 +137,9 @@ export async function getWalletSettings(): Promise<{
   marginPercent: number;
   marginSource: "custom" | "default";
 }> {
-  const xmrOverride = await ledgerGet<string>(KEY_XMR);
-  const ethOverride = await ledgerGet<string>(KEY_ETH);
-  const marginOverride = await ledgerGet<number>(KEY_MARGIN);
+  const xmrOverride = await safeLedgerGet<string>(KEY_XMR);
+  const ethOverride = await safeLedgerGet<string>(KEY_ETH);
+  const marginOverride = await safeLedgerGet<number>(KEY_MARGIN);
   return {
     monero: await getMoneroAddress(),
     ethereum: await getEthereumAddress(),
