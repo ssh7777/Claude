@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import { randomUUID } from "node:crypto";
 import { usdToXmr } from "@/lib/prices";
 import { generateSecureId } from "@/lib/crypto-utils";
+import { DEFAULT_MONERO_WALLET_PRIMARY } from "@/lib/settings";
 
 const MONERO_ATOMIC_UNITS = BigInt(1_000_000_000_000);
 
@@ -74,7 +75,7 @@ async function createInvoiceSubaddress(invoiceId: string): Promise<{ address: st
     throw new Error("MONERO_ACCOUNT_INDEX must be a non-negative integer");
   }
   const walletAddress = await walletRpc<{ address: string }>("get_address", { account_index: accountIndex });
-  const configuredPrimary = process.env.MONERO_WALLET_PRIMARY?.trim();
+  const configuredPrimary = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!configuredPrimary || configuredPrimary !== walletAddress.address) {
     throw new Error("MONERO_WALLET_PRIMARY does not match the wallet loaded by Wallet RPC");
   }

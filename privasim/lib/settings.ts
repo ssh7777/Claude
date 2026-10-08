@@ -66,12 +66,15 @@ export function isValidMoneroAddress(addr: string): boolean {
   return /^[48][0-9AB][1-9A-HJ-NP-Za-km-z]{93}([1-9A-HJ-NP-Za-km-z]{11})?$/.test(addr.trim());
 }
 
+export const DEFAULT_MONERO_WALLET_PRIMARY =
+  "83JkvCKVybdWSFJPrT7wKdQMosgdAnR97YG9GVNdKdk3bG6Aa6EjXMD4AGb6ngyTX2M3USfG46ieyck3HvFwSoa31f2vDfr";
+
 export function isValidEthAddress(addr: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 }
 
 export async function getMoneroAddress(): Promise<string> {
-  const address = process.env.MONERO_WALLET_PRIMARY?.trim();
+  const address = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!address || !isValidMoneroAddress(address)) {
     throw new Error("MONERO_WALLET_PRIMARY is missing or invalid");
   }
