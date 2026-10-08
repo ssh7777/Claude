@@ -77,6 +77,7 @@ export default function AdminPage() {
 
   // wallets + pricing form
   const [eth, setEth] = useState("");
+  const [xmr, setXmr] = useState("");
   const [marginInput, setMarginInput] = useState("");
   const [walletMsg, setWalletMsg] = useState("");
   const saveWallets = async () => {
@@ -85,13 +86,14 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST", headers: H(),
         body: JSON.stringify({
+          monero: xmr.trim() || undefined,
           ethereum: eth.trim() || undefined,
           marginPercent: marginInput.trim() === "" ? undefined : Number(marginInput),
         }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Failed");
-      setWallets(j.settings); setEth(""); setMarginInput("");
+      setWallets(j.settings); setEth(""); setXmr(""); setMarginInput("");
       setWalletMsg("✓ Settings updated");
     } catch (e) { setWalletMsg(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(false); }
@@ -233,22 +235,23 @@ export default function AdminPage() {
           <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
             <div>
               <h2 className="font-bold text-white mb-1">Receiving wallets</h2>
-              <p className="text-xs text-gray-400">Ethereum address changes are validated and effective immediately. The Monero receiving address is tied to the configured Wallet RPC and must be updated through deployment configuration.</p>
+              <p className="text-xs text-gray-400">Wallet address changes are validated and effective immediately.</p>
             </div>
             {wallets && (
               <div className="text-xs text-gray-400 space-y-1">
-                <div>Monero (Wallet RPC configuration): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
+                <div>Monero (<span className={wallets.moneroSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.moneroSource}</span>): <code className="text-gray-300 break-all">{wallets.monero}</code></div>
                 <div>Ethereum (<span className={wallets.ethereumSource === "custom" ? "text-green-400" : "text-gray-500"}>{wallets.ethereumSource}</span>): <code className="text-gray-300 break-all">{wallets.ethereum}</code></div>
               </div>
             )}
             <div className="space-y-2">
+              <Input value={xmr} onChange={e => setXmr(e.target.value)} placeholder="New Monero address (4… or 8…)" className="bg-white/10 border-white/20 text-white text-sm" />
               <Input value={eth} onChange={e => setEth(e.target.value)} placeholder="New Ethereum address (0x…)" className="bg-white/10 border-white/20 text-white text-sm" />
             </div>
-            <Button onClick={saveWallets} disabled={busy || !eth.trim()} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
-              <Save className="h-4 w-4 mr-2" /> Save Ethereum address
+            <Button onClick={saveWallets} disabled={busy || (!eth.trim() && !xmr.trim())} className="bg-[#ff6600] hover:bg-[#e55c00] text-white">
+              <Save className="h-4 w-4 mr-2" /> Save wallet addresses
             </Button>
             <div className="text-xs text-yellow-300/80 bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
-              ⚠ Double-check the Ethereum address. For Monero, keep the configured Wallet RPC and `MONERO_WALLET_PRIMARY` aligned; retain access to the old wallet until all open invoices are resolved.
+              ⚠ Double-check addresses before saving. For Monero, retain access to old addresses until all open invoices are resolved.
             </div>
           </div>
 

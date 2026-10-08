@@ -11,6 +11,7 @@
 import { ledgerGet, ledgerPersistent, ledgerSet } from "@/lib/ledger";
 
 const KEY_ETH = "set_wallet_eth";
+const KEY_XMR = "set_wallet_xmr";
 const KEY_MARGIN = "set_margin_pct";
 
 // ── Profit margin (owner-adjustable, no redeploy) ───────────────────────────
@@ -74,11 +75,18 @@ export function isValidEthAddress(addr: string): boolean {
 }
 
 export async function getMoneroAddress(): Promise<string> {
+  const override = await ledgerGet<string>(KEY_XMR);
+  if (override && isValidMoneroAddress(override)) return override;
   const address = process.env.MONERO_WALLET_PRIMARY?.trim() || DEFAULT_MONERO_WALLET_PRIMARY;
   if (!address || !isValidMoneroAddress(address)) {
     throw new Error("MONERO_WALLET_PRIMARY is missing or invalid");
   }
   return address;
+}
+
+export async function setMoneroAddress(addr: string): Promise<boolean> {
+  if (!isValidMoneroAddress(addr)) throw new Error("Invalid Monero address");
+  return ledgerSet(KEY_XMR, addr.trim());
 }
 
 export async function getEthereumAddress(): Promise<string> {
@@ -97,17 +105,18 @@ export async function setEthereumAddress(addr: string): Promise<boolean> {
 export async function getWalletSettings(): Promise<{
   monero: string;
   ethereum: string;
-  moneroSource: "environment";
+  moneroSource: "custom" | "default";
   ethereumSource: "custom" | "default";
   marginPercent: number;
   marginSource: "custom" | "default";
 }> {
+  const xmrOverride = await ledgerGet<string>(KEY_XMR);
   const ethOverride = await ledgerGet<string>(KEY_ETH);
   const marginOverride = await ledgerGet<number>(KEY_MARGIN);
   return {
     monero: await getMoneroAddress(),
     ethereum: await getEthereumAddress(),
-    moneroSource: "environment",
+    moneroSource: xmrOverride ? "custom" : "default",
     ethereumSource: ethOverride ? "custom" : "default",
     marginPercent: await getMarginPercent(),
     marginSource:
