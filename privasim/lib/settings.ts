@@ -93,7 +93,8 @@ async function safeLedgerGet<T>(key: string): Promise<T | null> {
     return await ledgerGet<T>(key);
   } catch (error) {
     console.error(
-      `[settings] ledger read failed for ${key}; using environment default:`,
+      "[settings] ledger read failed for %s; using environment default:",
+      key,
       error instanceof Error ? error.message : "unknown error"
     );
     return null;

@@ -51,7 +51,7 @@ export async function rateLimit(
   if (!secret || secret.length < 32) {
     const message = "JWT_SECRET is missing or shorter than 32 characters";
     if (options.failOpen) {
-      console.error(`[rateLimit] ${message}; allowing request (failOpen)`);
+      console.error("[rateLimit] %s; allowing request (failOpen)", message);
       return { allowed: true, remaining: config.max, resetAt: Date.now() + config.windowMs };
     }
     throw new RateLimitUnavailableError(message);
@@ -66,7 +66,7 @@ export async function rateLimit(
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown database error";
     if (options.failOpen) {
-      console.error(`[rateLimit] store unavailable (${message}); allowing request (failOpen)`);
+      console.error("[rateLimit] store unavailable (%s); allowing request (failOpen)", message);
       return { allowed: true, remaining: config.max, resetAt: Date.now() + config.windowMs };
     }
     throw new RateLimitUnavailableError(message, error);

@@ -385,7 +385,7 @@ export async function getPackageDetails(packageCode: string): Promise<EsimPackag
   } catch (error) {
     // Silent catch blocks made supplier outages invisible in the logs.
     recordSupplierError(error);
-    console.error(`[PikaSim] all-countries lookup failed for ${packageCode}:`, errText(error));
+    console.error("[PikaSim] all-countries lookup failed for %s:", packageCode, errText(error));
   }
   // Not in the country list — try global list, then MCP details (phone plans)
   try {
@@ -394,7 +394,7 @@ export async function getPackageDetails(packageCode: string): Promise<EsimPackag
     if (g) return g;
   } catch (error) {
     recordSupplierError(error);
-    console.error(`[PikaSim] global lookup failed for ${packageCode}:`, errText(error));
+    console.error("[PikaSim] global lookup failed for %s:", packageCode, errText(error));
   }
   return getPackageDetailsMCP(packageCode);
 }
@@ -501,7 +501,7 @@ export async function loadCatalog(
     return { packages, stale: false, source: "supplier" };
   } catch (error) {
     const message = errText(error);
-    console.error(`[PikaSim] catalog fetch failed for ${scope}:`, message);
+    console.error("[PikaSim] catalog fetch failed for %s:", scope, message);
   }
 
   const cached = filterType((await readSnapshot(scope)) ?? [], type);
@@ -562,7 +562,7 @@ export async function loadPackageDetails(packageCode: string): Promise<PackageLo
       return { pkg, stale: false, source: "supplier" };
     }
   } catch (error) {
-    console.error(`[PikaSim] package lookup failed for ${packageCode}:`, errText(error));
+    console.error("[PikaSim] package lookup failed for %s:", packageCode, errText(error));
   }
 
   const staticMatch = staticPackages().find((pkg) => pkg.code === packageCode);

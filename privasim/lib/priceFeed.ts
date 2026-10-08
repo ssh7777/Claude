@@ -200,7 +200,7 @@ async function refresh(): Promise<CryptoPrices> {
       // Persist without awaiting so a slow ledger write never delays checkout.
       void writePersisted(prices);
       if (failures.length) {
-        console.warn(`[prices] served by ${source.name} after failures: ${failures.join(" | ")}`);
+        console.warn("[prices] served by %s after failures: %s", source.name, failures.join(" | "));
       }
       return prices;
     } catch (error) {
@@ -214,8 +214,10 @@ async function refresh(): Promise<CryptoPrices> {
   const cached = candidates.sort((a, b) => b.updatedAt - a.updatedAt)[0];
   if (cached) {
     console.error(
-      `[prices] all live sources failed (${failures.join(" | ")}); serving a ` +
-        `${Math.round((now - cached.updatedAt) / 60_000)}m-old quote from ${cached.source ?? "cache"}`
+      "[prices] all live sources failed (%s); serving a %dm-old quote from %s",
+      failures.join(" | "),
+      Math.round((now - cached.updatedAt) / 60_000),
+      cached.source ?? "cache"
     );
     priceCache = cached;
     return cached;
@@ -224,8 +226,11 @@ async function refresh(): Promise<CryptoPrices> {
   const fallback = staticFallback();
   if (fallback) {
     console.error(
-      `[prices] all live sources failed and no cached quote is usable (${failures.join(" | ")}); ` +
-        `using the operator static fallback (XMR=${fallback.xmr}, ETH=${fallback.eth})`
+      "[prices] all live sources failed and no cached quote is usable (%s); " +
+        "using the operator static fallback (XMR=%s, ETH=%s)",
+      failures.join(" | "),
+      fallback.xmr,
+      fallback.eth
     );
     return fallback;
   }
